@@ -20,11 +20,21 @@ Perfect for teams who want structured release management without the complexity 
 - 📦 **Consignment System**: Track changes with structured metadata
 - 🔄 **Semantic Versioning**: Automatic version calculation (patch/minor/major)
 - 📝 **Changelog Automation**: Generate release notes from consignments
-- 🎯 **Multi-ecosystem**: Supports Go, NPM, Python, Docker, Helm, and more
-- 🎪 **Interactive CLI**: User-friendly prompts for all operations
+- 🎯 **Multi-ecosystem**: Supports Go, NPM, Helm, and more
+- 🎪 **Interactive CLI**: User-friendly prompts and confirmations
 - ⚙️ **Flexible Configuration**: YAML-based with inheritance support
+- 🔍 **Status Monitoring**: View consignment status and version previews
+- 📄 **Template System**: Customizable changelog templates (Keep a Changelog, etc.)
+- 🎨 **Pretty Output**: Markdown rendering with syntax highlighting
+- 🚀 **Dry Run Mode**: Preview changes before applying them
 
 ## Installation
+
+### Using Go
+
+```bash
+go install github.com/NatoNathan/shipyard/cmd/shipyard@latest
+```
 
 ### From Source
 
@@ -32,13 +42,12 @@ Perfect for teams who want structured release management without the complexity 
 git clone https://github.com/NatoNathan/shipyard.git
 cd shipyard
 just build
+# Binary will be in ./dist/shipyard
 ```
 
-### Using Go
+### From Releases
 
-```bash
-go install github.com/NatoNathan/shipyard/cmd/shipyard@latest
-```
+Download the latest release from [GitHub Releases](https://github.com/NatoNathan/shipyard/releases) (coming soon).
 
 ## Quick Start
 
@@ -54,7 +63,17 @@ go install github.com/NatoNathan/shipyard/cmd/shipyard@latest
    ```
    Document a change with its type (patch/minor/major) and summary.
 
-3. **Your configuration is saved** to `.shipyard/config.yaml` and consignments are stored in `.shipyard/consignments/`
+3. **Check project status**:
+   ```bash
+   shipyard status
+   ```
+   View current consignments, see what new versions would be calculated, and preview release notes.
+
+4. **Generate changelog and apply versions**:
+   ```bash
+   shipyard version
+   ```
+   Generate changelog from consignments and update package versions.
 
 ## Core Concepts
 
@@ -64,11 +83,38 @@ A consignment is a record of changes made to your packages. Each consignment con
 - **Change type**: Patch (bug fixes), Minor (new features), or Major (breaking changes)
 - **Summary**: Description of what changed
 
-### Workflow
-1. Make changes to your code
-2. Create a consignment to document the changes
-3. Commit both your code and the consignment
-4. Shipyard handles version calculation and changelog generation
+## Workflow Example
+
+Here's a complete example of using Shipyard in a project:
+
+```bash
+# 1. Initialize your project
+shipyard init
+
+# 2. Make code changes to your project
+# ... (edit files, add features, fix bugs)
+
+# 3. Document your changes
+shipyard add
+# Follow prompts to select packages and change type
+
+# 4. Check status anytime
+shipyard status
+
+# 5. Preview your changelog
+shipyard version --preview
+
+# 6. Generate changelog and apply versions
+shipyard version
+
+# 7. Commit everything
+git add .
+git commit -m "Release v1.2.0"
+
+# 8. (Future) Tag and release
+git tag v1.2.0
+git push origin v1.2.0
+```
 
 ## Usage
 
@@ -76,6 +122,8 @@ A consignment is a record of changes made to your packages. Each consignment con
 
 - `shipyard init` - Initialize a new Shipyard project
 - `shipyard add` - Create a new consignment to track changes
+- `shipyard status` - Show consignment status and version information
+- `shipyard version` - Generate changelogs and apply version updates
 - `shipyard --version` or `shipyard -V` - Show version information
 - `shipyard --help` - Show available commands and options
 
@@ -106,6 +154,49 @@ packages:
 - `--log-level` - Set log level (debug, info, warn, error)
 - `--log-file` - Set log file path
 
+### Advanced Usage
+
+#### Status Command Options
+
+```bash
+# Show status for all packages
+shipyard status
+
+# Show status for specific package (monorepo only)
+shipyard status --package api
+
+# Generate and display release notes
+shipyard status --release-notes
+
+# Show raw markdown instead of pretty output
+shipyard status --release-notes --raw
+
+# Use a different changelog template
+shipyard status --release-notes --template keepachangelog
+```
+
+#### Version Command Options
+
+```bash
+# Preview the changelog without applying changes
+shipyard version --preview
+
+# Dry run - show changelog and version info without applying
+shipyard version --dry-run
+
+# Skip confirmation prompts
+shipyard version --yes
+
+# Generate for specific package only (monorepo)
+shipyard version --package api
+
+# Custom output file
+shipyard version --output RELEASE_NOTES.md
+
+# Use different changelog template
+shipyard version --template keepachangelog
+```
+
 ## Development
 
 ### Prerequisites
@@ -118,6 +209,9 @@ packages:
 ```bash
 # Using just (recommended)
 just build
+
+# Build with specific version
+just build v1.0.0
 
 # Or using go directly
 go build -o shipyard ./cmd/shipyard/main.go
@@ -136,6 +230,13 @@ go run ./cmd/shipyard/main.go [OPTIONS]
 ### Testing
 
 ```bash
+# Run all tests
+just test
+
+# Run specific test
+just test ./pkg/changelog
+
+# Or using go directly
 go test ./...
 ```
 
@@ -145,16 +246,22 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-[Add your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Roadmap
 
 - [x] Project initialization
 - [x] Consignment creation and management
-- [x] Multi-ecosystem package support
-- [ ] Changelog generation from consignments
-- [ ] Automatic version calculation
+- [x] Multi-ecosystem package support (Go, NPM, Helm)
+- [x] Changelog generation from consignments
+- [x] Automatic version calculation
+- [x] Status command with version preview
+- [x] Interactive CLI with confirmation prompts
+- [x] Template-based changelog generation
+- [x] Package filtering for monorepos
+- [x] Pretty-printed markdown output
 - [ ] Release automation
 - [ ] Git integration and tagging
 - [ ] CI/CD integration
 - [ ] Plugin system for custom workflows
+- [ ] Additional ecosystem support (Python, Docker, etc.)
