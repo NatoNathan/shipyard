@@ -2,15 +2,27 @@
 
 > Where releases are built
 
-Shipyard is a CLI tool for managing change notes, versions, and releases for both monorepos and single repositories.
+Shipyard is a modern CLI tool for managing change notes, versions, and releases across both monorepos and single repositories. It uses a "consignment" system to track changes and automatically manages version bumps and changelog generation.
+
+## Overview
+
+Shipyard simplifies release management by:
+- **Tracking Changes**: Create consignments to document what changed and why
+- **Managing Versions**: Automatically calculate semantic version bumps based on change types
+- **Generating Changelogs**: Build release notes from your consignments
+- **Supporting Any Ecosystem**: Works with Go, NPM, Python, Docker, and more
+
+Perfect for teams who want structured release management without the complexity of traditional changelog workflows.
 
 ## Features
 
-- 🏗️ **Monorepo and Single-repo Support**: Configure for either repository type
-- 📝 **Changelog Management**: Generate and manage changelogs with templates
-- 🎯 **Multi-ecosystem Support**: Works with NPM, Go, Helm, Python, Docker, and more
-- 🎪 **Interactive Setup**: User-friendly TUI for project initialization
-- ⚙️ **Flexible Configuration**: YAML-based configuration with inheritance support
+- 🏗️ **Universal Support**: Works with monorepos and single repositories
+- 📦 **Consignment System**: Track changes with structured metadata
+- 🔄 **Semantic Versioning**: Automatic version calculation (patch/minor/major)
+- 📝 **Changelog Automation**: Generate release notes from consignments
+- 🎯 **Multi-ecosystem**: Supports Go, NPM, Python, Docker, Helm, and more
+- 🎪 **Interactive CLI**: User-friendly prompts for all operations
+- ⚙️ **Flexible Configuration**: YAML-based with inheritance support
 
 ## Installation
 
@@ -30,20 +42,40 @@ go install github.com/NatoNathan/shipyard/cmd/shipyard@latest
 
 ## Quick Start
 
-1. **Initialize a new project**:
+1. **Initialize your project**:
    ```bash
    shipyard init
    ```
+   Configure your repository type, packages, and changelog settings through the interactive prompts.
 
-2. **Follow the interactive prompts** to configure your repository type, packages, and changelog settings.
+2. **Create your first consignment**:
+   ```bash
+   shipyard add
+   ```
+   Document a change with its type (patch/minor/major) and summary.
 
-3. **Your configuration will be saved** to `.shipyard/config.yaml`
+3. **Your configuration is saved** to `.shipyard/config.yaml` and consignments are stored in `.shipyard/consignments/`
+
+## Core Concepts
+
+### Consignments
+A consignment is a record of changes made to your packages. Each consignment contains:
+- **Packages affected**: Which parts of your project changed
+- **Change type**: Patch (bug fixes), Minor (new features), or Major (breaking changes)
+- **Summary**: Description of what changed
+
+### Workflow
+1. Make changes to your code
+2. Create a consignment to document the changes
+3. Commit both your code and the consignment
+4. Shipyard handles version calculation and changelog generation
 
 ## Usage
 
 ### Commands
 
 - `shipyard init` - Initialize a new Shipyard project
+- `shipyard add` - Create a new consignment to track changes
 - `shipyard --version` or `shipyard -V` - Show version information
 - `shipyard --help` - Show available commands and options
 
@@ -117,9 +149,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Roadmap
 
-- [ ] Changelog generation
-- [ ] Version management
+- [x] Project initialization
+- [x] Consignment creation and management
+- [x] Multi-ecosystem package support
+- [ ] Changelog generation from consignments
+- [ ] Automatic version calculation
 - [ ] Release automation
-- [ ] Git integration
+- [ ] Git integration and tagging
 - [ ] CI/CD integration
-- [ ] Plugin system
+- [ ] Plugin system for custom workflows
