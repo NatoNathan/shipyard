@@ -1,13 +1,12 @@
-// setViperConfigFromPath sets the config name, type, and path for a viper instance based on a full file path
+// Package config provides internal configuration management for Shipyard.
+// This package handles loading, saving, and managing configuration files.
 package config
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/NatoNathan/shipyard/internal/logger"
+	"github.com/NatoNathan/shipyard/pkg/config"
 	"github.com/spf13/viper"
 )
 
@@ -18,12 +17,16 @@ var (
 	projectConfig *viper.Viper = viper.New()
 )
 
-type RepoType string
+// Re-export public types for backward compatibility
+type RepoType = config.RepoType
+type ProjectConfig = config.ProjectConfig
+type Package = config.Package
+type ChangelogConfig = config.ChangelogConfig
 
-// enum RepositoryType
+// Re-export public constants for backward compatibility
 const (
-	RepositoryTypeMonorepo   RepoType = "monorepo"
-	RepositoryTypeSingleRepo RepoType = "single-repo"
+	RepositoryTypeMonorepo   = config.RepositoryTypeMonorepo
+	RepositoryTypeSingleRepo = config.RepositoryTypeSingleRepo
 )
 
 func init() {
@@ -40,105 +43,33 @@ func init() {
 	projectConfig.SetDefault("changelog.template", "keepachangelog")
 }
 
-type ProjectConfig struct {
-	Type RepoType `mapstructure:"type"` // "monorepo" or "single-repo"
-	Repo string   `mapstructure:"repo"` // e.g., "github.com/NatoNathan/shipyard"
-
-	Changelog struct {
-		Template       string `mapstructure:"template"`
-		HeaderTemplate string `mapstructure:"header_template"`
-		FooterTemplate string `mapstructure:"footer_template"`
-	} `mapstructure:"changelog"`
-
-	Packages []Package                `mapstructure:"packages"`
-	Package  `mapstructure:"package"` // for single-repo projects
-}
-
-type Package struct {
-	Name      string `mapstructure:"name"`      // e.g., "api", "frontend"
-	Path      string `mapstructure:"path"`      // e.g., "packages/api", "packages/frontend"
-	Manifest  string `mapstructure:"manifest"`  // e.g., "packages/api/package.json"
-	Ecosystem string `mapstructure:"ecosystem"` // e.g., "npm", "go", "python"
-}
-
+// LoadProjectConfig loads the project configuration from the configured path
 func LoadProjectConfig() (*ProjectConfig, error) {
-	// load the configuration file from the path set in AppConfig
+	// Get the config path from app configuration
 	configPath := AppConfig.GetString("config")
-	setViperConfigFromPath(projectConfig, configPath)
-	projectConfig.AutomaticEnv() // read environment variables that match the config keys
 
-	if err := projectConfig.ReadInConfig(); err != nil {
-		return nil, err
-	}
-
-	if extends := projectConfig.GetString("extends"); extends != "" {
-		baseConfig, err := fetchBaseConfig(extends)
-		if err != nil {
-			return nil, err
-		}
-		projectConfig.MergeConfigMap(baseConfig.AllSettings())
-	}
-
-	var config ProjectConfig
-	if err := projectConfig.Unmarshal(&config); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
+	// Use the public API to load the configuration
+	return config.LoadFromFile(configPath)
 }
 
-func InitProjectConfig(config map[string]interface{}) error {
-	projectConfig.MergeConfigMap(config)
-	configPath := AppConfig.GetString("config")
-	setViperConfigFromPath(projectConfig, configPath)
-	dir := filepath.Dir(configPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		logger.Error("Failed to create config directory", "error", err)
-		return errors.New("failed to create config directory: " + err.Error())
-	}
-
-	if err := projectConfig.SafeWriteConfig(); err != nil {
-		logger.Error("Failed to write project config", "error", err)
-		return errors.New("failed to write project config: " + err.Error())
-	}
-	return nil
-}
-
-// Fetches the base configuration from the specified path
-// if github:<owner>/<repo>/(<path>)(@<ref>) is specified, it fetches the config from the remote repository
-// if https://<url> is specified, it fetches the config from the remote URL
-// if <path> is specified, it fetches the config from the local file system
-func fetchBaseConfig(extends string) (*viper.Viper, error) {
-	if extends == "" {
-		return nil, errors.New("no base config to fetch")
-	}
-	if strings.HasPrefix(extends, "github:") {
-		// Note: We can't use logger here as it might not be initialized yet
-		panic("github: not implemented yet")
-	} else if strings.HasPrefix(extends, "https://") {
-		// Note: We can't use logger here as it might not be initialized yet
-		panic("https:// not implemented yet")
-	}
-	// local file system
+// InitProjectConfig initializes a new project configuration
+func InitProjectConfig(configData map[string]interface{}) error {
+	// Create a temporary viper instance to convert the map to a proper config
 	v := viper.New()
-	setViperConfigFromPath(v, extends)
-	if _, err := os.Stat(extends); os.IsNotExist(err) {
-		return nil, errors.New("base config file does not exist: " + extends)
-	}
-	if err := v.ReadInConfig(); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
+	v.MergeConfigMap(configData)
 
-func setViperConfigFromPath(v *viper.Viper, path string) {
-	dir := filepath.Dir(path)
-	base := filepath.Base(path)
-	ext := filepath.Ext(base)
-	name := strings.TrimSuffix(base, ext)
-	ext = strings.TrimPrefix(ext, ".")
+	var projectConfig config.ProjectConfig
+	if err := v.Unmarshal(&projectConfig); err != nil {
+		logger.Error("Failed to unmarshal project config", "error", err)
+		return errors.New("failed to unmarshal project config: " + err.Error())
+	}
 
-	v.SetConfigName(name)
-	v.SetConfigType(ext)
-	v.AddConfigPath(dir)
+	// Use the public API to save the configuration
+	configPath := AppConfig.GetString("config")
+	if err := config.SaveToFile(&projectConfig, configPath); err != nil {
+		logger.Error("Failed to save project config", "error", err)
+		return errors.New("failed to save project config: " + err.Error())
+	}
+
+	return nil
 }

@@ -1,0 +1,9 @@
+changelog:
+    template: keepachangelog
+package:
+    name: shipyard
+    path: .
+    manifest: ./go.mod
+    ecosystem: go
+repo: github.com/NatoNathan/shipyard
+type: single-repo
