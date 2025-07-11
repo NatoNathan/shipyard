@@ -31,6 +31,8 @@ type Config struct {
 	TimeFormat string
 	Prefix     string
 	LogFile    string
+	CurrentDir string // Current working directory for log file
+	Version    string // Version of the application, can be set at runtime
 }
 
 // DefaultConfig returns a default logger configuration
@@ -40,7 +42,8 @@ func DefaultConfig() *Config {
 		Output:     os.Stderr,
 		TimeFormat: "15:04:05",
 		Prefix:     "shipyard",
-		LogFile:    ".shipyard/logs/shipyard.log", // Always log to file by default
+		LogFile:    ".shipyard/logs/shipyard.log", // Always log to file by default                     // Will be set to the current working directory at runtime
+		CurrentDir: "",                            // Will be set to the current working directory at runtime
 	}
 }
 
@@ -51,6 +54,10 @@ func Init(config *Config) error {
 		ReportTimestamp: true,
 		TimeFormat:      config.TimeFormat,
 		Prefix:          config.Prefix,
+		Fields: []interface{}{
+			"version", config.Version, // Replace with actual version if available
+			"project", config.CurrentDir,
+		},
 	})
 
 	// Set log level
@@ -85,15 +92,12 @@ func Init(config *Config) error {
 		return err
 	}
 
-	// Check if we're in an interactive shell by looking for PS1 environment variable
-	// If PS1 is set, we're in an interactive shell - only log to file
-	// If PS1 is not set (scripts, CI/CD, pipes), also log to stderr
-	if os.Getenv("PS1") != "" {
-		// Interactive shell - only log to file
-		Logger.SetOutput(file)
-	} else {
-		// Non-interactive (scripts, CI/CD, pipes) - log to both file and stderr
+	// Check if in CI
+	if os.Getenv("CI") != "" {
+
 		Logger.SetOutput(io.MultiWriter(config.Output, file))
+	} else {
+		Logger.SetOutput(file)
 	}
 
 	return nil

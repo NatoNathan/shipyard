@@ -200,12 +200,7 @@ func packageGroup(pkg *PackageConfig) *huh.Group {
 func convertPackagesForConfig(packages []PackageConfig) []config.Package {
 	var result []config.Package
 	for _, pkg := range packages {
-		result = append(result, config.Package{
-			Name:      pkg.Name,
-			Path:      pkg.Path,
-			Ecosystem: pkg.Ecosystem,
-			Manifest:  pkg.Manifest,
-		})
+		result = append(result, convertPackageForConfig(pkg))
 	}
 	return result
 }

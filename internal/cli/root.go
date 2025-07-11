@@ -46,6 +46,7 @@ var rootCmd = &cobra.Command{
 			logger.Error("Error loading config", "error", err)
 			os.Exit(1)
 		}
+		logger.Info("Shipyard initialized successfully")
 		println("You are in a Shipyard project!")
 		println("Use `shipyard --help` to see available commands.")
 		println("For more information, visit https://shipyard.tamez.dev/docs")
@@ -104,6 +105,11 @@ func initLogger() {
 		level = logger.InfoLevel
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error getting current working directory: %v\n", err)
+		os.Exit(1)
+	}
 	// Create logger config
 	logConfig := &logger.Config{
 		Level:      level,
@@ -111,6 +117,8 @@ func initLogger() {
 		TimeFormat: "15:04:05",
 		Prefix:     "shipyard",
 		LogFile:    logFile,
+		CurrentDir: cwd,     // Set current working directory for log file
+		Version:    Version, // Set version for logging
 	}
 
 	// Initialize logger
