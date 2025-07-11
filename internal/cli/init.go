@@ -59,6 +59,7 @@ var InitCmd = &cobra.Command{
 
 		// Configure packages based on repository type
 		if repoType == config.RepositoryTypeMonorepo {
+			// TODO: add an option to scan for supported package ecosystems
 			// Loop to add packages for monorepo
 			for addAnother {
 				var pkgConfig PackageConfig
@@ -210,7 +211,7 @@ func convertPackageForConfig(pkg PackageConfig) config.Package {
 	return config.Package{
 		Name:      pkg.Name,
 		Path:      pkg.Path,
-		Ecosystem: pkg.Ecosystem,
+		Ecosystem: config.PackageEcosystem(pkg.Ecosystem),
 		Manifest:  pkg.Manifest,
 	}
 }

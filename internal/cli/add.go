@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: add flags for fast consignment creation
 var AddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new consignment",

@@ -290,3 +290,344 @@ func TestConsignmentCreationTime(t *testing.T) {
 			consignment.Created, before, after)
 	}
 }
+
+func TestCalculateNextVersionWithConsignments(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a temporary package.json for testing
+	packagePath := filepath.Join(tempDir, "test-package")
+	if err := os.MkdirAll(packagePath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	packageJSON := `{
+		"name": "test-package",
+		"version": "1.0.0"
+	}`
+
+	if err := os.WriteFile(filepath.Join(packagePath, "package.json"), []byte(packageJSON), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	projectConfig := &config.ProjectConfig{
+		Type: config.RepositoryTypeSingleRepo,
+		Package: config.Package{
+			Name:      "test-package",
+			Path:      packagePath,
+			Ecosystem: config.EcosystemNPM,
+			Manifest:  filepath.Join(packagePath, "package.json"),
+		},
+	}
+
+	consignmentDir := filepath.Join(tempDir, "consignments")
+	manager := NewManagerWithDir(projectConfig, consignmentDir)
+
+	// Create consignments with different change types
+	tests := []struct {
+		name         string
+		changeType   ChangeType
+		expectedNext string
+	}{
+		{
+			name:         "patch change",
+			changeType:   Patch,
+			expectedNext: "1.0.1",
+		},
+		{
+			name:         "minor change",
+			changeType:   Minor,
+			expectedNext: "1.1.0",
+		},
+		{
+			name:         "major change",
+			changeType:   Major,
+			expectedNext: "2.0.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean up any existing consignments
+			os.RemoveAll(consignmentDir)
+
+			// Create a consignment with the specified change type
+			_, err := manager.CreateConsignment([]string{"test-package"}, tt.changeType, "Test change")
+			if err != nil {
+				t.Fatalf("Failed to create consignment: %v", err)
+			}
+
+			// Calculate the next version
+			version, err := manager.CalculateNextVersion("test-package")
+			if err != nil {
+				t.Fatalf("Failed to calculate next version: %v", err)
+			}
+
+			if version.String() != tt.expectedNext {
+				t.Errorf("Expected next version %s, got %s", tt.expectedNext, version.String())
+			}
+		})
+	}
+}
+
+func TestCalculateNextVersionWithMultipleConsignments(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a temporary package.json for testing
+	packagePath := filepath.Join(tempDir, "test-package")
+	if err := os.MkdirAll(packagePath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	packageJSON := `{
+		"name": "test-package",
+		"version": "1.0.0"
+	}`
+
+	if err := os.WriteFile(filepath.Join(packagePath, "package.json"), []byte(packageJSON), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	projectConfig := &config.ProjectConfig{
+		Type: config.RepositoryTypeSingleRepo,
+		Package: config.Package{
+			Name:      "test-package",
+			Path:      packagePath,
+			Ecosystem: config.EcosystemNPM,
+			Manifest:  filepath.Join(packagePath, "package.json"),
+		},
+	}
+
+	consignmentDir := filepath.Join(tempDir, "consignments")
+	manager := NewManagerWithDir(projectConfig, consignmentDir)
+
+	// Create multiple consignments
+	consignments := []struct {
+		changeType ChangeType
+		summary    string
+	}{
+		{Patch, "Fix bug 1"},
+		{Minor, "Add new feature"},
+		{Patch, "Fix bug 2"},
+	}
+
+	for _, c := range consignments {
+		_, err := manager.CreateConsignment([]string{"test-package"}, c.changeType, c.summary)
+		if err != nil {
+			t.Fatalf("Failed to create consignment: %v", err)
+		}
+	}
+
+	// Calculate the next version - should be minor bump (highest change type)
+	version, err := manager.CalculateNextVersion("test-package")
+	if err != nil {
+		t.Fatalf("Failed to calculate next version: %v", err)
+	}
+
+	expected := "1.1.0"
+	if version.String() != expected {
+		t.Errorf("Expected next version %s, got %s", expected, version.String())
+	}
+}
+
+func TestCalculateAllVersions(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create test packages
+	packages := []struct {
+		name      string
+		ecosystem config.PackageEcosystem
+		content   string
+		filename  string
+	}{
+		{
+			name:      "frontend",
+			ecosystem: config.EcosystemNPM,
+			content:   `{"name": "frontend", "version": "1.0.0"}`,
+			filename:  "package.json",
+		},
+		{
+			name:      "backend",
+			ecosystem: config.EcosystemGo,
+			content:   "module backend\n\ngo 1.21",
+			filename:  "go.mod",
+		},
+	}
+
+	var configPackages []config.Package
+	for _, pkg := range packages {
+		pkgPath := filepath.Join(tempDir, pkg.name)
+		if err := os.MkdirAll(pkgPath, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.WriteFile(filepath.Join(pkgPath, pkg.filename), []byte(pkg.content), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// For Go packages, create a .version file
+		if pkg.ecosystem == config.EcosystemGo {
+			if err := os.WriteFile(filepath.Join(pkgPath, ".version"), []byte("1.0.0"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		configPackages = append(configPackages, config.Package{
+			Name:      pkg.name,
+			Path:      pkgPath,
+			Ecosystem: pkg.ecosystem,
+			Manifest:  filepath.Join(pkgPath, pkg.filename),
+		})
+	}
+
+	projectConfig := &config.ProjectConfig{
+		Type:     config.RepositoryTypeMonorepo,
+		Packages: configPackages,
+	}
+
+	consignmentDir := filepath.Join(tempDir, "consignments")
+	manager := NewManagerWithDir(projectConfig, consignmentDir)
+
+	// Create consignments for each package
+	_, err := manager.CreateConsignment([]string{"frontend"}, Minor, "Frontend feature")
+	if err != nil {
+		t.Fatalf("Failed to create frontend consignment: %v", err)
+	}
+
+	_, err = manager.CreateConsignment([]string{"backend"}, Patch, "Backend fix")
+	if err != nil {
+		t.Fatalf("Failed to create backend consignment: %v", err)
+	}
+
+	// Calculate all versions
+	versions, err := manager.CalculateAllVersions()
+	if err != nil {
+		t.Fatalf("Failed to calculate all versions: %v", err)
+	}
+
+	// Check that we got versions for all packages
+	if len(versions) != len(packages) {
+		t.Errorf("Expected %d versions, got %d", len(packages), len(versions))
+	}
+
+	// Check specific versions
+	if versions["frontend"].String() != "1.1.0" {
+		t.Errorf("Expected frontend version 1.1.0, got %s", versions["frontend"].String())
+	}
+
+	if versions["backend"].String() != "1.0.1" {
+		t.Errorf("Expected backend version 1.0.1, got %s", versions["backend"].String())
+	}
+}
+
+func TestClearConsignments(t *testing.T) {
+	tempDir := t.TempDir()
+
+	projectConfig := &config.ProjectConfig{
+		Type:    config.RepositoryTypeSingleRepo,
+		Package: config.Package{Name: "app", Path: "."},
+	}
+
+	manager := NewManagerWithDir(projectConfig, tempDir)
+
+	// Create some consignments
+	_, err := manager.CreateConsignment([]string{"app"}, Patch, "Change 1")
+	if err != nil {
+		t.Fatalf("Failed to create consignment: %v", err)
+	}
+
+	_, err = manager.CreateConsignment([]string{"app"}, Minor, "Change 2")
+	if err != nil {
+		t.Fatalf("Failed to create consignment: %v", err)
+	}
+
+	// Verify consignments exist
+	consignments, err := manager.GetConsignmens()
+	if err != nil {
+		t.Fatalf("Failed to get consignments: %v", err)
+	}
+	if len(consignments) != 2 {
+		t.Errorf("Expected 2 consignments, got %d", len(consignments))
+	}
+
+	// Clear consignments
+	if err := manager.ClearConsignments(); err != nil {
+		t.Fatalf("Failed to clear consignments: %v", err)
+	}
+
+	// Verify consignments are cleared
+	consignments, err = manager.GetConsignmens()
+	if err != nil {
+		t.Fatalf("Failed to get consignments after clear: %v", err)
+	}
+	if len(consignments) != 0 {
+		t.Errorf("Expected 0 consignments after clear, got %d", len(consignments))
+	}
+}
+
+func TestApplyConsignments(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a temporary package.json for testing
+	packagePath := filepath.Join(tempDir, "test-package")
+	if err := os.MkdirAll(packagePath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	packageJSON := `{
+		"name": "test-package",
+		"version": "1.0.0"
+	}`
+
+	if err := os.WriteFile(filepath.Join(packagePath, "package.json"), []byte(packageJSON), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	projectConfig := &config.ProjectConfig{
+		Type: config.RepositoryTypeSingleRepo,
+		Package: config.Package{
+			Name:      "test-package",
+			Path:      packagePath,
+			Ecosystem: config.EcosystemNPM,
+			Manifest:  filepath.Join(packagePath, "package.json"),
+		},
+	}
+
+	consignmentDir := filepath.Join(tempDir, "consignments")
+	manager := NewManagerWithDir(projectConfig, consignmentDir)
+
+	// Create consignments
+	_, err := manager.CreateConsignment([]string{"test-package"}, Minor, "Add feature")
+	if err != nil {
+		t.Fatalf("Failed to create consignment: %v", err)
+	}
+
+	// Apply consignments
+	versions, err := manager.ApplyConsignments()
+	if err != nil {
+		t.Fatalf("Failed to apply consignments: %v", err)
+	}
+
+	// Check that versions were calculated correctly
+	if versions["test-package"].String() != "1.1.0" {
+		t.Errorf("Expected version 1.1.0, got %s", versions["test-package"].String())
+	}
+
+	// Check that consignments were cleared
+	consignments, err := manager.GetConsignmens()
+	if err != nil {
+		t.Fatalf("Failed to get consignments after apply: %v", err)
+	}
+	if len(consignments) != 0 {
+		t.Errorf("Expected 0 consignments after apply, got %d", len(consignments))
+	}
+
+	// Check that the package.json was updated
+	updatedContent, err := os.ReadFile(filepath.Join(packagePath, "package.json"))
+	if err != nil {
+		t.Fatalf("Failed to read updated package.json: %v", err)
+	}
+
+	if !strings.Contains(string(updatedContent), `"version": "1.1.0"`) {
+		t.Errorf("package.json was not updated correctly. Content: %s", string(updatedContent))
+	}
+}

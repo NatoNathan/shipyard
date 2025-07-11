@@ -21,6 +21,7 @@ var (
 type RepoType = config.RepoType
 type ProjectConfig = config.ProjectConfig
 type Package = config.Package
+type PackageEcosystem = config.PackageEcosystem
 type ChangelogConfig = config.ChangelogConfig
 
 // Re-export public constants for backward compatibility

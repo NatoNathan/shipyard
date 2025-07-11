@@ -44,14 +44,6 @@ type ChangelogConfig struct {
 	FooterTemplate string `mapstructure:"footer_template" json:"footer_template,omitempty" yaml:"footer_template,omitempty"`
 }
 
-// Package represents a package configuration within a project
-type Package struct {
-	Name      string `mapstructure:"name" json:"name" yaml:"name"`                // e.g., "api", "frontend"
-	Path      string `mapstructure:"path" json:"path" yaml:"path"`                // e.g., "packages/api", "packages/frontend"
-	Manifest  string `mapstructure:"manifest" json:"manifest" yaml:"manifest"`    // e.g., "packages/api/package.json"
-	Ecosystem string `mapstructure:"ecosystem" json:"ecosystem" yaml:"ecosystem"` // e.g., "npm", "go", "python"
-}
-
 // GetPackages returns all packages in the project configuration.
 // For monorepo projects, it returns the Packages slice.
 // For single-repo projects, it returns a slice containing the single Package.
@@ -157,36 +149,6 @@ func (c *ProjectConfig) ToMap() map[string]interface{} {
 	}
 
 	return configMap
-}
-
-// IsValid performs basic validation on the package configuration
-func (p *Package) IsValid() error {
-	if p.Name == "" {
-		return &ValidationError{Field: "name", Message: "package name is required"}
-	}
-
-	if p.Path == "" {
-		return &ValidationError{Field: "path", Message: "package path is required"}
-	}
-
-	if p.Ecosystem == "" {
-		return &ValidationError{Field: "ecosystem", Message: "package ecosystem is required"}
-	}
-
-	return nil
-}
-
-// ToMap converts the Package to a map[string]interface{} suitable for serialization
-func (p *Package) ToMap() map[string]interface{} {
-	packageMap := map[string]interface{}{
-		"name":      p.Name,
-		"path":      p.Path,
-		"ecosystem": p.Ecosystem,
-	}
-	if p.Manifest != "" {
-		packageMap["manifest"] = p.Manifest
-	}
-	return packageMap
 }
 
 // ValidationError represents a configuration validation error
