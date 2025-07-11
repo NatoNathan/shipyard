@@ -56,6 +56,8 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(InitCmd)
 	rootCmd.AddCommand(AddCmd)
+	rootCmd.AddCommand(VersionCmd)
+	rootCmd.AddCommand(StatusCmd)
 
 	// Add global flags
 	rootCmd.PersistentFlags().StringP("config", "c", ".shipyard/config.yaml", "Path to the Shipyard configuration file")
