@@ -17,6 +17,7 @@ import (
 	"github.com/NatoNathan/shipyard/pkg/config"
 	"github.com/NatoNathan/shipyard/pkg/handlers"
 	"github.com/NatoNathan/shipyard/pkg/semver"
+	"github.com/NatoNathan/shipyard/pkg/shipment"
 	"github.com/adrg/frontmatter"
 	"gopkg.in/yaml.v3"
 )
@@ -43,23 +44,26 @@ type Consignment struct {
 
 // Manager handles consignment operations
 type Manager struct {
-	projectConfig  *config.ProjectConfig
-	consignmentDir string
+	projectConfig      *config.ProjectConfig
+	consignmentDir     string
+	shipmentHistoryDir string
 }
 
 // NewManager creates a new consignment manager
 func NewManager(projectConfig *config.ProjectConfig) *Manager {
 	return &Manager{
-		projectConfig:  projectConfig,
-		consignmentDir: filepath.Join(".shipyard", "consignments"),
+		projectConfig:      projectConfig,
+		consignmentDir:     filepath.Join(".shipyard", "consignments"),
+		shipmentHistoryDir: ".shipyard",
 	}
 }
 
 // NewManagerWithDir creates a new consignment manager with a custom directory
 func NewManagerWithDir(projectConfig *config.ProjectConfig, dir string) *Manager {
 	return &Manager{
-		projectConfig:  projectConfig,
-		consignmentDir: dir,
+		projectConfig:      projectConfig,
+		consignmentDir:     dir,
+		shipmentHistoryDir: filepath.Dir(dir),
 	}
 }
 
@@ -185,6 +189,12 @@ func (m *Manager) GetConsignmentDir() string {
 	return m.consignmentDir
 }
 
+// getShipmentHistory returns a shipment history instance using the manager's configuration
+func (m *Manager) getShipmentHistory() *shipment.ShipmentHistory {
+	historyFile := filepath.Join(m.shipmentHistoryDir, "shipment-history.json")
+	return shipment.NewShipmentHistoryWithFile(m.projectConfig, historyFile)
+}
+
 func (m *Manager) GetConsignmens() ([]*Consignment, error) {
 	files, err := os.ReadDir(m.consignmentDir)
 	if err != nil {
@@ -249,10 +259,30 @@ func (m *Manager) CalculateNextVersion(pkgName string) (*semver.Version, error) 
 		return nil, fmt.Errorf("failed to load package %s: %w", pkgName, err)
 	}
 
-	// Parse the current version
-	currentVersion, err := semver.Parse(ecosystemPkg.Version)
+	// Parse the current version from manifest
+	manifestVersion, err := semver.Parse(ecosystemPkg.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse current version for package %s: %w", pkgName, err)
+	}
+
+	// Check shipment history to find the latest version for this package
+	var currentVersion *semver.Version
+	shipmentHistory := m.getShipmentHistory()
+	history, err := shipmentHistory.LoadHistory()
+	if err == nil && len(history) > 0 {
+		// Find the latest version for this package in shipment history
+		for _, s := range history {
+			if version, exists := s.Versions[pkgName]; exists {
+				if currentVersion == nil || version.GreaterThan(currentVersion) {
+					currentVersion = version
+				}
+			}
+		}
+	}
+
+	// If no version found in history, use manifest version
+	if currentVersion == nil {
+		currentVersion = manifestVersion
 	}
 
 	// Get consignments for this package
@@ -361,8 +391,87 @@ func (m *Manager) ClearConsignments() error {
 	return nil
 }
 
+// convertToShipmentConsignments converts consignment.Consignment to shipment.Consignment
+func convertToShipmentConsignments(consignments []*Consignment) []*shipment.Consignment {
+	shipmentConsignments := make([]*shipment.Consignment, len(consignments))
+	for i, c := range consignments {
+		shipmentConsignments[i] = &shipment.Consignment{
+			ID:       c.ID,
+			Packages: c.Packages,
+			Summary:  c.Summary,
+			Created:  c.Created,
+		}
+	}
+	return shipmentConsignments
+}
+
 // ApplyConsignments calculates and applies version updates to all packages, then clears consignments
 func (m *Manager) ApplyConsignments() (map[string]*semver.Version, error) {
+	return m.ApplyConsignmentsWithTemplate("")
+}
+
+// RecordShipmentHistoryOnly records the shipment history without applying version updates or clearing consignments
+func (m *Manager) RecordShipmentHistoryOnly(templateName string) (map[string]*semver.Version, error) {
+	// Get current consignments
+	consignments, err := m.GetConsignmens()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consignments: %w", err)
+	}
+
+	if len(consignments) == 0 {
+		return make(map[string]*semver.Version), nil
+	}
+
+	// Calculate all versions
+	versions, err := m.CalculateAllVersions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate versions: %w", err)
+	}
+
+	// Record shipment history
+	shipmentHistory := m.getShipmentHistory()
+
+	// Use provided template or fall back to project config
+	template := templateName
+	if template == "" {
+		template = m.projectConfig.Changelog.Template
+	}
+
+	// Convert consignments to shipment format
+	shipmentConsignments := convertToShipmentConsignments(consignments)
+	_, err = shipmentHistory.RecordShipment(shipmentConsignments, versions, template)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record shipment history: %w", err)
+	}
+
+	return versions, nil
+}
+
+// ApplyVersionUpdatesAndClearConsignments applies version updates and clears consignments
+func (m *Manager) ApplyVersionUpdatesAndClearConsignments(versions map[string]*semver.Version) error {
+	// Apply version updates
+	for pkgName, version := range versions {
+		if err := m.UpdatePackageVersion(pkgName, version); err != nil {
+			return fmt.Errorf("failed to update version for package %s: %w", pkgName, err)
+		}
+	}
+
+	// Clear consignments after successful application
+	if err := m.ClearConsignments(); err != nil {
+		return fmt.Errorf("failed to clear consignments: %w", err)
+	}
+
+	return nil
+}
+
+// ApplyConsignmentsWithTemplate calculates and applies version updates, records shipment history, then clears consignments
+func (m *Manager) ApplyConsignmentsWithTemplate(templateName string) (map[string]*semver.Version, error) {
+	// Get current consignments before we clear them
+	consignments, err := m.GetConsignmens()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consignments: %w", err)
+	}
+
 	// Calculate all versions first
 	versions, err := m.CalculateAllVersions()
 	if err != nil {
@@ -375,8 +484,25 @@ func (m *Manager) ApplyConsignments() (map[string]*semver.Version, error) {
 			return nil, fmt.Errorf("failed to update version for package %s: %w", pkgName, err)
 		}
 	}
+	// Record shipment history if we have consignments to ship
+	if len(consignments) > 0 {
+		shipmentHistory := m.getShipmentHistory()
 
-	// Clear consignments after successful application
+		// Use provided template or fall back to project config
+		template := templateName
+		if template == "" {
+			template = m.projectConfig.Changelog.Template
+		}
+
+		// Convert consignments to shipment format
+		shipmentConsignments := convertToShipmentConsignments(consignments)
+		_, err := shipmentHistory.RecordShipment(shipmentConsignments, versions, template)
+		if err != nil {
+			return nil, fmt.Errorf("failed to record shipment history: %w", err)
+		}
+	}
+
+	// Clear consignments after successful application and history recording
 	if err := m.ClearConsignments(); err != nil {
 		return nil, fmt.Errorf("failed to clear consignments: %w", err)
 	}

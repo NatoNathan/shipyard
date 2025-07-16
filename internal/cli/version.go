@@ -8,6 +8,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/logger"
 	"github.com/NatoNathan/shipyard/pkg/changelog"
 	"github.com/NatoNathan/shipyard/pkg/consignment"
+	"github.com/NatoNathan/shipyard/pkg/semver"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ import (
 var VersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Generate changelogs and apply version updates",
-	Long:  "Generate changelogs from consignments and apply version updates to package manifests.",
+	Long:  `Generate changelogs and apply version updates to package manifests.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Load project configuration
 		projectConfig, err := config.LoadProjectConfig()
@@ -37,18 +38,21 @@ var VersionCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if len(consignments) == 0 {
-			fmt.Println("No consignments found.")
-			fmt.Println("Create some consignments with 'shipyard add' first.")
-			return
-		}
+		// Check if regenerate flag is set
+		regenerate, _ := cmd.Flags().GetBool("regenerate")
 
-		// Calculate versions for all packages
-		versions, err := manager.CalculateAllVersions()
-		if err != nil {
-			logger.Error("Failed to calculate versions", "error", err)
-			fmt.Printf("Error: Unable to calculate versions: %v\n", err)
-			os.Exit(1)
+		// Calculate versions for packages that have consignments (if any)
+		var versions map[string]*semver.Version
+		if len(consignments) > 0 && !regenerate {
+			versions, err = manager.CalculateAllVersions()
+			if err != nil {
+				logger.Error("Failed to calculate versions", "error", err)
+				fmt.Printf("Error: Unable to calculate versions: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			// No current consignments or regenerate mode, just use empty versions map
+			versions = make(map[string]*semver.Version)
 		}
 
 		// Check for template override
@@ -96,30 +100,77 @@ var VersionCmd = &cobra.Command{
 			}
 		}
 
-		// Generate changelog
+		// Generate changelog from shipment history (primary) or current consignments (fallback)
 		var changelogContent string
-		if packageFilter != "" {
-			// Generate changelog for specific package
-			version, exists := versions[packageFilter]
-			if !exists {
-				logger.Error("No version calculated for package", "package", packageFilter)
-				fmt.Printf("Error: No version calculated for package '%s'\n", packageFilter)
-				os.Exit(1)
-			}
+		hasCurrentConsignments := len(consignments) > 0 && !regenerate
 
-			changelogContent, err = generator.GenerateChangelogForPackage(packageFilter, consignments, version)
-			if err != nil {
-				logger.Error("Failed to generate changelog for package", "package", packageFilter, "error", err)
-				fmt.Printf("Error: Unable to generate changelog for package '%s': %v\n", packageFilter, err)
-				os.Exit(1)
+		if regenerate {
+			// Regenerate mode: only use shipment history
+			if packageFilter != "" {
+				changelogContent, err = generator.GenerateChangelogFromHistoryForPackage(packageFilter)
+				if err != nil {
+					logger.Error("Failed to generate changelog from history for package", "package", packageFilter, "error", err)
+					fmt.Printf("Error: Unable to generate changelog from history for package '%s': %v\n", packageFilter, err)
+					fmt.Println("No shipment history found. Use 'shipyard version' to ship some consignments first.")
+					os.Exit(1)
+				}
+			} else {
+				changelogContent, err = generator.GenerateChangelogFromHistory()
+				if err != nil {
+					logger.Error("Failed to generate changelog from history", "error", err)
+					fmt.Printf("Error: Unable to generate changelog from history: %v\n", err)
+					fmt.Println("No shipment history found. Use 'shipyard version' to ship some consignments first.")
+					os.Exit(1)
+				}
 			}
 		} else {
-			// Generate changelog for all packages
-			changelogContent, err = generator.GenerateChangelog(consignments, versions)
-			if err != nil {
-				logger.Error("Failed to generate changelog", "error", err)
-				fmt.Printf("Error: Unable to generate changelog: %v\n", err)
-				os.Exit(1)
+			// Normal mode: prefer history, fallback to current consignments
+			if packageFilter != "" {
+				// Generate changelog for specific package from history first
+				changelogContent, err = generator.GenerateChangelogFromHistoryForPackage(packageFilter)
+				if err != nil {
+					// If no history exists and we have current consignments, use them
+					if hasCurrentConsignments {
+						logger.Info("No shipment history found for package, using current consignments", "package", packageFilter)
+						version, exists := versions[packageFilter]
+						if !exists {
+							logger.Error("No version calculated for package", "package", packageFilter)
+							fmt.Printf("Error: No version calculated for package '%s'\n", packageFilter)
+							os.Exit(1)
+						}
+						changelogContent, err = generator.GenerateChangelogForPackage(packageFilter, consignments, version)
+						if err != nil {
+							logger.Error("Failed to generate changelog for package", "package", packageFilter, "error", err)
+							fmt.Printf("Error: Unable to generate changelog for package '%s': %v\n", packageFilter, err)
+							os.Exit(1)
+						}
+					} else {
+						logger.Error("No shipment history or current consignments found for package", "package", packageFilter)
+						fmt.Printf("Error: No shipment history found for package '%s' and no current consignments to process\n", packageFilter)
+						fmt.Println("Create some consignments with 'shipyard add' first, or ensure shipment history exists.")
+						os.Exit(1)
+					}
+				}
+			} else {
+				// Generate changelog for all packages from history first
+				changelogContent, err = generator.GenerateChangelogFromHistory()
+				if err != nil {
+					// If no history exists and we have current consignments, use them
+					if hasCurrentConsignments {
+						logger.Info("No shipment history found, using current consignments")
+						changelogContent, err = generator.GenerateChangelog(consignments, versions)
+						if err != nil {
+							logger.Error("Failed to generate changelog", "error", err)
+							fmt.Printf("Error: Unable to generate changelog: %v\n", err)
+							os.Exit(1)
+						}
+					} else {
+						logger.Error("No shipment history or current consignments found")
+						fmt.Printf("Error: No shipment history found and no current consignments to process\n")
+						fmt.Println("Create some consignments with 'shipyard add' first, or ensure shipment history exists.")
+						os.Exit(1)
+					}
+				}
 			}
 		}
 
@@ -183,11 +234,20 @@ var VersionCmd = &cobra.Command{
 		yes, _ := cmd.Flags().GetBool("yes")
 		if !yes {
 			var confirm bool
+			var confirmationMessage string
+			if regenerate {
+				confirmationMessage = "This will regenerate the changelog from shipment history. Are you sure?"
+			} else if hasCurrentConsignments {
+				confirmationMessage = fmt.Sprintf("This will generate changelog and update package versions, clearing %d consignments. Are you sure?", len(consignments))
+			} else {
+				confirmationMessage = "This will regenerate the changelog from shipment history. Are you sure?"
+			}
+
 			form := huh.NewForm(
 				huh.NewGroup(
 					huh.NewConfirm().
-						Title("Generate Changelog and Apply Version Updates?").
-						Description(fmt.Sprintf("This will generate changelog, update package versions and clear %d consignments. Are you sure?", len(consignments))).
+						Title("Generate Changelog?").
+						Description(confirmationMessage).
 						Value(&confirm),
 				),
 			)
@@ -199,7 +259,7 @@ var VersionCmd = &cobra.Command{
 			}
 
 			if !confirm {
-				fmt.Println("Version update and changelog generation cancelled.")
+				fmt.Println("Changelog generation cancelled.")
 				return
 			}
 		}
@@ -236,6 +296,49 @@ var VersionCmd = &cobra.Command{
 			}
 		}
 
+		// Apply version updates and record shipment history BEFORE writing changelog
+		var appliedVersions map[string]*semver.Version
+		if hasCurrentConsignments && !regenerate {
+			fmt.Printf("\n🔄 Recording shipment history...\n")
+
+			// Record shipment history BEFORE generating changelog so it includes current consignments
+			templateName := projectConfig.Changelog.Template
+			appliedVersions, err = manager.RecordShipmentHistoryOnly(templateName)
+			if err != nil {
+				logger.Error("Failed to record shipment history", "error", err)
+				fmt.Printf("Error: Unable to record shipment history: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("✅ Shipment history recorded!\n")
+
+			// Now regenerate changelog from history (which includes current consignments)
+			fmt.Printf("\n🔄 Regenerating changelog from updated history...\n")
+			if packageFilter != "" {
+				changelogContent, err = generator.GenerateChangelogFromHistoryForPackage(packageFilter)
+				if err != nil {
+					logger.Error("Failed to generate changelog from history for package", "package", packageFilter, "error", err)
+					fmt.Printf("Error: Unable to generate changelog from history for package '%s': %v\n", packageFilter, err)
+					os.Exit(1)
+				}
+			} else {
+				changelogContent, err = generator.GenerateChangelogFromHistory()
+				if err != nil {
+					logger.Error("Failed to generate changelog from history", "error", err)
+					fmt.Printf("Error: Unable to generate changelog from history: %v\n", err)
+					os.Exit(1)
+				}
+			}
+
+			fmt.Printf("✅ Changelog regenerated from updated history!\n")
+		} else if regenerate {
+			fmt.Printf("\n� Changelog regenerated from shipment history (no version updates applied)\n")
+			appliedVersions = make(map[string]*semver.Version)
+		} else {
+			fmt.Printf("\n📋 No current consignments to apply - changelog regenerated from shipment history\n")
+			appliedVersions = make(map[string]*semver.Version)
+		}
+
 		// Write changelog to file
 		if err := writeChangelog(outputPath, changelogContent); err != nil {
 			logger.Error("Failed to write changelog", "error", err)
@@ -244,41 +347,51 @@ var VersionCmd = &cobra.Command{
 		}
 
 		fmt.Printf("✅ Changelog generated successfully!\n")
-		fmt.Printf("� File: %s\n", outputPath)
+		fmt.Printf("📁 File: %s\n", outputPath)
 
-		// Apply version updates
-		fmt.Printf("\n�🔄 Applying version updates...\n")
+		// Apply version updates and clear consignments AFTER changelog is written
+		if hasCurrentConsignments && !regenerate {
+			fmt.Printf("\n🔄 Applying version updates...\n")
 
-		appliedVersions, err := manager.ApplyConsignments()
-		if err != nil {
-			logger.Error("Failed to apply consignments", "error", err)
-			fmt.Printf("Error: Unable to apply version updates: %v\n", err)
-			os.Exit(1)
+			// Apply version updates and clear consignments
+			err = manager.ApplyVersionUpdatesAndClearConsignments(appliedVersions)
+			if err != nil {
+				logger.Error("Failed to apply version updates", "error", err)
+				fmt.Printf("Error: Unable to apply version updates: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Success message for version updates
+			fmt.Printf("\n✅ Version updates applied successfully!\n")
+			fmt.Printf("📦 Packages updated:\n")
+			for pkgName, version := range appliedVersions {
+				fmt.Printf("   - %s: %s\n", pkgName, version.String())
+			}
+			fmt.Printf("\n🧹 Consignments cleared: %d\n", len(consignments))
 		}
 
-		// Success message
-		fmt.Printf("\n✅ Version updates applied successfully!\n")
-		fmt.Printf("📦 Packages updated:\n")
-		for pkgName, version := range appliedVersions {
-			fmt.Printf("   - %s: %s\n", pkgName, version.String())
-		}
-
-		fmt.Printf("\n🧹 Consignments cleared: %d\n", len(consignments))
-		fmt.Printf("� Template: %s\n", projectConfig.Changelog.Template)
+		fmt.Printf("📝 Template: %s\n", projectConfig.Changelog.Template)
 		if packageFilter != "" {
 			fmt.Printf("🎯 Package filter: %s\n", packageFilter)
 		}
 
 		fmt.Printf("\n💡 Next steps:\n")
-		fmt.Printf("   - Review the generated changelog and updated package manifests\n")
+		fmt.Printf("   - Review the generated changelog\n")
+		if hasCurrentConsignments && !regenerate {
+			fmt.Printf("   - Review updated package manifests\n")
+		}
 		fmt.Printf("   - Commit all changes to your repository\n")
-		fmt.Printf("   - Create and push git tags for the new versions\n")
+		if hasCurrentConsignments && !regenerate {
+			fmt.Printf("   - Create and push git tags for the new versions\n")
+		}
 
-		logger.Info("Version updates and changelog generation completed successfully",
+		logger.Info("Changelog generation completed successfully",
 			"output", outputPath,
 			"template", projectConfig.Changelog.Template,
-			"packages", len(appliedVersions),
+			"packages_updated", len(appliedVersions),
 			"consignments_cleared", len(consignments),
+			"regenerate_mode", regenerate,
+			"from_history", regenerate || !hasCurrentConsignments,
 		)
 	},
 }
@@ -287,6 +400,7 @@ func init() {
 	// Add flags for version command
 	VersionCmd.Flags().Bool("dry-run", false, "Show changelog and version info without applying changes")
 	VersionCmd.Flags().Bool("preview", false, "Pretty print just the new changelog without applying changes")
+	VersionCmd.Flags().Bool("regenerate", false, "Regenerate changelog from shipment history without applying version updates")
 	VersionCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts")
 	VersionCmd.Flags().StringP("package", "p", "", "Generate changelog and version for a specific package only")
 	VersionCmd.Flags().StringP("output", "o", "", "Output file path for changelog (default: CHANGELOG.md)")

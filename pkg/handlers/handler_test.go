@@ -6,10 +6,14 @@ import (
 	"github.com/NatoNathan/shipyard/pkg/config"
 )
 
+// TestEcosystemHandlers verifies that all expected ecosystem handlers are registered
 func TestEcosystemHandlers(t *testing.T) {
-	// Test that all expected handlers are registered
 	ecosystems := GetRegisteredEcosystems()
-	expectedEcosystems := []config.PackageEcosystem{config.EcosystemNPM, config.EcosystemGo, config.EcosystemHelm}
+	expectedEcosystems := []config.PackageEcosystem{
+		config.EcosystemNPM,
+		config.EcosystemGo,
+		config.EcosystemHelm,
+	}
 
 	if len(ecosystems) != len(expectedEcosystems) {
 		t.Errorf("Expected %d ecosystems, got %d", len(expectedEcosystems), len(ecosystems))
@@ -29,6 +33,7 @@ func TestEcosystemHandlers(t *testing.T) {
 	}
 }
 
+// TestLoadPackageInvalidEcosystem tests error handling for invalid ecosystem types
 func TestLoadPackageInvalidEcosystem(t *testing.T) {
 	_, err := LoadPackage("invalid", "/some/path")
 	if err == nil {
@@ -36,6 +41,7 @@ func TestLoadPackageInvalidEcosystem(t *testing.T) {
 	}
 }
 
+// TestLoadPackageEmptyEcosystem tests error handling for empty ecosystem
 func TestLoadPackageEmptyEcosystem(t *testing.T) {
 	_, err := LoadPackage("", "/some/path")
 	if err == nil {
@@ -43,8 +49,8 @@ func TestLoadPackageEmptyEcosystem(t *testing.T) {
 	}
 }
 
+// TestHandlerInterfaces verifies that all handlers implement the interface correctly
 func TestHandlerInterfaces(t *testing.T) {
-	// Test that all handlers implement the interface correctly
 	handlers := []EcosystemHandler{
 		&NPMHandler{},
 		&GoHandler{},
@@ -61,6 +67,7 @@ func TestHandlerInterfaces(t *testing.T) {
 	}
 }
 
+// TestGetHandler verifies handler retrieval functionality
 func TestGetHandler(t *testing.T) {
 	// Test getting a valid handler
 	handler, ok := GetHandler(config.EcosystemNPM)
@@ -77,3 +84,31 @@ func TestGetHandler(t *testing.T) {
 		t.Error("Expected not to find invalid handler")
 	}
 }
+
+// TestRegisterEcosystemHandler tests dynamic handler registration
+func TestRegisterEcosystemHandler(t *testing.T) {
+	// Create a mock handler for testing
+	mockHandler := &MockHandler{}
+
+	// Register it
+	RegisterEcosystemHandler(mockHandler)
+
+	// Verify it was registered
+	handler, ok := GetHandler(mockHandler.GetEcosystem())
+	if !ok {
+		t.Error("Expected to find mock handler after registration")
+	}
+	if handler != mockHandler {
+		t.Error("Expected registered handler to be the same instance")
+	}
+}
+
+// MockHandler is a test implementation of EcosystemHandler
+type MockHandler struct{}
+
+func (m *MockHandler) GetEcosystem() config.PackageEcosystem { return "mock" }
+func (m *MockHandler) GetManifestFile() string               { return "mock.json" }
+func (m *MockHandler) LoadPackage(path string) (*EcosystemPackage, error) {
+	return &EcosystemPackage{Name: "mock", Path: path, Ecosystem: "mock"}, nil
+}
+func (m *MockHandler) UpdateVersion(path string, version string) error { return nil }

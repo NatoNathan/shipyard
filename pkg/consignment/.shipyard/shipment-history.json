@@ -1,0 +1,677 @@
+[
+  {
+    "id": "shipment-1752694627914464000",
+    "date": "2025-07-16T20:37:07.914465+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 1
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "patch"
+        },
+        "summary": "Bug fix",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.1.1"
+    }
+  },
+  {
+    "id": "shipment-1752694627912129000",
+    "date": "2025-07-16T20:37:07.91213+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "First feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  },
+  {
+    "id": "shipment-1752694627907383000",
+    "date": "2025-07-16T20:37:07.907383+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  },
+  {
+    "id": "shipment-1752694622043180000",
+    "date": "2025-07-16T20:37:02.043181+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 1
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "patch"
+        },
+        "summary": "Bug fix",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.1.1"
+    }
+  },
+  {
+    "id": "shipment-1752694622041312000",
+    "date": "2025-07-16T20:37:02.041312+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "First feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  },
+  {
+    "id": "shipment-1752694622037119000",
+    "date": "2025-07-16T20:37:02.03712+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  },
+  {
+    "id": "shipment-1752694307937855000",
+    "date": "2025-07-16T20:31:47.937856+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 17,
+        "Patch": 1
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "patch"
+        },
+        "summary": "Bug fix",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.17.1"
+    }
+  },
+  {
+    "id": "shipment-1752694307934693000",
+    "date": "2025-07-16T20:31:47.934693+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 17,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "First feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.17.0"
+    }
+  },
+  {
+    "id": "shipment-1752694307929639000",
+    "date": "2025-07-16T20:31:47.92964+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 16,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.16.0"
+    }
+  },
+  {
+    "id": "shipment-1752694302653499000",
+    "date": "2025-07-16T20:31:42.6535+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 15,
+        "Patch": 1
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "patch"
+        },
+        "summary": "Bug fix",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.15.1"
+    }
+  },
+  {
+    "id": "shipment-1752694302650816000",
+    "date": "2025-07-16T20:31:42.650817+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 15,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "First feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.15.0"
+    }
+  },
+  {
+    "id": "shipment-1752694302645980000",
+    "date": "2025-07-16T20:31:42.645981+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 14,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.14.0"
+    }
+  },
+  {
+    "id": "shipment-1752694283858198000",
+    "date": "2025-07-16T20:31:23.8582+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 13,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "default",
+    "tags": {
+      "test-package": "shipyard-history/1.13.0"
+    }
+  },
+  {
+    "id": "shipment-1752694262627629000",
+    "date": "2025-07-16T20:31:02.627629+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 12,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.12.0"
+    }
+  },
+  {
+    "id": "shipment-1752694236642464000",
+    "date": "2025-07-16T20:30:36.642465+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 11,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.11.0"
+    }
+  },
+  {
+    "id": "shipment-1752694219527630000",
+    "date": "2025-07-16T20:30:19.52763+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 10,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.10.0"
+    }
+  },
+  {
+    "id": "shipment-1752694077622132000",
+    "date": "2025-07-16T20:27:57.622133+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 9,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.9.0"
+    }
+  },
+  {
+    "id": "shipment-1752694051475555000",
+    "date": "2025-07-16T20:27:31.475556+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  },
+  {
+    "id": "shipment-1752693984769224000",
+    "date": "2025-07-16T20:26:24.769225+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 8,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.8.0"
+    }
+  },
+  {
+    "id": "shipment-1752693888800438000",
+    "date": "2025-07-16T20:24:48.800438+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 7,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.7.0"
+    }
+  },
+  {
+    "id": "shipment-1752693867838703000",
+    "date": "2025-07-16T20:24:27.838704+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 6,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.6.0"
+    }
+  },
+  {
+    "id": "shipment-1752693849335584000",
+    "date": "2025-07-16T20:24:09.335585+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 5,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.5.0"
+    }
+  },
+  {
+    "id": "shipment-1752693738307877000",
+    "date": "2025-07-16T20:22:18.307878+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 4,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.4.0"
+    }
+  },
+  {
+    "id": "shipment-1752693289715172000",
+    "date": "2025-07-16T20:14:49.715173+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 3,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.3.0"
+    }
+  },
+  {
+    "id": "shipment-1752693170683715000",
+    "date": "2025-07-16T20:12:50.683716+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 2,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.2.0"
+    }
+  },
+  {
+    "id": "shipment-1752692841602436000",
+    "date": "2025-07-16T20:07:21.602437+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  },
+  {
+    "id": "shipment-1752259062012452000",
+    "date": "2025-07-11T19:37:42.012452+01:00",
+    "versions": {
+      "test-package": {
+        "Major": 1,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "test-package": "minor"
+        },
+        "summary": "Add feature",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "",
+    "tags": {
+      "test-package": "shipyard-history/1.1.0"
+    }
+  }
+]

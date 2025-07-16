@@ -1,0 +1,27 @@
+[
+  {
+    "id": "shipment-1752694911582416000",
+    "date": "2025-07-16T20:41:51.582418+01:00",
+    "versions": {
+      "shipyard": {
+        "Major": 0,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "first version",
+        "created": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "template": "keepachangelog",
+    "tags": {
+      "shipyard": "shipyard-history/0.1.0"
+    }
+  }
+]

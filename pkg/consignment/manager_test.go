@@ -309,6 +309,12 @@ func TestCalculateNextVersionWithConsignments(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Create .shipyard directory for history
+	shipyardDir := filepath.Join(tempDir, ".shipyard")
+	if err := os.MkdirAll(shipyardDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
 	projectConfig := &config.ProjectConfig{
 		Type: config.RepositoryTypeSingleRepo,
 		Package: config.Package{
@@ -347,8 +353,9 @@ func TestCalculateNextVersionWithConsignments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clean up any existing consignments
+			// Clean up any existing consignments and history
 			os.RemoveAll(consignmentDir)
+			os.RemoveAll(filepath.Join(shipyardDir, "shipment-history.json"))
 
 			// Create a consignment with the specified change type
 			_, err := manager.CreateConsignment([]string{"test-package"}, tt.changeType, "Test change")
@@ -384,6 +391,12 @@ func TestCalculateNextVersionWithMultipleConsignments(t *testing.T) {
 	}`
 
 	if err := os.WriteFile(filepath.Join(packagePath, "package.json"), []byte(packageJSON), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create .shipyard directory for history
+	shipyardDir := filepath.Join(tempDir, ".shipyard")
+	if err := os.MkdirAll(shipyardDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -451,6 +464,12 @@ func TestCalculateAllVersions(t *testing.T) {
 			content:   "module backend\n\ngo 1.21",
 			filename:  "go.mod",
 		},
+	}
+
+	// Create .shipyard directory for history
+	shipyardDir := filepath.Join(tempDir, ".shipyard")
+	if err := os.MkdirAll(shipyardDir, 0755); err != nil {
+		t.Fatal(err)
 	}
 
 	var configPackages []config.Package
@@ -582,6 +601,12 @@ func TestApplyConsignments(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Create .shipyard directory for history
+	shipyardDir := filepath.Join(tempDir, ".shipyard")
+	if err := os.MkdirAll(shipyardDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
 	projectConfig := &config.ProjectConfig{
 		Type: config.RepositoryTypeSingleRepo,
 		Package: config.Package{
@@ -589,6 +614,9 @@ func TestApplyConsignments(t *testing.T) {
 			Path:      packagePath,
 			Ecosystem: config.EcosystemNPM,
 			Manifest:  filepath.Join(packagePath, "package.json"),
+		},
+		Changelog: config.ChangelogConfig{
+			Template: "default",
 		},
 	}
 
@@ -629,5 +657,108 @@ func TestApplyConsignments(t *testing.T) {
 
 	if !strings.Contains(string(updatedContent), `"version": "1.1.0"`) {
 		t.Errorf("package.json was not updated correctly. Content: %s", string(updatedContent))
+	}
+}
+
+func TestCalculateNextVersionWithHistory(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a temporary package.json for testing
+	packagePath := filepath.Join(tempDir, "test-package")
+	if err := os.MkdirAll(packagePath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	packageJSON := `{
+		"name": "test-package",
+		"version": "1.0.0"
+	}`
+
+	if err := os.WriteFile(filepath.Join(packagePath, "package.json"), []byte(packageJSON), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create .shipyard directory for history
+	shipyardDir := filepath.Join(tempDir, ".shipyard")
+	if err := os.MkdirAll(shipyardDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	projectConfig := &config.ProjectConfig{
+		Type: config.RepositoryTypeSingleRepo,
+		Package: config.Package{
+			Name:      "test-package",
+			Path:      packagePath,
+			Ecosystem: config.EcosystemNPM,
+			Manifest:  filepath.Join(packagePath, "package.json"),
+		},
+		Changelog: config.ChangelogConfig{
+			Template: "default",
+		},
+	}
+
+	consignmentDir := filepath.Join(tempDir, "consignments")
+	manager := NewManagerWithDir(projectConfig, consignmentDir)
+
+	// Create and apply first consignment to build history
+	_, err := manager.CreateConsignment([]string{"test-package"}, Minor, "First feature")
+	if err != nil {
+		t.Fatalf("Failed to create first consignment: %v", err)
+	}
+
+	// Apply consignments to create history
+	versions, err := manager.ApplyConsignments()
+	if err != nil {
+		t.Fatalf("Failed to apply first consignment: %v", err)
+	}
+
+	// Verify first version is correct
+	if versions["test-package"].String() != "1.1.0" {
+		t.Errorf("Expected first version 1.1.0, got %s", versions["test-package"].String())
+	}
+
+	// Create second consignment
+	_, err = manager.CreateConsignment([]string{"test-package"}, Patch, "Bug fix")
+	if err != nil {
+		t.Fatalf("Failed to create second consignment: %v", err)
+	}
+
+	// Calculate next version - should be based on history version (1.1.0) not manifest version (1.0.0)
+	nextVersion, err := manager.CalculateNextVersion("test-package")
+	if err != nil {
+		t.Fatalf("Failed to calculate next version: %v", err)
+	}
+
+	expected := "1.1.1"
+	if nextVersion.String() != expected {
+		t.Errorf("Expected next version %s (based on history), got %s", expected, nextVersion.String())
+	}
+
+	// Apply second consignment
+	versions, err = manager.ApplyConsignments()
+	if err != nil {
+		t.Fatalf("Failed to apply second consignment: %v", err)
+	}
+
+	// Verify second version is correct
+	if versions["test-package"].String() != "1.1.1" {
+		t.Errorf("Expected second version 1.1.1, got %s", versions["test-package"].String())
+	}
+
+	// Create third consignment
+	_, err = manager.CreateConsignment([]string{"test-package"}, Major, "Breaking change")
+	if err != nil {
+		t.Fatalf("Failed to create third consignment: %v", err)
+	}
+
+	// Calculate next version - should be based on latest history version (1.1.1)
+	nextVersion, err = manager.CalculateNextVersion("test-package")
+	if err != nil {
+		t.Fatalf("Failed to calculate next version: %v", err)
+	}
+
+	expected = "2.0.0"
+	if nextVersion.String() != expected {
+		t.Errorf("Expected next version %s (based on history), got %s", expected, nextVersion.String())
 	}
 }

@@ -9,25 +9,30 @@ import (
 	"github.com/NatoNathan/shipyard/pkg/config"
 )
 
-// NPMHandler handles NPM package ecosystems
+// NPMHandler handles NPM package ecosystems.
+// It manages NPM packages by parsing package.json files and updating versions.
 type NPMHandler struct{}
 
+// GetEcosystem returns the ecosystem type for NPM packages
 func (h *NPMHandler) GetEcosystem() config.PackageEcosystem {
 	return config.EcosystemNPM
 }
 
+// GetManifestFile returns the manifest file name for NPM packages
 func (h *NPMHandler) GetManifestFile() string {
 	return "package.json"
 }
 
+// PackageJSON represents the structure of a package.json file.
+// We use a minimal structure with a rest field to preserve unknown fields.
 type PackageJSON struct {
 	Name    string                 `json:"name"`
 	Version string                 `json:"version"`
 	rest    map[string]interface{} `json:"-"` // To capture any additional fields, to write back if needed
 }
 
+// save writes the PackageJSON back to the manifest file with proper formatting
 func (p *PackageJSON) save(manifestPath string) error {
-	// Marshal the package JSON back to a file
 	data, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal package JSON: %w", err)
@@ -38,12 +43,13 @@ func (p *PackageJSON) save(manifestPath string) error {
 	return nil
 }
 
+// readPackageJSON reads and parses a package.json file
 func readPackageJSON(manifestPath string) (*PackageJSON, error) {
-	// read the package.json file
 	packageJson, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read package manifest %s: %w", manifestPath, err)
 	}
+
 	var pkgJSON PackageJSON
 	if err := json.Unmarshal(packageJson, &pkgJSON); err != nil {
 		return nil, fmt.Errorf("failed to parse package manifest %s: %w", manifestPath, err)
@@ -51,9 +57,10 @@ func readPackageJSON(manifestPath string) (*PackageJSON, error) {
 	return &pkgJSON, nil
 }
 
+// LoadPackage loads NPM package information from the given path.
+// It parses the package.json file to extract package name and version.
 func (h *NPMHandler) LoadPackage(path string) (*EcosystemPackage, error) {
-	// if path has a package.json, use that
-	// otherwise, add the default manifest to the path
+	// Handle both direct package.json file paths and directory paths
 	var manifestPath string
 	if filepath.Ext(path) == ".json" {
 		manifestPath = path
@@ -65,15 +72,9 @@ func (h *NPMHandler) LoadPackage(path string) (*EcosystemPackage, error) {
 		return nil, fmt.Errorf("manifest file %s does not exist for ecosystem %s", manifestPath, h.GetEcosystem())
 	}
 
-	// read the package.json file
-	packageJson, err := os.ReadFile(manifestPath)
+	pkgJSON, err := readPackageJSON(manifestPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read package manifest %s: %w", manifestPath, err)
-	}
-
-	var pkgJSON PackageJSON
-	if err := json.Unmarshal(packageJson, &pkgJSON); err != nil {
-		return nil, fmt.Errorf("failed to parse package manifest %s: %w", manifestPath, err)
+		return nil, err
 	}
 
 	return &EcosystemPackage{
@@ -85,10 +86,8 @@ func (h *NPMHandler) LoadPackage(path string) (*EcosystemPackage, error) {
 	}, nil
 }
 
+// UpdateVersion updates the version in an NPM package's package.json file
 func (h *NPMHandler) UpdateVersion(path string, version string) error {
-	// This function is a placeholder for future implementation
-	// NPM packages typically have a version in the package.json file
-	// The version is managed within the package.json itself
 	manifestPath := filepath.Join(path, h.GetManifestFile())
 	pkgJSON, err := readPackageJSON(manifestPath)
 	if err != nil {
