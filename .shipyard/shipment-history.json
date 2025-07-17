@@ -1,0 +1,91 @@
+[
+  {
+    "id": "shipment-1752775000872103000",
+    "date": "2025-07-17T18:56:40.872106+01:00",
+    "versions": {
+      "shipyard": {
+        "Major": 0,
+        "Minor": 1,
+        "Patch": 0
+      }
+    },
+    "consignments": [
+      {
+        "id": "0e5266e0",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Template-based changelog generation",
+        "created": "2025-07-17T18:55:19.595934+01:00"
+      },
+      {
+        "id": "20ea93a2",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Consignment system for change tracking",
+        "created": "2025-07-17T18:55:04.494369+01:00"
+      },
+      {
+        "id": "7d234915",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Semantic versioning and version calculation",
+        "created": "2025-07-17T18:55:12.907068+01:00"
+      },
+      {
+        "id": "7ee232ec",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Multi-ecosystem package support",
+        "created": "2025-07-17T18:55:25.748836+01:00"
+      },
+      {
+        "id": "b3ac024e",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Project initialization and configuration system",
+        "created": "2025-07-17T18:54:58.813568+01:00"
+      },
+      {
+        "id": "dacb6dd3",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Remote configuration management",
+        "created": "2025-07-17T18:55:43.719078+01:00"
+      },
+      {
+        "id": "e4a0d1e9",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Interactive CLI with rich terminal UI",
+        "created": "2025-07-17T18:55:31.702047+01:00"
+      },
+      {
+        "id": "e7c84ef9",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Release notes and shipment history",
+        "created": "2025-07-17T18:55:52.078877+01:00"
+      },
+      {
+        "id": "ee329c96",
+        "packages": {
+          "shipyard": "minor"
+        },
+        "summary": "Git integration for automated releases",
+        "created": "2025-07-17T18:55:37.677279+01:00"
+      }
+    ],
+    "template": "keepachangelog",
+    "tags": {
+      "shipyard": "v0.1.0"
+    }
+  }
+]
