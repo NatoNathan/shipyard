@@ -1,7 +1,7 @@
 [
   {
-    "id": "shipment-1752694911582416000",
-    "date": "2025-07-16T20:41:51.582418+01:00",
+    "id": "shipment-1752756420177930000",
+    "date": "2025-07-17T13:47:00.17793+01:00",
     "versions": {
       "shipyard": {
         "Major": 0,
@@ -11,17 +11,17 @@
     },
     "consignments": [
       {
-        "id": "",
+        "id": "57891285",
         "packages": {
           "shipyard": "minor"
         },
-        "summary": "first version",
-        "created": "0001-01-01T00:00:00Z"
+        "summary": "add git support",
+        "created": "2025-07-17T13:46:35.294878+01:00"
       }
     ],
     "template": "keepachangelog",
     "tags": {
-      "shipyard": "shipyard-history/0.1.0"
+      "shipyard": "v0.1.0"
     }
   }
 ]
