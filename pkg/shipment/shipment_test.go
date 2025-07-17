@@ -175,8 +175,8 @@ func TestShipmentHistoryMultipleShipments(t *testing.T) {
 		t.Fatalf("Failed to get latest shipment: %v", err)
 	}
 
-	if latest != loadedHistory[0] {
-		t.Error("Latest shipment should be first in history")
+	if latest.ID != loadedHistory[0].ID {
+		t.Errorf("Latest shipment should be first in history. Latest ID: %s, First in history ID: %s", latest.ID, loadedHistory[0].ID)
 	}
 
 	// Test version history

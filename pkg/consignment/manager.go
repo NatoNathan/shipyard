@@ -25,14 +25,24 @@ import (
 // ChangeType represents the type of change in a consignment
 type ChangeType string
 
-const (
-	// Patch represents bug fixes and minor updates that don't introduce breaking changes
-	Patch ChangeType = "patch"
-	// Minor represents new features that are backward compatible
-	Minor ChangeType = "minor"
-	// Major represents breaking changes
-	Major ChangeType = "major"
-)
+// GetAvailableChangeTypes returns the available change types from the project configuration
+func (m *Manager) GetAvailableChangeTypes() []config.ChangeTypeConfig {
+	return m.projectConfig.GetChangeTypes()
+}
+
+// GetChangeTypeConfig returns the configuration for a specific change type
+func (m *Manager) GetChangeTypeConfig(changeTypeName string) *config.ChangeTypeConfig {
+	return m.projectConfig.GetChangeTypeByName(changeTypeName)
+}
+
+// ValidateChangeType validates if a change type is supported
+func (m *Manager) ValidateChangeType(changeTypeName string) error {
+	if m.GetChangeTypeConfig(changeTypeName) == nil {
+		availableTypes := m.projectConfig.GetChangeTypeNames()
+		return fmt.Errorf("unsupported change type '%s'. Available types: %s", changeTypeName, strings.Join(availableTypes, ", "))
+	}
+	return nil
+}
 
 // Consignment represents a set of changes made to packages
 type Consignment struct {
@@ -81,7 +91,7 @@ func (m *Manager) GetAvailablePackages() []config.Package {
 }
 
 // CreateConsignment creates a new consignment with the specified packages, change type, and summary
-func (m *Manager) CreateConsignment(packages []string, changeType ChangeType, summary string) (*Consignment, error) {
+func (m *Manager) CreateConsignment(packages []string, changeType string, summary string) (*Consignment, error) {
 	if err := m.EnsureConsignmentDir(); err != nil {
 		return nil, fmt.Errorf("failed to create consignment directory: %w", err)
 	}
@@ -92,6 +102,11 @@ func (m *Manager) CreateConsignment(packages []string, changeType ChangeType, su
 
 	if strings.TrimSpace(summary) == "" {
 		return nil, fmt.Errorf("summary cannot be empty")
+	}
+
+	// Validate change type
+	if err := m.ValidateChangeType(changeType); err != nil {
+		return nil, err
 	}
 
 	// Validate packages exist in configuration
@@ -117,7 +132,7 @@ func (m *Manager) CreateConsignment(packages []string, changeType ChangeType, su
 
 	// Set change type for all packages
 	for _, pkg := range packages {
-		consignment.Packages[pkg] = string(changeType)
+		consignment.Packages[pkg] = changeType
 	}
 
 	// Write consignment file
@@ -131,10 +146,21 @@ func (m *Manager) CreateConsignment(packages []string, changeType ChangeType, su
 
 // writeConsignmentFile writes the consignment to a markdown file
 func (m *Manager) writeConsignmentFile(filename string, consignment *Consignment) error {
-	// Marshal the packages map to proper YAML
-	yamlData, err := yaml.Marshal(consignment.Packages)
+	// Create frontmatter structure with all consignment metadata
+	frontmatter := struct {
+		ID       string            `yaml:"id"`
+		Created  time.Time         `yaml:"created"`
+		Packages map[string]string `yaml:"packages"`
+	}{
+		ID:       consignment.ID,
+		Created:  consignment.Created,
+		Packages: consignment.Packages,
+	}
+
+	// Marshal the frontmatter to YAML
+	yamlData, err := yaml.Marshal(frontmatter)
 	if err != nil {
-		return fmt.Errorf("failed to marshal packages to YAML: %w", err)
+		return fmt.Errorf("failed to marshal frontmatter to YAML: %w", err)
 	}
 
 	var content strings.Builder
@@ -152,8 +178,12 @@ func (m *Manager) writeConsignmentFile(filename string, consignment *Consignment
 }
 
 func (m *Manager) parseConsignment(content []byte) (*Consignment, error) {
-	// Create a structure for frontmatter that matches the package map
-	frontMatterData := make(map[string]string)
+	// Create a structure for frontmatter that includes all consignment metadata
+	frontMatterData := struct {
+		ID       string            `yaml:"id"`
+		Created  time.Time         `yaml:"created"`
+		Packages map[string]string `yaml:"packages"`
+	}{}
 
 	// Parse frontmatter using bytes.NewReader to convert []byte to io.Reader
 	summary, err := frontmatter.Parse(bytes.NewReader(content), &frontMatterData)
@@ -162,12 +192,25 @@ func (m *Manager) parseConsignment(content []byte) (*Consignment, error) {
 	}
 
 	consignment := &Consignment{
-		Packages: frontMatterData,
+		ID:       frontMatterData.ID,
+		Created:  frontMatterData.Created,
+		Packages: frontMatterData.Packages,
 		Summary:  strings.TrimSpace(string(summary)),
 	}
 
 	if consignment.Packages == nil {
 		consignment.Packages = make(map[string]string)
+	}
+
+	// If ID is missing, extract from filename as fallback
+	if consignment.ID == "" {
+		// This is for backward compatibility with old consignment files
+		consignment.ID = generateConsignmentID()
+	}
+
+	// If Created is zero, use current time as fallback
+	if consignment.Created.IsZero() {
+		consignment.Created = time.Now()
 	}
 
 	return consignment, nil
@@ -309,14 +352,17 @@ func (m *Manager) CalculateNextVersion(pkgName string) (*semver.Version, error) 
 	hasPatch := false
 
 	for _, consignment := range consignments {
-		if changeType, exists := consignment.Packages[pkgName]; exists {
-			switch ChangeType(changeType) {
-			case Major:
-				hasMajor = true
-			case Minor:
-				hasMinor = true
-			case Patch:
-				hasPatch = true
+		if changeTypeName, exists := consignment.Packages[pkgName]; exists {
+			changeTypeConfig := m.GetChangeTypeConfig(changeTypeName)
+			if changeTypeConfig != nil {
+				switch changeTypeConfig.SemverBump {
+				case "major":
+					hasMajor = true
+				case "minor":
+					hasMinor = true
+				case "patch":
+					hasPatch = true
+				}
 			}
 		}
 	}
@@ -412,6 +458,11 @@ func (m *Manager) ApplyConsignments() (map[string]*semver.Version, error) {
 
 // RecordShipmentHistoryOnly records the shipment history without applying version updates or clearing consignments
 func (m *Manager) RecordShipmentHistoryOnly(templateName string) (map[string]*semver.Version, error) {
+	return m.RecordShipmentHistoryWithTags(templateName, nil)
+}
+
+// RecordShipmentHistoryWithTags records the shipment history with git tags without applying version updates or clearing consignments
+func (m *Manager) RecordShipmentHistoryWithTags(templateName string, gitTags map[string]string) (map[string]*semver.Version, error) {
 	// Get current consignments
 	consignments, err := m.GetConsignmens()
 	if err != nil {
@@ -439,7 +490,7 @@ func (m *Manager) RecordShipmentHistoryOnly(templateName string) (map[string]*se
 
 	// Convert consignments to shipment format
 	shipmentConsignments := convertToShipmentConsignments(consignments)
-	_, err = shipmentHistory.RecordShipment(shipmentConsignments, versions, template)
+	_, err = shipmentHistory.RecordShipmentWithTags(shipmentConsignments, versions, template, gitTags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to record shipment history: %w", err)
 	}
@@ -466,6 +517,11 @@ func (m *Manager) ApplyVersionUpdatesAndClearConsignments(versions map[string]*s
 
 // ApplyConsignmentsWithTemplate calculates and applies version updates, records shipment history, then clears consignments
 func (m *Manager) ApplyConsignmentsWithTemplate(templateName string) (map[string]*semver.Version, error) {
+	return m.ApplyConsignmentsWithTemplateAndTags(templateName, nil)
+}
+
+// ApplyConsignmentsWithTemplateAndTags calculates and applies version updates, records shipment history with git tags, then clears consignments
+func (m *Manager) ApplyConsignmentsWithTemplateAndTags(templateName string, gitTags map[string]string) (map[string]*semver.Version, error) {
 	// Get current consignments before we clear them
 	consignments, err := m.GetConsignmens()
 	if err != nil {
@@ -496,7 +552,7 @@ func (m *Manager) ApplyConsignmentsWithTemplate(templateName string) (map[string
 
 		// Convert consignments to shipment format
 		shipmentConsignments := convertToShipmentConsignments(consignments)
-		_, err := shipmentHistory.RecordShipment(shipmentConsignments, versions, template)
+		_, err := shipmentHistory.RecordShipmentWithTags(shipmentConsignments, versions, template, gitTags)
 		if err != nil {
 			return nil, fmt.Errorf("failed to record shipment history: %w", err)
 		}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 )
 
@@ -20,10 +21,11 @@ const (
 
 // Package represents a package configuration within a project
 type Package struct {
-	Name      string           `mapstructure:"name" json:"name" yaml:"name"`                // e.g., "api", "frontend"
-	Path      string           `mapstructure:"path" json:"path" yaml:"path"`                // e.g., "packages/api", "packages/frontend"
-	Manifest  string           `mapstructure:"manifest" json:"manifest" yaml:"manifest"`    // e.g., "packages/api/package.json"
-	Ecosystem PackageEcosystem `mapstructure:"ecosystem" json:"ecosystem" yaml:"ecosystem"` // e.g., "npm", "go", "python"
+	Name          string           `mapstructure:"name" json:"name" yaml:"name"`                                                   // e.g., "api", "frontend"
+	Path          string           `mapstructure:"path" json:"path" yaml:"path"`                                                   // e.g., "packages/api", "packages/frontend"
+	Manifest      string           `mapstructure:"manifest" json:"manifest" yaml:"manifest"`                                       // e.g., "packages/api/package.json"
+	Ecosystem     PackageEcosystem `mapstructure:"ecosystem" json:"ecosystem" yaml:"ecosystem"`                                    // e.g., "npm", "go", "python"
+	ChangelogPath string           `mapstructure:"changelog_path" json:"changelog_path,omitempty" yaml:"changelog_path,omitempty"` // e.g., "CHANGELOG.md", "docs/CHANGELOG.md"
 }
 
 // GetSupportedEcosystems returns all supported ecosystems
@@ -103,5 +105,23 @@ func (p *Package) ToMap() map[string]interface{} {
 	if p.Manifest != "" {
 		packageMap["manifest"] = p.Manifest
 	}
+	if p.ChangelogPath != "" {
+		packageMap["changelog_path"] = p.ChangelogPath
+	}
 	return packageMap
+}
+
+// GetChangelogPath returns the full path to the changelog file for this package
+// It combines the package path with the changelog filename
+func (p *Package) GetChangelogPath(defaultFilename string) string {
+	changelogFilename := p.ChangelogPath
+	if changelogFilename == "" {
+		changelogFilename = defaultFilename
+	}
+
+	if p.Path == "" {
+		return changelogFilename
+	}
+
+	return filepath.Join(p.Path, changelogFilename)
 }

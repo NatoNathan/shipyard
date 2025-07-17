@@ -64,6 +64,11 @@ func (h *ShipmentHistory) EnsureHistoryDir() error {
 
 // RecordShipment records a new shipment in the history
 func (h *ShipmentHistory) RecordShipment(consignments []*Consignment, versions map[string]*semver.Version, template string) (*Shipment, error) {
+	return h.RecordShipmentWithTags(consignments, versions, template, nil)
+}
+
+// RecordShipmentWithTags records a new shipment in the history with provided git tags
+func (h *ShipmentHistory) RecordShipmentWithTags(consignments []*Consignment, versions map[string]*semver.Version, template string, gitTags map[string]string) (*Shipment, error) {
 	if err := h.EnsureHistoryDir(); err != nil {
 		return nil, fmt.Errorf("failed to create history directory: %w", err)
 	}
@@ -86,12 +91,19 @@ func (h *ShipmentHistory) RecordShipment(consignments []*Consignment, versions m
 	// Copy consignments
 	copy(shipment.Consignments, consignments)
 
-	// Generate tags for this shipment
-	for pkg, version := range versions {
-		if h.projectConfig.Type == config.RepositoryTypeMonorepo {
-			shipment.Tags[pkg] = fmt.Sprintf("shipyard-history/%s/%s", pkg, version.String())
-		} else {
-			shipment.Tags[pkg] = fmt.Sprintf("shipyard-history/%s", version.String())
+	// Use provided git tags or generate fallback tags
+	if gitTags != nil {
+		for pkg, tag := range gitTags {
+			shipment.Tags[pkg] = tag
+		}
+	} else {
+		// Generate fallback tags for backward compatibility
+		for pkg, version := range versions {
+			if h.projectConfig.Type == config.RepositoryTypeMonorepo {
+				shipment.Tags[pkg] = fmt.Sprintf("shipyard-history/%s/%s", pkg, version.String())
+			} else {
+				shipment.Tags[pkg] = fmt.Sprintf("shipyard-history/%s", version.String())
+			}
 		}
 	}
 

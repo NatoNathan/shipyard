@@ -554,3 +554,164 @@ func TestSingleRepoConfigSaveLoad(t *testing.T) {
 		t.Errorf("Expected package name %s, got %s", pkg.Name, loadedConfig.Package.Name)
 	}
 }
+
+func TestPackageGetChangelogPath(t *testing.T) {
+	tests := []struct {
+		name            string
+		pkg             Package
+		defaultFilename string
+		expectedPath    string
+	}{
+		{
+			name: "package with custom changelog path",
+			pkg: Package{
+				Name:          "api",
+				Path:          "services/api",
+				ChangelogPath: "docs/CHANGELOG.md",
+			},
+			defaultFilename: "CHANGELOG.md",
+			expectedPath:    "services/api/docs/CHANGELOG.md",
+		},
+		{
+			name: "package with default changelog path",
+			pkg: Package{
+				Name: "frontend",
+				Path: "apps/frontend",
+			},
+			defaultFilename: "CHANGELOG.md",
+			expectedPath:    "apps/frontend/CHANGELOG.md",
+		},
+		{
+			name: "package with no path",
+			pkg: Package{
+				Name:          "root",
+				ChangelogPath: "HISTORY.md",
+			},
+			defaultFilename: "CHANGELOG.md",
+			expectedPath:    "HISTORY.md",
+		},
+		{
+			name: "package with empty path and default filename",
+			pkg: Package{
+				Name: "root",
+			},
+			defaultFilename: "CHANGELOG.md",
+			expectedPath:    "CHANGELOG.md",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.pkg.GetChangelogPath(test.defaultFilename)
+			if result != test.expectedPath {
+				t.Errorf("GetChangelogPath() = %s, want %s", result, test.expectedPath)
+			}
+		})
+	}
+}
+
+func TestProjectConfigShouldUsePackagePaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   ProjectConfig
+		expected bool
+	}{
+		{
+			name: "monorepo with default package_path (should be true)",
+			config: ProjectConfig{
+				Type: RepositoryTypeMonorepo,
+				Changelog: ChangelogConfig{
+					PackagePath: nil, // not set, should default to true
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "monorepo with package_path explicitly true",
+			config: ProjectConfig{
+				Type: RepositoryTypeMonorepo,
+				Changelog: ChangelogConfig{
+					PackagePath: boolPtr(true),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "monorepo with package_path explicitly false",
+			config: ProjectConfig{
+				Type: RepositoryTypeMonorepo,
+				Changelog: ChangelogConfig{
+					PackagePath: boolPtr(false),
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "single-repo should always be false",
+			config: ProjectConfig{
+				Type: RepositoryTypeSingleRepo,
+				Changelog: ChangelogConfig{
+					PackagePath: boolPtr(true), // even if set to true, should be false for single-repo
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.config.ShouldUsePackagePaths()
+			if result != test.expected {
+				t.Errorf("ShouldUsePackagePaths() = %v, want %v", result, test.expected)
+			}
+		})
+	}
+}
+
+func TestProjectConfigGetChangelogOutputPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   ProjectConfig
+		expected string
+	}{
+		{
+			name: "default output path",
+			config: ProjectConfig{
+				Changelog: ChangelogConfig{},
+			},
+			expected: "CHANGELOG.md",
+		},
+		{
+			name: "custom output path",
+			config: ProjectConfig{
+				Changelog: ChangelogConfig{
+					OutputPath: "HISTORY.md",
+				},
+			},
+			expected: "HISTORY.md",
+		},
+		{
+			name: "custom output path with subdirectory",
+			config: ProjectConfig{
+				Changelog: ChangelogConfig{
+					OutputPath: "docs/CHANGELOG.md",
+				},
+			},
+			expected: "docs/CHANGELOG.md",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.config.GetChangelogOutputPath()
+			if result != test.expected {
+				t.Errorf("GetChangelogOutputPath() = %s, want %s", result, test.expected)
+			}
+		})
+	}
+}
+
+// Helper function to create a bool pointer
+func boolPtr(b bool) *bool {
+	return &b
+}

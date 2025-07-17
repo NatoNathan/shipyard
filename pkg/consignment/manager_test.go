@@ -113,42 +113,42 @@ func TestCreateConsignment(t *testing.T) {
 	tests := []struct {
 		name        string
 		packages    []string
-		changeType  ChangeType
+		changeType  string
 		summary     string
 		expectError bool
 	}{
 		{
 			name:        "valid consignment",
 			packages:    []string{"api"},
-			changeType:  Minor,
+			changeType:  "minor",
 			summary:     "Added new feature",
 			expectError: false,
 		},
 		{
 			name:        "multiple packages",
 			packages:    []string{"api", "frontend"},
-			changeType:  Patch,
+			changeType:  "patch",
 			summary:     "Fixed bug in both packages",
 			expectError: false,
 		},
 		{
 			name:        "invalid package",
 			packages:    []string{"nonexistent"},
-			changeType:  Major,
+			changeType:  "major",
 			summary:     "Breaking change",
 			expectError: true,
 		},
 		{
 			name:        "empty summary",
 			packages:    []string{"api"},
-			changeType:  Patch,
+			changeType:  "patch",
 			summary:     "",
 			expectError: true,
 		},
 		{
 			name:        "no packages",
 			packages:    []string{},
-			changeType:  Patch,
+			changeType:  "patch",
 			summary:     "Some change",
 			expectError: true,
 		},
@@ -277,7 +277,7 @@ func TestConsignmentCreationTime(t *testing.T) {
 	manager := NewManagerWithDir(projectConfig, tempDir)
 
 	before := time.Now()
-	consignment, err := manager.CreateConsignment([]string{"app"}, Patch, "Test change")
+	consignment, err := manager.CreateConsignment([]string{"app"}, "patch", "Test change")
 	after := time.Now()
 
 	if err != nil {
@@ -331,22 +331,22 @@ func TestCalculateNextVersionWithConsignments(t *testing.T) {
 	// Create consignments with different change types
 	tests := []struct {
 		name         string
-		changeType   ChangeType
+		changeType   string
 		expectedNext string
 	}{
 		{
 			name:         "patch change",
-			changeType:   Patch,
+			changeType:   "patch",
 			expectedNext: "1.0.1",
 		},
 		{
 			name:         "minor change",
-			changeType:   Minor,
+			changeType:   "minor",
 			expectedNext: "1.1.0",
 		},
 		{
 			name:         "major change",
-			changeType:   Major,
+			changeType:   "major",
 			expectedNext: "2.0.0",
 		},
 	}
@@ -415,12 +415,12 @@ func TestCalculateNextVersionWithMultipleConsignments(t *testing.T) {
 
 	// Create multiple consignments
 	consignments := []struct {
-		changeType ChangeType
+		changeType string
 		summary    string
 	}{
-		{Patch, "Fix bug 1"},
-		{Minor, "Add new feature"},
-		{Patch, "Fix bug 2"},
+		{"patch", "Fix bug 1"},
+		{"minor", "Add new feature"},
+		{"patch", "Fix bug 2"},
 	}
 
 	for _, c := range consignments {
@@ -507,12 +507,12 @@ func TestCalculateAllVersions(t *testing.T) {
 	manager := NewManagerWithDir(projectConfig, consignmentDir)
 
 	// Create consignments for each package
-	_, err := manager.CreateConsignment([]string{"frontend"}, Minor, "Frontend feature")
+	_, err := manager.CreateConsignment([]string{"frontend"}, "minor", "Frontend feature")
 	if err != nil {
 		t.Fatalf("Failed to create frontend consignment: %v", err)
 	}
 
-	_, err = manager.CreateConsignment([]string{"backend"}, Patch, "Backend fix")
+	_, err = manager.CreateConsignment([]string{"backend"}, "patch", "Backend fix")
 	if err != nil {
 		t.Fatalf("Failed to create backend consignment: %v", err)
 	}
@@ -549,12 +549,12 @@ func TestClearConsignments(t *testing.T) {
 	manager := NewManagerWithDir(projectConfig, tempDir)
 
 	// Create some consignments
-	_, err := manager.CreateConsignment([]string{"app"}, Patch, "Change 1")
+	_, err := manager.CreateConsignment([]string{"app"}, "patch", "Change 1")
 	if err != nil {
 		t.Fatalf("Failed to create consignment: %v", err)
 	}
 
-	_, err = manager.CreateConsignment([]string{"app"}, Minor, "Change 2")
+	_, err = manager.CreateConsignment([]string{"app"}, "minor", "Change 2")
 	if err != nil {
 		t.Fatalf("Failed to create consignment: %v", err)
 	}
@@ -624,7 +624,7 @@ func TestApplyConsignments(t *testing.T) {
 	manager := NewManagerWithDir(projectConfig, consignmentDir)
 
 	// Create consignments
-	_, err := manager.CreateConsignment([]string{"test-package"}, Minor, "Add feature")
+	_, err := manager.CreateConsignment([]string{"test-package"}, "minor", "Add feature")
 	if err != nil {
 		t.Fatalf("Failed to create consignment: %v", err)
 	}
@@ -701,7 +701,7 @@ func TestCalculateNextVersionWithHistory(t *testing.T) {
 	manager := NewManagerWithDir(projectConfig, consignmentDir)
 
 	// Create and apply first consignment to build history
-	_, err := manager.CreateConsignment([]string{"test-package"}, Minor, "First feature")
+	_, err := manager.CreateConsignment([]string{"test-package"}, "minor", "First feature")
 	if err != nil {
 		t.Fatalf("Failed to create first consignment: %v", err)
 	}
@@ -718,7 +718,7 @@ func TestCalculateNextVersionWithHistory(t *testing.T) {
 	}
 
 	// Create second consignment
-	_, err = manager.CreateConsignment([]string{"test-package"}, Patch, "Bug fix")
+	_, err = manager.CreateConsignment([]string{"test-package"}, "patch", "Bug fix")
 	if err != nil {
 		t.Fatalf("Failed to create second consignment: %v", err)
 	}
@@ -746,7 +746,7 @@ func TestCalculateNextVersionWithHistory(t *testing.T) {
 	}
 
 	// Create third consignment
-	_, err = manager.CreateConsignment([]string{"test-package"}, Major, "Breaking change")
+	_, err = manager.CreateConsignment([]string{"test-package"}, "major", "Breaking change")
 	if err != nil {
 		t.Fatalf("Failed to create third consignment: %v", err)
 	}

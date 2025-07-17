@@ -81,6 +81,15 @@ var AddCmd = &cobra.Command{
 		}
 
 		// Change type selection form
+		changeTypeOptions := make([]huh.Option[string], 0, len(projectConfig.ChangeTypes))
+		for _, ct := range projectConfig.ChangeTypes {
+			optionText := ct.DisplayName
+			if optionText == "" {
+				optionText = ct.Name
+			}
+			changeTypeOptions = append(changeTypeOptions, huh.NewOption(optionText, ct.Name))
+		}
+
 		changeTypeForm := huh.NewForm(
 			huh.NewGroup(
 				huh.NewNote().
@@ -88,12 +97,8 @@ var AddCmd = &cobra.Command{
 					Description("Select the type of change you've made."),
 				huh.NewSelect[string]().
 					Title("What type of change is this?").
-					Description("Choose the appropriate semantic version bump.").
-					Options(
-						huh.NewOption("🔧 Patch - Bug fixes and minor updates", "patch"),
-						huh.NewOption("✨ Minor - New features (backward compatible)", "minor"),
-						huh.NewOption("💥 Major - Breaking changes", "major"),
-					).
+					Description("Choose the appropriate change type.").
+					Options(changeTypeOptions...).
 					Value(&changeType),
 			),
 		)
@@ -125,7 +130,7 @@ var AddCmd = &cobra.Command{
 		}
 
 		// Create consignment using the manager
-		createdConsignment, err := manager.CreateConsignment(selectedPackages, consignment.ChangeType(changeType), summary)
+		createdConsignment, err := manager.CreateConsignment(selectedPackages, changeType, summary)
 		if err != nil {
 			logger.Error("Failed to create consignment", "error", err)
 			fmt.Printf("Error: Unable to create consignment: %v\n", err)

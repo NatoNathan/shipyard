@@ -29,7 +29,9 @@ type ProjectConfig struct {
 	Type RepoType `mapstructure:"type" json:"type" yaml:"type"` // "monorepo" or "single-repo"
 	Repo string   `mapstructure:"repo" json:"repo" yaml:"repo"` // e.g., "github.com/NatoNathan/shipyard"
 
-	Changelog ChangelogConfig `mapstructure:"changelog" json:"changelog" yaml:"changelog"`
+	Changelog   ChangelogConfig    `mapstructure:"changelog" json:"changelog" yaml:"changelog"`
+	Git         GitConfig          `mapstructure:"git" json:"git,omitempty" yaml:"git,omitempty"`
+	ChangeTypes []ChangeTypeConfig `mapstructure:"change_types" json:"change_types,omitempty" yaml:"change_types,omitempty"`
 
 	// For monorepo projects
 	Packages []Package `mapstructure:"packages" json:"packages,omitempty" yaml:"packages,omitempty"`
@@ -39,9 +41,23 @@ type ProjectConfig struct {
 
 // ChangelogConfig represents the changelog configuration
 type ChangelogConfig struct {
-	Template       string `mapstructure:"template" json:"template" yaml:"template"`
-	HeaderTemplate string `mapstructure:"header_template" json:"header_template,omitempty" yaml:"header_template,omitempty"`
-	FooterTemplate string `mapstructure:"footer_template" json:"footer_template,omitempty" yaml:"footer_template,omitempty"`
+	Template    string `mapstructure:"template" json:"template" yaml:"template"`                                 // template name, file path, or URL
+	OutputPath  string `mapstructure:"output_path" json:"output_path,omitempty" yaml:"output_path,omitempty"`    // default changelog filename (default: "CHANGELOG.md")
+	PackagePath *bool  `mapstructure:"package_path" json:"package_path,omitempty" yaml:"package_path,omitempty"` // place changelog in package path for monorepo (default: true for monorepo)
+}
+
+// GitConfig represents the git integration configuration
+type GitConfig struct {
+	TagTemplate    string `mapstructure:"tag_template" json:"tag_template,omitempty" yaml:"tag_template,omitempty"`
+	CommitTemplate string `mapstructure:"commit_template" json:"commit_template,omitempty" yaml:"commit_template,omitempty"`
+}
+
+// ChangeTypeConfig represents a custom change type configuration
+type ChangeTypeConfig struct {
+	Name        string `mapstructure:"name" json:"name" yaml:"name"`                              // e.g., "feat", "fix", "docs"
+	DisplayName string `mapstructure:"display_name" json:"display_name" yaml:"display_name"`      // e.g., "✨ Feature", "🔧 Bug Fix"
+	SemverBump  string `mapstructure:"semver_bump" json:"semver_bump" yaml:"semver_bump"`         // "major", "minor", "patch"
+	Section     string `mapstructure:"section" json:"section,omitempty" yaml:"section,omitempty"` // changelog section name
 }
 
 // GetPackages returns all packages in the project configuration.
@@ -65,6 +81,27 @@ func (c *ProjectConfig) GetPackageByName(name string) *Package {
 	return nil
 }
 
+// GetChangelogOutputPath returns the changelog output path configuration
+func (c *ProjectConfig) GetChangelogOutputPath() string {
+	if c.Changelog.OutputPath != "" {
+		return c.Changelog.OutputPath
+	}
+	return "CHANGELOG.md" // default
+}
+
+// ShouldUsePackagePaths returns true if changelogs should be placed in package directories for monorepo
+func (c *ProjectConfig) ShouldUsePackagePaths() bool {
+	// Default to true for monorepo projects unless explicitly disabled
+	if c.Type == RepositoryTypeMonorepo {
+		// If not explicitly set, default to true
+		if c.Changelog.PackagePath == nil {
+			return true
+		}
+		return *c.Changelog.PackagePath
+	}
+	return false
+}
+
 // HasPackage returns true if the project has a package with the specified name
 func (c *ProjectConfig) HasPackage(name string) bool {
 	return c.GetPackageByName(name) != nil
@@ -78,6 +115,59 @@ func (c *ProjectConfig) GetPackageNames() []string {
 		names[i] = pkg.Name
 	}
 	return names
+}
+
+// GetChangeTypes returns the custom change types or default ones if none are configured
+func (c *ProjectConfig) GetChangeTypes() []ChangeTypeConfig {
+	if len(c.ChangeTypes) > 0 {
+		return c.ChangeTypes
+	}
+	return DefaultChangeTypes()
+}
+
+// GetChangeTypeByName returns the change type configuration by name
+func (c *ProjectConfig) GetChangeTypeByName(name string) *ChangeTypeConfig {
+	changeTypes := c.GetChangeTypes()
+	for i := range changeTypes {
+		if changeTypes[i].Name == name {
+			return &changeTypes[i]
+		}
+	}
+	return nil
+}
+
+// GetChangeTypeNames returns the names of all available change types
+func (c *ProjectConfig) GetChangeTypeNames() []string {
+	changeTypes := c.GetChangeTypes()
+	names := make([]string, len(changeTypes))
+	for i, ct := range changeTypes {
+		names[i] = ct.Name
+	}
+	return names
+}
+
+// DefaultChangeTypes returns the default change type configurations
+func DefaultChangeTypes() []ChangeTypeConfig {
+	return []ChangeTypeConfig{
+		{
+			Name:        "patch",
+			DisplayName: "🔧 Patch - Bug fixes and minor updates",
+			SemverBump:  "patch",
+			Section:     "Fixed",
+		},
+		{
+			Name:        "minor",
+			DisplayName: "✨ Minor - New features (backward compatible)",
+			SemverBump:  "minor",
+			Section:     "Added",
+		},
+		{
+			Name:        "major",
+			DisplayName: "💥 Major - Breaking changes",
+			SemverBump:  "major",
+			Section:     "Changed",
+		},
+	}
 }
 
 // IsValid performs basic validation on the project configuration
@@ -124,14 +214,37 @@ func (c *ProjectConfig) ToMap() map[string]interface{} {
 	if c.Changelog.Template != "" {
 		changelogMap["template"] = c.Changelog.Template
 	}
-	if c.Changelog.HeaderTemplate != "" {
-		changelogMap["header_template"] = c.Changelog.HeaderTemplate
-	}
-	if c.Changelog.FooterTemplate != "" {
-		changelogMap["footer_template"] = c.Changelog.FooterTemplate
-	}
 	if len(changelogMap) > 0 {
 		configMap["changelog"] = changelogMap
+	}
+
+	// Add git config
+	gitMap := make(map[string]interface{})
+	if c.Git.TagTemplate != "" {
+		gitMap["tag_template"] = c.Git.TagTemplate
+	}
+	if c.Git.CommitTemplate != "" {
+		gitMap["commit_template"] = c.Git.CommitTemplate
+	}
+	if len(gitMap) > 0 {
+		configMap["git"] = gitMap
+	}
+
+	// Add change types if custom ones are defined
+	if len(c.ChangeTypes) > 0 {
+		changeTypesSlice := make([]map[string]interface{}, len(c.ChangeTypes))
+		for i, ct := range c.ChangeTypes {
+			ctMap := map[string]interface{}{
+				"name":         ct.Name,
+				"display_name": ct.DisplayName,
+				"semver_bump":  ct.SemverBump,
+			}
+			if ct.Section != "" {
+				ctMap["section"] = ct.Section
+			}
+			changeTypesSlice[i] = ctMap
+		}
+		configMap["change_types"] = changeTypesSlice
 	}
 
 	// Add packages based on type
@@ -276,6 +389,14 @@ func SaveToFile(config *ProjectConfig, configPath string) error {
 	v.Set("type", config.Type)
 	v.Set("repo", config.Repo)
 	v.Set("changelog", config.Changelog)
+
+	if config.Git.TagTemplate != "" || config.Git.CommitTemplate != "" {
+		v.Set("git", config.Git)
+	}
+
+	if len(config.ChangeTypes) > 0 {
+		v.Set("change_types", config.ChangeTypes)
+	}
 
 	if config.Type == RepositoryTypeMonorepo {
 		if len(config.Packages) > 0 {
