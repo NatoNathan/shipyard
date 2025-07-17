@@ -424,6 +424,79 @@ func SaveToDefaultPath(config *ProjectConfig) error {
 	return SaveToFile(config, ".shipyard/config.yaml")
 }
 
+// LoadRemoteConfig loads a remote configuration from various sources
+func LoadRemoteConfig(remoteURL string, forceFresh bool) (*ProjectConfig, error) {
+	if !IsValidRemoteURL(remoteURL) {
+		return nil, fmt.Errorf("invalid remote URL format: %s", remoteURL)
+	}
+
+	fetcher := NewRemoteConfigFetcher("")
+	v, err := fetcher.FetchRemoteConfig(remoteURL, forceFresh)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch remote config: %w", err)
+	}
+
+	// Unmarshal into our struct
+	var config ProjectConfig
+	if err := v.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal remote config: %w", err)
+	}
+
+	// Validate the loaded config (but allow configs without packages for base configs)
+	if err := validateRemoteConfig(&config); err != nil {
+		return nil, fmt.Errorf("invalid remote configuration: %w", err)
+	}
+
+	return &config, nil
+}
+
+// validateRemoteConfig validates a remote config (more lenient than local configs)
+func validateRemoteConfig(config *ProjectConfig) error {
+	// Basic validation - remote configs don't need to have packages
+	if config.Type == "" {
+		return &ValidationError{Field: "type", Message: "repository type is required"}
+	}
+
+	if config.Type != RepositoryTypeMonorepo && config.Type != RepositoryTypeSingleRepo {
+		return &ValidationError{Field: "type", Message: "repository type must be 'monorepo' or 'single-repo'"}
+	}
+
+	// Remote configs should NOT contain packages - they should be base configs
+	if config.Type == RepositoryTypeMonorepo && len(config.Packages) > 0 {
+		return &ValidationError{Field: "packages", Message: "remote base configurations should not contain packages - packages should be defined in the extending project"}
+	}
+
+	if config.Type == RepositoryTypeSingleRepo && config.Package.Name != "" {
+		return &ValidationError{Field: "package", Message: "remote base configurations should not contain package definition - package should be defined in the extending project"}
+	}
+
+	// Don't require repo URL in remote configs as they're meant to be extended
+
+	return nil
+}
+
+// LoadRemoteTemplate loads a remote template from various sources
+func LoadRemoteTemplate(templateURL string, forceFresh bool) (string, error) {
+	if !IsValidRemoteURL(templateURL) {
+		return "", fmt.Errorf("invalid remote template URL format: %s", templateURL)
+	}
+
+	fetcher := NewRemoteConfigFetcher("")
+	return fetcher.FetchRemoteTemplate(templateURL, forceFresh)
+}
+
+// ClearRemoteConfigCache clears the remote configuration cache
+func ClearRemoteConfigCache() error {
+	fetcher := NewRemoteConfigFetcher("")
+	return fetcher.ClearCache()
+}
+
+// ListCachedRemoteConfigs returns a list of cached remote configurations
+func ListCachedRemoteConfigs() ([]RemoteConfigCache, error) {
+	fetcher := NewRemoteConfigFetcher("")
+	return fetcher.ListCachedConfigs()
+}
+
 // setViperConfigFromPath sets up viper configuration from a file path
 func setViperConfigFromPath(v *viper.Viper, path string) {
 	dir := filepath.Dir(path)
@@ -443,11 +516,10 @@ func loadBaseConfig(extends, currentConfigPath string) (*viper.Viper, error) {
 		return nil, errors.New("no base config to fetch")
 	}
 
-	// Handle remote configs (not implemented yet)
-	if strings.HasPrefix(extends, "github:") {
-		return nil, errors.New("github: remote config loading not implemented yet")
-	} else if strings.HasPrefix(extends, "https://") {
-		return nil, errors.New("https: remote config loading not implemented yet")
+	// Handle remote configs
+	if IsValidRemoteURL(extends) {
+		fetcher := NewRemoteConfigFetcher("")
+		return fetcher.FetchRemoteConfig(extends, false)
 	}
 
 	// Handle relative paths

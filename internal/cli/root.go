@@ -37,6 +37,7 @@ func init() {
 	RootCmd.AddCommand(AddCmd)
 	RootCmd.AddCommand(VersionCmd)
 	RootCmd.AddCommand(StatusCmd)
+	RootCmd.AddCommand(RemoteCmd)
 
 	// Add global flags
 	RootCmd.PersistentFlags().StringP("config", "c", ".shipyard/config.yaml", "Path to the Shipyard configuration file")

@@ -169,8 +169,15 @@ func (e *TemplateEngine) loadTemplateFromFile(filePath string) (string, error) {
 
 // loadTemplateFromURL loads a template from a URL with local caching
 func (e *TemplateEngine) loadTemplateFromURL(url string) (string, error) {
-	// Create cache directory
-	cacheDir := filepath.Join(".shipyard", "cache", "templates")
+	// Create cache directory using system cache
+	var cacheDir string
+	if systemCacheDir, err := os.UserCacheDir(); err == nil {
+		cacheDir = filepath.Join(systemCacheDir, "shipyard", "templates")
+	} else {
+		// Fallback to local cache if system cache dir is not available
+		cacheDir = filepath.Join(".shipyard", "cache", "templates")
+	}
+
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create cache directory: %w", err)
 	}
@@ -202,8 +209,15 @@ func (e *TemplateEngine) loadTemplateFromGitHub(githubRef string) (string, error
 
 	owner, repo, path := parts[0], parts[1], parts[2]
 
-	// Create cache directory
-	cacheDir := filepath.Join(".shipyard", "cache", "templates", owner, repo)
+	// Create cache directory using system cache
+	var cacheDir string
+	if systemCacheDir, err := os.UserCacheDir(); err == nil {
+		cacheDir = filepath.Join(systemCacheDir, "shipyard", "templates", owner, repo)
+	} else {
+		// Fallback to local cache if system cache dir is not available
+		cacheDir = filepath.Join(".shipyard", "cache", "templates", owner, repo)
+	}
+
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create cache directory: %w", err)
 	}
