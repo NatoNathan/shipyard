@@ -124,6 +124,7 @@ git push origin v1.2.0
 - `shipyard add` - Create a new consignment to track changes
 - `shipyard status` - Show consignment status and version information
 - `shipyard version` - Generate changelogs and apply version updates
+- `shipyard release-notes [version]` - Get release notes for a specific version
 - `shipyard --version` or `shipyard -V` - Show version information
 - `shipyard --help` - Show available commands and options
 
@@ -195,6 +196,25 @@ shipyard version --output RELEASE_NOTES.md
 
 # Use different changelog template
 shipyard version --template keepachangelog
+```
+
+#### Release Notes Command Options
+
+```bash
+# Get release notes for a specific version
+shipyard release-notes 1.2.3
+
+# Get release notes with 'v' prefix
+shipyard release-notes v1.2.3
+
+# Get release notes for specific package (monorepo only)
+shipyard release-notes 1.2.3 --package api
+
+# Show raw markdown instead of pretty output
+shipyard release-notes 1.2.3 --raw
+
+# Use a different changelog template
+shipyard release-notes 1.2.3 --template simple
 ```
 
 ## Development

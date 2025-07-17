@@ -117,13 +117,26 @@ func (e *TemplateEngine) RenderChangelogTemplate(entries []ChangelogEntry, templ
 	}
 
 	// Create template data
-	data := &ChangelogTemplateData{
-		TemplateData:    *e.createBaseTemplateData(nil),
-		ShipmentEntries: entries,
+	baseData := e.createBaseTemplateData(nil)
+
+	// Create a map for template rendering that includes top-level access to needed fields
+	// This ensures that $.RepoType and other fields are accessible from within range blocks
+	templateData := map[string]interface{}{
+		"ShipmentEntries": entries,
+		"RepoType":        baseData.RepoType,
+		"RepoURL":         baseData.RepoURL,
+		"RepoOwner":       baseData.RepoOwner,
+		"RepoName":        baseData.RepoName,
+		"Package":         baseData.Package,
+		"Packages":        baseData.Packages,
+		"Date":            baseData.Date,
+		"DateTime":        baseData.DateTime,
+		"Timestamp":       baseData.Timestamp,
+		"Custom":          baseData.Custom,
 	}
 
 	// Render the template
-	return e.renderTemplate("changelog", templateContent, data)
+	return e.renderTemplate("changelog", templateContent, templateData)
 }
 
 // getTemplateContent gets template content from various sources (built-in, file, URL)
@@ -274,9 +287,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 {{range .ShipmentEntries}}{{if eq $.RepoType "monorepo"}}## [{{.Version}}] - {{.PackageName}} - {{.Date}}
 {{else}}## [{{.Version}}] - {{.Date}}
 {{end}}
-{{$sections := list "Breaking Changes" "Added" "Changed" "Deprecated" "Removed" "Fixed" "Security"}}{{range $section := $sections}}{{if index .Changes $section}}### {{$section}}
+{{range $section, $changes := .Changes}}{{if $changes}}### {{$section}}
 
-{{range index .Changes $section}}{{if eq $.RepoType "monorepo"}}+ **{{.PackageName}}**: {{.Summary}}
+{{range $changes}}{{if eq $.RepoType "monorepo"}}+ **{{.PackageName}}**: {{.Summary}}
 {{else}}+ {{.Summary}}
 {{end}}{{end}}
 {{end}}{{end}}
@@ -287,9 +300,9 @@ const conventionalTemplate = `# Changelog
 {{range .ShipmentEntries}}{{if eq $.RepoType "monorepo"}}## {{.Version}} ({{.PackageName}}) - {{.Date}}
 {{else}}## {{.Version}} ({{.Date}})
 {{end}}
-{{$sections := list "Breaking Changes" "Added" "Fixed" "Changed" "Removed" "Security"}}{{range $section := $sections}}{{if index .Changes $section}}### {{$section}}
+{{range $section, $changes := .Changes}}{{if $changes}}### {{$section}}
 
-{{range index .Changes $section}}{{if eq $.RepoType "monorepo"}}+ **{{.PackageName}}**: {{.Summary}}
+{{range $changes}}{{if eq $.RepoType "monorepo"}}+ **{{.PackageName}}**: {{.Summary}}
 {{else}}+ {{.Summary}}
 {{end}}{{end}}
 {{end}}{{end}}

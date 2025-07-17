@@ -37,16 +37,9 @@ clean:
     rm -rf dist
 
 [group("build")]
-build VERSION=devVersion:
-    @echo "Building Shipyard..."
-    @echo "  Version: {{VERSION}}"
-    @echo "  Git Commit: {{gitCommit}}"
-    @echo "  Build Date: {{buildDate}}"
+build:
     @mkdir -p dist
     go build \
-        -ldflags "-X 'github.com/NatoNathan/shipyard/internal/cli.Version={{VERSION}}' \
-                  -X 'github.com/NatoNathan/shipyard/internal/cli.GitCommit={{gitCommit}}' \
-                  -X 'github.com/NatoNathan/shipyard/internal/cli.BuildDate={{buildDate}}'" \
         -o dist/shipyard \
         ./cmd/shipyard/main.go
     @echo "Build complete: dist/shipyard"
@@ -94,20 +87,6 @@ check-deps:
 qa-all: fmt vet lint security check-deps test-all
     @echo "Quality assurance complete"
 
-# Release recipes
 [group("release")]
-tag VERSION:
-    git tag {{VERSION}}
-    git push origin {{VERSION}}
-    @echo "Tagged version {{VERSION}}"
-
-[group("release")]
-release-prep VERSION: (build VERSION) test-all
-    @echo "Release {{VERSION}} prepared"
-
-# Future implementation for shipment history
-[group("future")]
-git-tags:
-    @echo "Creating git tags for shipment history..."
-    @echo "This will be implemented in the future to create annotated git tags"
-    @echo "with shipyard-history prefix for each shipment instead of JSON files"
+add +OPTIONS="":
+    just run add {{OPTIONS}}

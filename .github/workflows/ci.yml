@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+        branches:
+            - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: asdf-vm/actions/install@v4
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod verify
+      - name: Run lint
+        run: |
+          go fmt ./...
+          go vet ./...
+      - name: Run tests
+        run: |
+          go test -v ./...

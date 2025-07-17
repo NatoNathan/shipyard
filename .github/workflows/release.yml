@@ -1,0 +1,79 @@
+name: Release Shipyard
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+jobs:
+  build_binary:
+    name: Build ${{ matrix.godist }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        godist:
+          - windows/amd64
+          - windows/arm64
+          - linux/amd64
+          - linux/arm64
+          - darwin/amd64
+          - darwin/arm64
+    steps:
+      - name: Get OS and arch info
+        run: |
+          GOOSARCH=${{matrix.godist}}
+          GOOS=${GOOSARCH%/*}
+          GOARCH=${GOOSARCH#*/}
+          BINARY_NAME=shipyard-$GOOS-$GOARCH
+          echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+          echo "GOOS=$GOOS" >> $GITHUB_ENV
+          echo "GOARCH=$GOARCH" >> $GITHUB_ENV
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: asdf-vm/actions/install@v4
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod verify
+      - name: Build binary
+        run: go build -o $BINARY_NAME ./cmd/shipyard
+      - name: Release with Notes
+        uses: softprops/action-gh-release@v2
+        with:
+          body: Release in progress
+          draft: true
+          files: ${{env.BINARY_NAME}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  gh_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build_binary
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: asdf-vm/actions/install@v4
+      - name: Install Shipyard CLI
+        run: go install github.com/NatoNathan/shipyard/cmd/shipyard@main
+      - name: Get release notes
+        run: |
+          shipyard release-notes ${{ github.ref }} --raw  > release_notes.txt
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          body_path: release_notes.txt
+          draft: false
+          make_latest: true
+          files: |
+            CHANGELOG.md
+            LICENSE
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
