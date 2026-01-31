@@ -1,0 +1,6 @@
+chore: Bump versions for release
+
+Packages updated:
+{{ range .Packages -}}
+- {{ .Name }}: {{ .OldVersion }} → {{ .NewVersion }} ({{ .ChangeType }})
+{{ end }}

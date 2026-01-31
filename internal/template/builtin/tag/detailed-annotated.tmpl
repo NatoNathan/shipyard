@@ -1,0 +1,24 @@
+{{ .Package }}/v{{ .Version }}
+
+# Release {{ .Package }} v{{ .Version }}
+
+Released on {{ .Date | date "2006-01-02" }}
+
+## Changes
+
+{{ range .Consignments -}}
+### {{ .ChangeType | title }}
+
+{{ .Summary }}
+
+{{- if or .Metadata.author .Metadata.issue }}
+
+{{- if .Metadata.author }}
+**Author**: {{ .Metadata.author }}
+{{- end }}
+{{- if .Metadata.issue }}
+**Issue**: {{ .Metadata.issue }}
+{{- end }}
+{{- end }}
+
+{{ end -}}

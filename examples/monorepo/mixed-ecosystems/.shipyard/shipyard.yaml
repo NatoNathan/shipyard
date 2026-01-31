@@ -1,0 +1,324 @@
+# Shipyard Configuration - Mixed Ecosystems Monorepo
+#
+# Use Case: Multi-language monorepo with Go, Python, NPM, and Docker packages
+#
+# This configuration demonstrates:
+# - Multiple ecosystem types in one repository
+# - Cross-ecosystem dependencies
+# - Docker image versioning tied to application versions
+# - Per-package template customization
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+
+# Metadata Configuration (optional)
+# Shared metadata fields for all packages
+metadata:
+  fields:
+    - name: "author"
+      required: true
+      description: "Author email"
+      type: "string"
+
+    - name: "team"
+      required: false
+      description: "Owning team"
+      type: "string"
+
+# Package Definitions (required)
+packages:
+  # Go core library
+  - name: "core"
+    path: "./packages/core"
+    ecosystem: "go"
+    # Expects: ./packages/core/version.go
+    dependencies: []
+
+  # Python SDK (depends on Go core through gRPC/API)
+  - name: "python-sdk"
+    path: "./sdks/python"
+    ecosystem: "python"
+    # Expects: ./sdks/python/pyproject.toml
+    dependencies:
+      - package: "core"
+        strategy: "linked"  # SDK versions with core API changes
+
+  # JavaScript SDK
+  - name: "js-sdk"
+    path: "./sdks/javascript"
+    ecosystem: "npm"
+    # Expects: ./sdks/javascript/package.json
+    dependencies:
+      - package: "core"
+        strategy: "linked"  # JS SDK tracks core API
+
+  # React web application (uses JS SDK)
+  - name: "web-app"
+    path: "./apps/web"
+    ecosystem: "npm"
+    # Expects: ./apps/web/package.json
+    dependencies:
+      - package: "js-sdk"
+        strategy: "linked"
+        bumpMapping:
+          major: "minor"  # SDK breaking changes → app minor version
+          minor: "patch"
+          patch: "patch"
+
+    # Custom changelog template for web app
+    templates:
+      changelog: |
+        # Web App Changelog
+
+        ## v{{.Version}} - {{.Date | date "2006-01-02"}}
+
+        {{range .Consignments}}
+        **{{.ChangeType | upper}}**: {{.Summary}}
+        {{if .Metadata.team}}(Team: {{.Metadata.team}}){{end}}
+        {{end}}
+
+  # API server (Go)
+  - name: "api-server"
+    path: "./services/api"
+    ecosystem: "go"
+    # Expects: ./services/api/version.go
+    dependencies:
+      - package: "core"
+        strategy: "linked"  # API server tracks core changes
+
+  # Docker image for API server
+  - name: "api-server-image"
+    path: "./docker/api-server"
+    ecosystem: "docker"
+    # Expects: ./docker/api-server/Dockerfile with LABEL version="X.Y.Z"
+    #      or: ./docker/api-server/VERSION with plain "X.Y.Z"
+    dependencies:
+      - package: "api-server"
+        strategy: "linked"  # Image version always matches server version
+        bumpMapping:
+          major: "major"  # 1:1 mapping
+          minor: "minor"
+          patch: "patch"
+
+    # Custom tag format for Docker images
+    templates:
+      tagName: "api-server-{{.Version}}"
+
+  # Worker service (Go)
+  - name: "worker"
+    path: "./services/worker"
+    ecosystem: "go"
+    # Expects: ./services/worker/version.go
+    dependencies:
+      - package: "core"
+        strategy: "linked"
+
+  # Docker image for worker
+  - name: "worker-image"
+    path: "./docker/worker"
+    ecosystem: "docker"
+    dependencies:
+      - package: "worker"
+        strategy: "linked"
+
+    templates:
+      tagName: "worker-{{.Version}}"
+
+  # Shared UI components (NPM)
+  - name: "ui-components"
+    path: "./packages/ui"
+    ecosystem: "npm"
+    # Expects: ./packages/ui/package.json
+    dependencies: []  # Independent versioning
+
+  # Mobile app (React Native, uses NPM)
+  - name: "mobile-app"
+    path: "./apps/mobile"
+    ecosystem: "npm"
+    # Expects: ./apps/mobile/package.json
+    dependencies:
+      - package: "js-sdk"
+        strategy: "linked"
+
+      - package: "ui-components"
+        strategy: "linked"
+        bumpMapping:
+          major: "minor"
+          minor: "patch"
+          patch: "patch"
+
+# Global Template Configuration (optional)
+templates:
+  # Keep a Changelog format
+  changelog: |
+    # Changelog
+
+    All notable changes to this project will be documented in this file.
+
+    ## [{{.Version}}] - {{.Date | date "2006-01-02"}}
+
+    {{range .Consignments}}
+    ### {{.ChangeType | title}}
+
+    {{.Summary}}
+
+    *By {{.Metadata.author}}*{{if .Metadata.team}} ({{.Metadata.team}}){{end}}
+
+    {{end}}
+
+  # Monorepo tag format
+  tagName: "{{.Package}}/v{{.Version}}"
+
+  # Enhanced release notes
+  releaseNotes: |
+    # {{.Package}} v{{.Version}}
+
+    {{range .Consignments}}
+    ## {{.ChangeType | upper}}
+
+    {{.Summary}}
+
+    {{end}}
+
+    {{if .Ecosystem}}
+    ---
+    **Ecosystem**: {{.Ecosystem}}
+    {{end}}
+
+# Consignment Storage (optional)
+consignments:
+  path: ".shipyard/consignments"
+
+# History Storage (optional)
+history:
+  path: ".shipyard/history.json"
+
+# GitHub Integration (optional)
+github:
+  enabled: false
+  # owner: "your-org"
+  # repo: "your-monorepo"
+
+# ==============================================================================
+# Multi-Ecosystem Version Files:
+# ==============================================================================
+#
+# Go Packages:
+#   Location: version.go or VERSION
+#   Format:   const Version = "X.Y.Z" or plain "X.Y.Z"
+#   Example:  ./packages/core/version.go
+#
+# NPM Packages:
+#   Location: package.json
+#   Format:   {"version": "X.Y.Z"}
+#   Example:  ./sdks/javascript/package.json
+#
+# Python Packages:
+#   Location: pyproject.toml, setup.py, or __version__.py
+#   Format:   version = "X.Y.Z" or __version__ = "X.Y.Z"
+#   Example:  ./sdks/python/pyproject.toml
+#
+# Docker Images:
+#   Location: Dockerfile or VERSION
+#   Format:   LABEL version="X.Y.Z" or plain "X.Y.Z"
+#   Example:  ./docker/api-server/Dockerfile
+#
+# ==============================================================================
+#
+# Typical Workflow - Mixed Ecosystem:
+# ==============================================================================
+#
+# 1. Add change to core library (Go):
+#    $ shipyard add \
+#      --package core \
+#      --summary "Add authentication API" \
+#      --bump minor \
+#      --metadata author="dev@example.com" \
+#      --metadata team="platform"
+#
+# 2. Add change to Python SDK:
+#    $ shipyard add \
+#      --package python-sdk \
+#      --summary "Add auth client" \
+#      --bump minor \
+#      --metadata author="dev@example.com" \
+#      --metadata team="sdks"
+#
+# 3. Check status (all ecosystems):
+#    $ shipyard status
+#
+# 4. Version all packages with changes:
+#    $ shipyard version --all
+#
+#    Result (with dependency propagation):
+#    - core/version.go updated to v1.5.0
+#    - python-sdk/pyproject.toml updated to v2.3.0 (linked to core)
+#    - js-sdk/package.json updated to v2.3.0 (linked to core)
+#    - api-server/version.go updated to v1.5.0 (linked to core)
+#    - worker/version.go updated to v1.5.0 (linked to core)
+#    - api-server-image/Dockerfile updated to v1.5.0 (linked to api-server)
+#    - worker-image/Dockerfile updated to v1.5.0 (linked to worker)
+#    - web-app/package.json updated to v3.1.0 (linked to js-sdk, minor bump)
+#    - mobile-app/package.json updated to v2.4.0 (linked to js-sdk)
+#
+# 5. Build and publish by ecosystem:
+#
+#    # Go packages
+#    $ cd packages/core && go build && go publish
+#
+#    # Python SDK
+#    $ cd sdks/python && poetry publish --build
+#
+#    # JavaScript SDK
+#    $ cd sdks/javascript && npm publish
+#
+#    # Docker images
+#    $ docker build -t myapp/api-server:1.5.0 docker/api-server
+#    $ docker push myapp/api-server:1.5.0
+#
+#    # Web app
+#    $ cd apps/web && npm run build && npm run deploy
+#
+# ==============================================================================
+#
+# Docker Image Versioning Pattern:
+# ==============================================================================
+#
+# Best practice: Link Docker image version to application version
+#
+# - Docker image package depends on application package
+# - Use identity bump mapping (1:1 version sync)
+# - Tag format: application-name-{version}
+#
+# This ensures:
+# - Image version matches application version
+# - Easy correlation between code and image
+# - Simplified deployment tracking
+#
+# Example:
+#   Application: api-server v2.5.3
+#   Docker Image: api-server-2.5.3
+#   Docker Tag: myorg/api-server:2.5.3
+#
+# ==============================================================================
+#
+# Cross-Ecosystem Dependencies:
+# ==============================================================================
+#
+# Common patterns in mixed monorepos:
+#
+# 1. Core library (any language) → SDKs (multiple languages)
+#    - Core defines API
+#    - SDKs implement clients in different languages
+#    - SDKs are linked to core (track API changes)
+#
+# 2. Application → Docker image
+#    - Application versioned independently
+#    - Docker image linked to application (same version)
+#    - Simplifies deployment and rollback
+#
+# 3. Library → Application
+#    - Shared library used by multiple apps
+#    - Apps linked with custom bump mapping
+#    - Allows independent app releases
+#
+# ==============================================================================

@@ -1,0 +1,324 @@
+package commands
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/NatoNathan/shipyard/internal/config"
+	"github.com/NatoNathan/shipyard/internal/consignment"
+	"github.com/NatoNathan/shipyard/internal/ecosystem"
+	"github.com/NatoNathan/shipyard/internal/errors"
+	"github.com/NatoNathan/shipyard/internal/graph"
+	"github.com/NatoNathan/shipyard/internal/version"
+	"github.com/NatoNathan/shipyard/pkg/semver"
+	"github.com/spf13/cobra"
+)
+
+// StatusOptions holds the options for the status command
+type StatusOptions struct {
+	Packages []string
+	Output   string
+	Quiet    bool
+	Verbose  bool
+}
+
+// NewStatusCommand creates the status command
+func NewStatusCommand() *cobra.Command {
+	opts := &StatusOptions{}
+
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show pending consignments and calculated version bumps",
+		Long: `Display all pending consignments grouped by package with calculated version bumps.
+
+Shows:
+  - Pending consignments grouped by package
+  - Calculated version bump for each package (direct and propagated)
+  - Number of consignments per package
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check for global --json flag if local --output flag wasn't explicitly set
+			if !cmd.Flags().Changed("output") {
+				// Check parent for global --json flag
+				if parent := cmd.Parent(); parent != nil {
+					if jsonFlag, err := parent.PersistentFlags().GetBool("json"); err == nil && jsonFlag {
+						opts.Output = "json"
+					}
+				}
+			}
+			return runStatus(opts)
+		},
+	}
+
+	cmd.Flags().StringSliceVarP(&opts.Packages, "package", "p", nil, "Filter by package name(s)")
+	cmd.Flags().StringVarP(&opts.Output, "output", "o", "table", "Output format (table, json)")
+	cmd.Flags().BoolVarP(&opts.Quiet, "quiet", "q", false, "Minimal output")
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "Verbose output with timestamps and metadata")
+
+	// Register package name completion
+	RegisterPackageCompletions(cmd, "package")
+
+	return cmd
+}
+
+// runStatus executes the status command
+func runStatus(opts *StatusOptions) error {
+	// Check if shipyard is initialized
+	shipyardDir := ".shipyard"
+	if _, err := os.Stat(shipyardDir); os.IsNotExist(err) {
+		return errors.ErrNotInitialized
+	}
+
+	// Load configuration
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+	cfg, err := config.LoadFromDir(cwd)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Read all pending consignments
+	consignmentsDir := filepath.Join(shipyardDir, "consignments")
+	consignments, err := readAllConsignments(consignmentsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read consignments: %w", err)
+	}
+
+	// Filter by packages if specified
+	if len(opts.Packages) > 0 {
+		consignments = filterConsignmentsByPackages(consignments, opts.Packages)
+	}
+
+	// Check if there are any consignments
+	if len(consignments) == 0 {
+		fmt.Println("No pending consignments")
+		return nil
+	}
+
+	// Calculate version bumps with propagation
+	versionBumps, err := calculateVersionBumpsForStatus(cfg, cwd, consignments)
+	if err != nil {
+		return fmt.Errorf("failed to calculate version bumps: %w", err)
+	}
+
+	// Group consignments by package
+	grouped := groupConsignmentsByPackage(consignments)
+
+	// Output based on format
+	switch opts.Output {
+	case "json":
+		return outputJSONWithBumps(grouped, versionBumps, opts)
+	default:
+		return outputTableWithBumps(grouped, versionBumps, opts)
+	}
+}
+
+// calculateVersionBumpsForStatus calculates version bumps including propagation
+func calculateVersionBumpsForStatus(cfg *config.Config, projectPath string, consignments []*consignment.Consignment) (map[string]version.VersionBump, error) {
+	// Build dependency graph
+	depGraph, err := graph.BuildGraph(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read current versions
+	currentVersions := make(map[string]semver.Version)
+	for _, pkg := range cfg.Packages {
+		pkgPath := filepath.Join(projectPath, pkg.Path)
+		var handler interface {
+			ReadVersion() (semver.Version, error)
+		}
+
+		switch pkg.Ecosystem {
+		case config.EcosystemGo:
+			// Check for tag-only mode via versionFiles
+			if pkg.IsTagOnly() {
+				handler = ecosystem.NewGoEcosystemWithOptions(pkgPath, &ecosystem.GoEcosystemOptions{TagOnly: true})
+			} else {
+				handler = ecosystem.NewGoEcosystem(pkgPath)
+			}
+		case config.EcosystemNPM:
+			handler = ecosystem.NewNPMEcosystem(pkgPath)
+		case config.EcosystemPython:
+			handler = ecosystem.NewPythonEcosystem(pkgPath)
+		case config.EcosystemHelm:
+			handler = ecosystem.NewHelmEcosystem(pkgPath)
+		case config.EcosystemCargo:
+			handler = ecosystem.NewCargoEcosystem(pkgPath)
+		case config.EcosystemDeno:
+			handler = ecosystem.NewDenoEcosystem(pkgPath)
+		default:
+			return nil, fmt.Errorf("unsupported ecosystem: %s", pkg.Ecosystem)
+		}
+
+		currentVer, err := handler.ReadVersion()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read version for %s: %w", pkg.Name, err)
+		}
+		currentVersions[pkg.Name] = currentVer
+	}
+
+	// Calculate bumps with propagation
+	propagator, err := version.NewPropagator(depGraph)
+	if err != nil {
+		return nil, err
+	}
+
+	return propagator.Propagate(currentVersions, consignments)
+}
+
+// readAllConsignments reads all consignment files from a directory
+func readAllConsignments(dir string) ([]*consignment.Consignment, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var consignments []*consignment.Consignment
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
+		c, err := consignment.ReadConsignment(path)
+		if err != nil {
+			// Skip invalid consignments
+			continue
+		}
+
+		consignments = append(consignments, c)
+	}
+
+	return consignments, nil
+}
+
+// filterConsignmentsByPackages filters consignments to only those affecting specified packages
+func filterConsignmentsByPackages(consignments []*consignment.Consignment, packages []string) []*consignment.Consignment {
+	packageSet := make(map[string]bool)
+	for _, pkg := range packages {
+		packageSet[pkg] = true
+	}
+
+	var filtered []*consignment.Consignment
+	for _, c := range consignments {
+		for _, pkg := range c.Packages {
+			if packageSet[pkg] {
+				filtered = append(filtered, c)
+				break
+			}
+		}
+	}
+
+	return filtered
+}
+
+// groupConsignmentsByPackage groups consignments by package
+func groupConsignmentsByPackage(consignments []*consignment.Consignment) map[string][]*consignment.Consignment {
+	grouped := make(map[string][]*consignment.Consignment)
+
+	for _, c := range consignments {
+		for _, pkg := range c.Packages {
+			grouped[pkg] = append(grouped[pkg], c)
+		}
+	}
+
+	return grouped
+}
+
+// outputJSONWithBumps outputs status in JSON format with calculated version bumps
+func outputJSONWithBumps(grouped map[string][]*consignment.Consignment, versionBumps map[string]version.VersionBump, opts *StatusOptions) error {
+	// Build JSON structure
+	output := make(map[string]interface{})
+
+	// Include all packages that have bumps (direct or propagated)
+	for pkg, bump := range versionBumps {
+		pkgData := make(map[string]interface{})
+
+		// Get consignments for this package (may be empty for propagated bumps)
+		consignments := grouped[pkg]
+		pkgData["count"] = len(consignments)
+		pkgData["bump"] = bump.ChangeType
+		pkgData["source"] = bump.Source
+		pkgData["oldVersion"] = bump.OldVersion.String()
+		pkgData["newVersion"] = bump.NewVersion.String()
+
+		// Include consignment details if verbose
+		if opts.Verbose && len(consignments) > 0 {
+			var details []map[string]interface{}
+			for _, c := range consignments {
+				details = append(details, map[string]interface{}{
+					"id":       c.ID,
+					"type":     c.ChangeType,
+					"summary":  c.Summary,
+					"metadata": c.Metadata,
+				})
+			}
+			pkgData["consignments"] = details
+		}
+
+		output[pkg] = pkgData
+	}
+
+	data, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
+// outputTableWithBumps outputs status in table format with calculated version bumps
+func outputTableWithBumps(grouped map[string][]*consignment.Consignment, versionBumps map[string]version.VersionBump, opts *StatusOptions) error {
+	if opts.Quiet {
+		// Quiet mode: just package names and bump types
+		for pkg, bump := range versionBumps {
+			fmt.Printf("%s: %s\n", pkg, bump.ChangeType)
+		}
+		return nil
+	}
+
+	// Normal/verbose mode
+	fmt.Println("Pending Consignments:")
+	fmt.Println()
+
+	// Show all packages with version bumps (direct or propagated)
+	for pkg, bump := range versionBumps {
+		consignments := grouped[pkg]
+
+		fmt.Printf("Package: %s\n", pkg)
+		fmt.Printf("  Version: %s -> %s\n", bump.OldVersion, bump.NewVersion)
+		fmt.Printf("  Bump: %s (%s)\n", bump.ChangeType, bump.Source)
+		fmt.Printf("  Consignments: %d\n", len(consignments))
+
+		if opts.Verbose && len(consignments) > 0 {
+			fmt.Println("  Changes:")
+			for _, c := range consignments {
+				fmt.Printf("    - [%s] %s (%s)\n", c.ChangeType, c.Summary, c.ID)
+			}
+		}
+		fmt.Println()
+	}
+
+	return nil
+}
+
+// getHighestChangeType returns the highest priority change type from a list of consignments
+func getHighestChangeType(consignments []*consignment.Consignment) string {
+	highest := "patch"
+
+	for _, c := range consignments {
+		if c.ChangeType == "major" {
+			return "major"
+		} else if c.ChangeType == "minor" && highest != "major" {
+			highest = "minor"
+		}
+	}
+
+	return highest
+}

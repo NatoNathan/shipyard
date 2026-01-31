@@ -1,0 +1,47 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [{{ .Version }}] - {{ .Date | date "2006-01-02" }}
+
+{{ $breaking := list -}}
+{{ $added := list -}}
+{{ $changed := list -}}
+{{ $deprecated := list -}}
+{{ $removed := list -}}
+{{ $fixed := list -}}
+{{ $security := list -}}
+
+{{- range .Consignments }}
+  {{- if eq .ChangeType "major" }}
+    {{- $breaking = append $breaking . -}}
+  {{- else if eq .ChangeType "minor" }}
+    {{- $added = append $added . -}}
+  {{- else if eq .ChangeType "patch" }}
+    {{- $fixed = append $fixed . -}}
+  {{- end }}
+{{- end }}
+
+{{- if $breaking }}
+### Breaking Changes
+{{ range $breaking }}
+- {{ .Summary }}{{ if .Metadata.issue }} ([#{{ .Metadata.issue }}]({{ .Metadata.issueUrl }})){{ end }}
+{{- end }}
+{{ end }}
+
+{{- if $added }}
+### Added
+{{ range $added }}
+- {{ .Summary }}{{ if .Metadata.issue }} ([#{{ .Metadata.issue }}]({{ .Metadata.issueUrl }})){{ end }}
+{{- end }}
+{{ end }}
+
+{{- if $fixed }}
+### Fixed
+{{ range $fixed }}
+- {{ .Summary }}{{ if .Metadata.issue }} ([#{{ .Metadata.issue }}]({{ .Metadata.issueUrl }})){{ end }}
+{{- end }}
+{{ end }}

@@ -1,0 +1,142 @@
+# Shipyard Configuration - Keep a Changelog Template
+#
+# Use Case: Using Keep a Changelog format (https://keepachangelog.com/)
+#
+# This configuration demonstrates:
+# - Custom changelog template
+# - Keep a Changelog formatting standards
+# - Semantic versioning references
+# - Date formatting
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+# Template Reference: https://shipyard.tamez.dev/docs/templates
+
+packages:
+  - name: "app"
+    path: "./"
+    ecosystem: "go"
+
+# Template Configuration with Keep a Changelog format
+templates:
+  # Keep a Changelog format
+  # See: https://keepachangelog.com/en/1.0.0/
+  changelog: |
+    # Changelog
+
+    All notable changes to this project will be documented in this file.
+
+    The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+    and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+    ## [{{.Version}}] - {{.Date | date "2006-01-02"}}
+
+    {{range .Consignments}}
+    ### {{.ChangeType | title}}
+
+    - {{.Summary}}
+
+    {{end}}
+
+    [{{.Version}}]: https://github.com/your-org/your-repo/compare/v{{.PreviousVersion}}...v{{.Version}}
+
+  # Simple semver tag
+  tagName: "v{{.Version}}"
+
+  # Release notes with links
+  releaseNotes: |
+    # Release [{{.Version}}] - {{.Date | date "2006-01-02"}}
+
+    {{range .Consignments}}
+    ## {{.ChangeType | title}}
+
+    - {{.Summary}}
+
+    {{end}}
+
+    **Full Changelog**: https://github.com/your-org/your-repo/compare/v{{.PreviousVersion}}...v{{.Version}}
+
+# ==============================================================================
+# Template Variables Available:
+# ==============================================================================
+#
+# .Version          - Current version (e.g., "1.2.3")
+# .PreviousVersion  - Previous version (e.g., "1.2.2")
+# .Package          - Package name
+# .Date             - Release date (time.Time)
+# .Consignments     - Array of consignments (changes)
+#
+# Consignment Fields:
+# - .Summary        - Change description
+# - .ChangeType     - "major", "minor", or "patch"
+# - .Metadata       - Custom metadata fields (map)
+# - .Date           - Consignment creation date
+#
+# ==============================================================================
+#
+# Template Functions Available:
+# ==============================================================================
+#
+# String Functions:
+# - upper           - Convert to uppercase
+# - lower           - Convert to lowercase
+# - title           - Convert to title case
+# - trim            - Trim whitespace
+# - trimPrefix      - Remove prefix
+# - trimSuffix      - Remove suffix
+# - replace         - Replace substring
+#
+# Array Functions:
+# - join            - Join array with separator
+# - sort            - Sort array
+# - reverse         - Reverse array
+# - first           - Get first N elements
+# - last            - Get last N elements
+#
+# Date Functions:
+# - date            - Format date (Go layout format)
+# - now             - Current time
+#
+# Comparison Functions:
+# - eq              - Equal
+# - ne              - Not equal
+# - lt              - Less than
+# - le              - Less than or equal
+# - gt              - Greater than
+# - ge              - Greater than or equal
+#
+# ==============================================================================
+#
+# Keep a Changelog Categories:
+# ==============================================================================
+#
+# Standard categories from Keep a Changelog:
+#
+# Added       - New features
+# Changed     - Changes to existing functionality
+# Deprecated  - Soon-to-be removed features
+# Removed     - Removed features
+# Fixed       - Bug fixes
+# Security    - Security vulnerability fixes
+#
+# Shipyard change types map to these:
+# - "major" → Breaking changes (Removed, Changed with breaking impact)
+# - "minor" → New features (Added)
+# - "patch" → Bug fixes (Fixed)
+#
+# To use standard categories, consider using custom metadata:
+#
+#   metadata:
+#     fields:
+#       - name: "category"
+#         required: true
+#         type: "string"
+#         description: "Change category: Added, Changed, Deprecated, Removed, Fixed, Security"
+#
+# Then in templates:
+#
+#   {{range .Consignments}}
+#   ### {{.Metadata.category}}
+#   - {{.Summary}}
+#   {{end}}
+#
+# ==============================================================================

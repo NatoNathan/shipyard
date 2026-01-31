@@ -1,0 +1,254 @@
+# Shipyard Configuration - Monorepo with Dependencies
+#
+# Use Case: Packages with dependency relationships and version propagation
+#
+# This configuration demonstrates:
+# - Linked dependency strategy (version propagates)
+# - Fixed dependency strategy (version independent)
+# - Custom bump mappings
+# - Dependency version propagation rules
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+
+# Package Definitions (required)
+packages:
+  # Core library (no dependencies)
+  # This is the foundation that other packages depend on
+  - name: "core"
+    path: "./packages/core"
+    ecosystem: "go"
+    dependencies: []
+
+  # Authentication library (depends on core)
+  # Uses default bump mapping (identity: major→major, minor→minor, patch→patch)
+  - name: "auth-lib"
+    path: "./packages/auth"
+    ecosystem: "go"
+    dependencies:
+      # Linked strategy: auth-lib version changes when core changes
+      # When core gets a minor bump, auth-lib also gets a minor bump
+      - package: "core"
+        strategy: "linked"
+        # bumpMapping not specified → uses default identity mapping
+        # major: major
+        # minor: minor
+        # patch: patch
+
+  # API client library (depends on core and auth)
+  - name: "api-client"
+    path: "./clients/api"
+    ecosystem: "npm"
+    dependencies:
+      # Linked to core with identity mapping
+      - package: "core"
+        strategy: "linked"
+
+      # Linked to auth-lib with identity mapping
+      - package: "auth-lib"
+        strategy: "linked"
+        bumpMapping:
+          major: "major"
+          minor: "minor"
+          patch: "patch"
+
+  # Web application (depends on api-client)
+  # Uses conservative bump mapping: all upstream changes become patches
+  - name: "web-app"
+    path: "./apps/web"
+    ecosystem: "npm"
+    dependencies:
+      # Fixed strategy: web-app version never changes due to core changes
+      # Use when the dependency is only used at runtime
+      - package: "core"
+        strategy: "fixed"
+
+      # Linked with conservative mapping: all api-client changes → patch
+      # Use when you want to signal updates but keep versions stable
+      - package: "api-client"
+        strategy: "linked"
+        bumpMapping:
+          major: "patch"  # api-client breaking change → web-app patch
+          minor: "patch"  # api-client feature → web-app patch
+          patch: "patch"  # api-client fix → web-app patch
+
+  # Mobile app (depends on api-client)
+  # Uses semi-aggressive mapping: major→minor, others→patch
+  - name: "mobile-app"
+    path: "./apps/mobile"
+    ecosystem: "npm"
+    dependencies:
+      - package: "api-client"
+        strategy: "linked"
+        bumpMapping:
+          major: "minor"  # api-client breaking change → mobile-app minor
+          minor: "patch"  # api-client feature → mobile-app patch
+          patch: "patch"  # api-client fix → mobile-app patch
+
+  # Backend service (depends on core, uses core but versions independently)
+  - name: "backend"
+    path: "./services/backend"
+    ecosystem: "go"
+    dependencies:
+      # Fixed: backend service has its own release schedule
+      # Core changes don't automatically trigger backend releases
+      - package: "core"
+        strategy: "fixed"
+
+      # Fixed: backend uses auth but versions independently
+      - package: "auth-lib"
+        strategy: "fixed"
+
+# Template Configuration (optional)
+templates:
+  changelog: "builtin:default"
+
+  # Monorepo tag format
+  tagName: "{{.Package}}/v{{.Version}}"
+
+  # Enhanced release notes showing dependencies
+  releaseNotes: |
+    # {{.Package}} v{{.Version}}
+
+    {{range .Consignments}}
+    ## {{.ChangeType | upper}}
+
+    {{.Summary}}
+
+    {{end}}
+
+    {{if .Dependencies}}
+    ## Dependency Updates
+
+    This release includes updates from:
+    {{range .Dependencies}}
+    - {{.Package}} v{{.Version}}
+    {{end}}
+    {{end}}
+
+# Consignment Storage (optional)
+consignments:
+  path: ".shipyard/consignments"
+
+# History Storage (optional)
+history:
+  path: ".shipyard/history.json"
+
+# GitHub Integration (optional)
+github:
+  enabled: false
+  # owner: "your-org"
+  # repo: "your-monorepo"
+
+# ==============================================================================
+# Dependency Strategies Explained:
+# ==============================================================================
+#
+# FIXED STRATEGY:
+# - Dependent package version NEVER changes due to dependency changes
+# - Use when: Runtime dependency, versioned independently, no API impact
+# - Example: Backend service uses core library but has own release schedule
+#
+# LINKED STRATEGY:
+# - Dependent package version CHANGES when dependency changes
+# - Use when: Library dependency affects API, shared code, build-time dependency
+# - Example: API client depends on core library, exposes core types
+#
+# ==============================================================================
+#
+# Bump Mapping Explained:
+# ==============================================================================
+#
+# Identity Mapping (default):
+#   major: major   # Dependency breaking change → dependent breaking change
+#   minor: minor   # Dependency feature → dependent feature
+#   patch: patch   # Dependency fix → dependent fix
+#
+# Conservative Mapping (all changes become patches):
+#   major: patch   # Safe: signals dependency update without semver commitment
+#   minor: patch
+#   patch: patch
+#
+# Semi-Aggressive Mapping:
+#   major: minor   # Breaking changes treated as features
+#   minor: patch   # Features treated as fixes
+#   patch: patch
+#
+# Aggressive Mapping (rare):
+#   major: major
+#   minor: major   # Features trigger breaking changes
+#   patch: minor
+#
+# ==============================================================================
+#
+# Version Propagation Example:
+# ==============================================================================
+#
+# Given this dependency graph:
+#   core → auth-lib → api-client → web-app
+#                                 → mobile-app
+#
+# Scenario: Add change to core with minor bump
+#
+# 1. Add change to core:
+#    $ shipyard add --package core --summary "Add caching" --bump minor
+#
+# 2. Run version (with --cascade to propagate):
+#    $ shipyard version --package core --cascade
+#
+# Result:
+#   core:        1.0.0 → 1.1.0 (original minor bump)
+#   auth-lib:    2.0.0 → 2.1.0 (linked, identity mapping: minor→minor)
+#   api-client:  1.5.0 → 1.6.0 (linked to both core and auth-lib)
+#   web-app:     3.2.0 → 3.2.1 (linked to api-client, conservative: minor→patch)
+#   mobile-app:  2.1.0 → 2.1.1 (linked to api-client, semi-aggressive: minor→patch)
+#   backend:     (no change, fixed strategy)
+#
+# ==============================================================================
+#
+# Typical Workflow:
+# ==============================================================================
+#
+# 1. Add changes to multiple packages:
+#    $ shipyard add --package core --summary "Add feature" --bump minor
+#    $ shipyard add --package api-client --summary "Fix bug" --bump patch
+#
+# 2. Check what will be versioned:
+#    $ shipyard status
+#    # Shows all packages with pending changes
+#
+# 3. Version all packages with changes:
+#    $ shipyard version --all
+#    # Automatically handles dependency propagation
+#
+# 4. Or version specific package and cascade:
+#    $ shipyard version --package core --cascade
+#    # Versions core and all dependent packages
+#
+# 5. Check git tags:
+#    $ git tag -l
+#    # core/v1.1.0
+#    # auth-lib/v2.1.0
+#    # api-client/v1.6.0
+#    # web-app/v3.2.1
+#    # mobile-app/v2.1.1
+#
+# ==============================================================================
+#
+# Circular Dependencies:
+# ==============================================================================
+#
+# Circular dependencies are valid and treated as single version bump units:
+#
+#   - name: "service-a"
+#     dependencies:
+#       - package: "service-b"
+#         strategy: "linked"
+#
+#   - name: "service-b"
+#     dependencies:
+#       - package: "service-a"
+#         strategy: "linked"
+#
+# Both services will receive the same version bump (highest bump in the cycle).
+#
+# ==============================================================================

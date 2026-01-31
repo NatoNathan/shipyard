@@ -1,0 +1,75 @@
+name: Require Consignment
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  check-consignment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for skip label
+        id: skip-check
+        run: |
+          # Check if PR has skip-consignment label
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'skip-consignment') }}" == "true" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "PR has skip-consignment label, skipping check"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get changed files
+        if: steps.skip-check.outputs.skip == 'false'
+        id: changed-files
+        run: |
+          # Get list of changed files
+          git fetch origin ${{ github.base_ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "$CHANGED_FILES"
+          
+          # Check if only documentation files changed
+          if echo "$CHANGED_FILES" | grep -v -E '^(README\.md|CONTRIBUTING\.md|docs/|\.github/workflows/|examples/.*\.md|LICENSE)' > /dev/null; then
+            echo "has_code_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_code_changes=false" >> "$GITHUB_OUTPUT"
+            echo "Only documentation files changed, no consignment required"
+          fi
+
+      - name: Check for consignments
+        if: steps.skip-check.outputs.skip == 'false' && steps.changed-files.outputs.has_code_changes == 'true'
+        run: |
+          # Check if any consignment files were added
+          CONSIGNMENT_FILES=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD | grep '^\.shipyard/consignments/.*\.md$' || true)
+          
+          if [ -z "$CONSIGNMENT_FILES" ]; then
+            echo "❌ No consignment found in this PR"
+            echo ""
+            echo "This PR modifies code but doesn't include a consignment (change note)."
+            echo ""
+            echo "Please add a consignment using:"
+            echo "  shipyard add --summary \"Your change description\" --bump [major|minor|patch]"
+            echo ""
+            echo "Or add the 'skip-consignment' label if this change doesn't require versioning"
+            echo "(e.g., CI config, dev tooling, tests only)"
+            exit 1
+          else
+            echo "✅ Consignment found:"
+            echo "$CONSIGNMENT_FILES"
+          fi
+
+      - name: Passed
+        if: steps.skip-check.outputs.skip == 'true' || steps.changed-files.outputs.has_code_changes == 'false'
+        run: |
+          if [[ "${{ steps.skip-check.outputs.skip }}" == "true" ]]; then
+            echo "✅ Check skipped due to skip-consignment label"
+          else
+            echo "✅ Only documentation changed, no consignment required"
+          fi

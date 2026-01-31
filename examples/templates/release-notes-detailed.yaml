@@ -1,0 +1,306 @@
+# Shipyard Configuration - Enhanced Release Notes Template
+#
+# Use Case: Detailed GitHub release notes with rich formatting
+#
+# This configuration demonstrates:
+# - Rich release notes formatting
+# - Metadata integration
+# - Installation instructions
+# - Breaking change highlights
+# - Contributor attribution
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+# Template Reference: https://shipyard.tamez.dev/docs/templates
+
+# Metadata configuration to support enhanced release notes
+metadata:
+  fields:
+    - name: "author"
+      required: true
+      description: "Author email or username"
+      type: "string"
+
+    - name: "issue"
+      required: false
+      description: "Issue/PR reference"
+      type: "string"
+
+    - name: "breaking"
+      required: false
+      description: "Is this a breaking change?"
+      type: "boolean"
+
+    - name: "category"
+      required: false
+      description: "Change category (feature, bugfix, docs, etc.)"
+      type: "string"
+
+packages:
+  - name: "app"
+    path: "./"
+    ecosystem: "go"
+
+# Template Configuration
+templates:
+  # Standard changelog
+  changelog: "builtin:default"
+
+  # Simple tag format
+  tagName: "v{{.Version}}"
+
+  # Enhanced release notes with rich formatting
+  releaseNotes: |
+    # 🚀 Release {{.Version}}
+
+    Released: {{.Date | date "January 2, 2006"}}
+
+    {{if .BreakingChanges}}
+    ## ⚠️ Breaking Changes
+
+    {{range .BreakingChanges}}
+    - **{{.Summary}}**
+      {{if .Metadata.issue}}([#{{.Metadata.issue}}](https://github.com/your-org/your-repo/issues/{{.Metadata.issue}})){{end}}
+      {{if .Metadata.author}}by @{{.Metadata.author}}{{end}}
+
+    {{end}}
+    {{end}}
+
+    {{if .Features}}
+    ## ✨ New Features
+
+    {{range .Features}}
+    - {{.Summary}}
+      {{if .Metadata.issue}}([#{{.Metadata.issue}}](https://github.com/your-org/your-repo/issues/{{.Metadata.issue}})){{end}}
+      {{if .Metadata.author}}by @{{.Metadata.author}}{{end}}
+
+    {{end}}
+    {{end}}
+
+    {{if .BugFixes}}
+    ## 🐛 Bug Fixes
+
+    {{range .BugFixes}}
+    - {{.Summary}}
+      {{if .Metadata.issue}}([#{{.Metadata.issue}}](https://github.com/your-org/your-repo/issues/{{.Metadata.issue}})){{end}}
+      {{if .Metadata.author}}by @{{.Metadata.author}}{{end}}
+
+    {{end}}
+    {{end}}
+
+    {{if .Documentation}}
+    ## 📚 Documentation
+
+    {{range .Documentation}}
+    - {{.Summary}}
+      {{if .Metadata.author}}by @{{.Metadata.author}}{{end}}
+
+    {{end}}
+    {{end}}
+
+    {{if .Chores}}
+    ## 🔧 Maintenance
+
+    {{range .Chores}}
+    - {{.Summary}}
+      {{if .Metadata.author}}by @{{.Metadata.author}}{{end}}
+
+    {{end}}
+    {{end}}
+
+    ---
+
+    ## 📦 Installation
+
+    ### Go Module
+    ```bash
+    go get github.com/your-org/your-repo@v{{.Version}}
+    ```
+
+    ### Docker
+    ```bash
+    docker pull your-org/your-app:{{.Version}}
+    ```
+
+    ### Binary Download
+    Download binaries from the [Assets](#assets) section below.
+
+    ---
+
+    ## 🔗 Links
+
+    - **Full Changelog**: https://github.com/your-org/your-repo/compare/v{{.PreviousVersion}}...v{{.Version}}
+    - **Documentation**: https://docs.your-org.com/v{{.Version}}
+    - **Issues**: https://github.com/your-org/your-repo/issues
+
+    {{if .Contributors}}
+    ## 👥 Contributors
+
+    Thank you to all contributors who made this release possible:
+
+    {{range .Contributors}}
+    - @{{.}}
+    {{end}}
+    {{end}}
+
+# ==============================================================================
+# Template Variables for Enhanced Release Notes:
+# ==============================================================================
+#
+# Standard Variables:
+# - .Version           - Current version
+# - .PreviousVersion   - Previous version
+# - .Package           - Package name
+# - .Date              - Release date (time.Time)
+# - .Consignments      - All consignments (changes)
+#
+# Filtered Collections (based on changeType):
+# - .BreakingChanges   - Consignments with changeType = "major"
+# - .Features          - Consignments with changeType = "minor"
+# - .BugFixes          - Consignments with changeType = "patch"
+#
+# Custom Collections (based on metadata.category):
+# - .Documentation     - Consignments with metadata.category = "docs"
+# - .Chores            - Consignments with metadata.category = "chore"
+#
+# Note: Custom collections require custom metadata fields and filtering logic
+# in the template. The example above shows the ideal structure.
+#
+# ==============================================================================
+#
+# Template Conditional Logic:
+# ==============================================================================
+#
+# Check if collection exists and has items:
+#   {{if .BreakingChanges}}
+#   Show breaking changes section
+#   {{end}}
+#
+# Check metadata field:
+#   {{if .Metadata.breaking}}
+#   **BREAKING CHANGE**
+#   {{end}}
+#
+# Check for optional metadata:
+#   {{if .Metadata.issue}}
+#   Show issue link
+#   {{end}}
+#
+# ==============================================================================
+#
+# Emoji Guide:
+# ==============================================================================
+#
+# Use emojis to make release notes more scannable:
+#
+# - 🚀 Release/Launch
+# - ⚠️  Breaking Changes/Warnings
+# - ✨ New Features
+# - 🐛 Bug Fixes
+# - 📚 Documentation
+# - 🔧 Maintenance/Chores
+# - 🔒 Security
+# - ⚡️ Performance
+# - 🎨 UI/UX
+# - 📦 Installation/Packaging
+# - 🔗 Links
+# - 👥 Contributors
+# - 📝 Notes
+# - ⬆️  Upgrades
+# - ⬇️  Downgrades
+# - ➕ Added
+# - ➖ Removed
+# - 🔄 Changed
+# - 🗑️  Deprecated
+#
+# ==============================================================================
+#
+# Markdown Formatting Tips:
+# ==============================================================================
+#
+# Headers:
+#   # H1, ## H2, ### H3
+#
+# Bold:
+#   **bold text**
+#
+# Italic:
+#   *italic text*
+#
+# Links:
+#   [text](url)
+#   [Issue #123](https://github.com/org/repo/issues/123)
+#
+# Code:
+#   `inline code`
+#   ```language
+#   code block
+#   ```
+#
+# Lists:
+#   - Item 1
+#   - Item 2
+#
+# Horizontal Rule:
+#   ---
+#
+# Blockquote:
+#   > Quote text
+#
+# ==============================================================================
+#
+# Customization Examples:
+# ==============================================================================
+#
+# 1. Grouping by Category:
+#
+# Use metadata.category field to group changes:
+#
+#   {{range .Consignments}}
+#   {{if eq .Metadata.category "api"}}
+#   - API: {{.Summary}}
+#   {{else if eq .Metadata.category "ui"}}
+#   - UI: {{.Summary}}
+#   {{else}}
+#   - {{.Summary}}
+#   {{end}}
+#   {{end}}
+#
+# 2. Highlighting Security Fixes:
+#
+#   {{range .Consignments}}
+#   {{if eq .Metadata.category "security"}}
+#   - 🔒 **SECURITY**: {{.Summary}}
+#   {{else}}
+#   - {{.Summary}}
+#   {{end}}
+#   {{end}}
+#
+# 3. Adding Upgrade Instructions:
+#
+#   ## 📋 Upgrade Instructions
+#
+#   {{if .BreakingChanges}}
+#   ### Breaking Changes
+#
+#   {{range .BreakingChanges}}
+#   #### {{.Summary}}
+#
+#   **Migration Path**:
+#   {{if .Metadata.migration}}
+#   {{.Metadata.migration}}
+#   {{else}}
+#   See documentation for migration guide.
+#   {{end}}
+#
+#   {{end}}
+#   {{end}}
+#
+# 4. Including Asset Links:
+#
+#   ## 📥 Downloads
+#
+#   - [Linux x64](https://github.com/org/repo/releases/download/v{{.Version}}/app-linux-x64)
+#   - [macOS](https://github.com/org/repo/releases/download/v{{.Version}}/app-darwin)
+#   - [Windows](https://github.com/org/repo/releases/download/v{{.Version}}/app-windows.exe)
+#
+# ==============================================================================

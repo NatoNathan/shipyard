@@ -1,0 +1,206 @@
+# Shipyard Base Configuration - Shared Configuration
+#
+# Use Case: Shared configuration for teams/organizations
+#
+# This configuration demonstrates:
+# - Reusable base configuration
+# - Shared templates
+# - Common metadata fields
+# - Team standards
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+# Remote Config: https://shipyard.tamez.dev/docs/remote-config
+
+# Shared Metadata Fields
+# All teams use these standard fields
+metadata:
+  fields:
+    - name: "author"
+      required: true
+      description: "Author email address"
+      type: "string"
+
+    - name: "team"
+      required: false
+      description: "Owning team (platform, frontend, backend, mobile)"
+      type: "string"
+
+    - name: "issue"
+      required: false
+      description: "Issue/ticket reference (JIRA, GitHub, etc.)"
+      type: "string"
+
+    - name: "breaking"
+      required: false
+      description: "Is this a breaking change?"
+      type: "boolean"
+
+# Base Package Definitions
+# Teams can extend with their own packages
+packages:
+  # Shared core library that all teams use
+  - name: "platform-core"
+    path: "./core"
+    ecosystem: "go"
+    dependencies: []
+
+# Shared Template Configuration
+# Enforces consistent changelog and release formats across teams
+templates:
+  # Standard changelog format for organization
+  changelog: |
+    # Changelog
+
+    ## Version {{.Version}}
+
+    Released: {{.Date | date "2006-01-02"}}
+
+    {{range .Consignments}}
+    ### {{.ChangeType | upper}}{{if .Metadata.breaking}} [BREAKING]{{end}}
+
+    {{.Summary}}
+
+    - Author: {{.Metadata.author}}
+    {{if .Metadata.team}}- Team: {{.Metadata.team}}{{end}}
+    {{if .Metadata.issue}}- Reference: {{.Metadata.issue}}{{end}}
+
+    {{end}}
+
+  # Monorepo tag format
+  tagName: "{{.Package}}/v{{.Version}}"
+
+  # Standard release notes
+  releaseNotes: |
+    # {{.Package}} v{{.Version}}
+
+    {{range .Consignments}}
+    ## {{.ChangeType | upper}}{{if .Metadata.breaking}} - BREAKING CHANGE{{end}}
+
+    {{.Summary}}
+
+    *By {{.Metadata.author}}{{if .Metadata.team}} ({{.Metadata.team}} team){{end}}*
+    {{if .Metadata.issue}}*Reference: {{.Metadata.issue}}*{{end}}
+
+    {{end}}
+
+# Default Consignment Storage
+consignments:
+  path: ".shipyard/consignments"
+
+# Default History Storage
+history:
+  path: ".shipyard/history.json"
+
+# ==============================================================================
+# Sharing This Configuration:
+# ==============================================================================
+#
+# Method 1: HTTP/HTTPS URL
+#
+#   Host this file on a web server:
+#     https://configs.your-org.com/shipyard-base.yaml
+#
+#   Teams reference it:
+#     extends:
+#       - "https://configs.your-org.com/shipyard-base.yaml"
+#
+# Method 2: Git Repository (Recommended)
+#
+#   Store in a Git repository:
+#     git@github.com:your-org/configs.git
+#     Path: shipyard/base.yaml
+#
+#   Teams reference it:
+#     extends:
+#       - "git@github.com:your-org/configs.git#shipyard/base.yaml@main"
+#
+#   Or with specific version:
+#     extends:
+#       - "git@github.com:your-org/configs.git#shipyard/base.yaml@v1.0.0"
+#
+# Method 3: Private Repository with Auth
+#
+#   Store in private repository:
+#     git@github.com:your-org/private-configs.git
+#
+#   Teams reference with auth:
+#     extends:
+#       - git: "https://github.com/your-org/private-configs.git"
+#         path: "shipyard/base.yaml"
+#         ref: "main"
+#         auth: "env:GITHUB_TOKEN"
+#
+# ==============================================================================
+#
+# Version Control for Base Config:
+# ==============================================================================
+#
+# Best practices for maintaining shared configs:
+#
+# 1. Use Git tags for versions:
+#    git tag -a v1.0.0 -m "Initial base config"
+#    git push origin v1.0.0
+#
+# 2. Teams pin to specific versions:
+#    extends:
+#      - "git@github.com:org/configs.git#shipyard/base.yaml@v1.0.0"
+#
+# 3. Update process:
+#    a. Make changes to base config
+#    b. Tag new version (v1.1.0)
+#    c. Teams update their extends reference
+#    d. Test and rollout gradually
+#
+# 4. Branch strategy:
+#    - main: Stable, tested configurations
+#    - develop: Experimental configurations
+#    - Teams: Can test with @develop before promoting
+#
+# ==============================================================================
+#
+# Testing Base Config Changes:
+# ==============================================================================
+#
+# Before rolling out to teams:
+#
+# 1. Create test repository:
+#    $ git clone git@github.com:your-org/config-test.git
+#
+# 2. Reference development branch:
+#    extends:
+#      - "git@github.com:org/configs.git#shipyard/base.yaml@develop"
+#
+# 3. Test workflow:
+#    $ shipyard init
+#    $ shipyard add --summary "Test change" --bump patch \
+#      --metadata author="test@example.com"
+#    $ shipyard version
+#
+# 4. Verify:
+#    - Configuration loads correctly
+#    - Templates render properly
+#    - Metadata fields validate
+#    - Tags created correctly
+#
+# ==============================================================================
+#
+# Organization Guidelines:
+# ==============================================================================
+#
+# Repository structure for shared configs:
+#
+# configs/
+# ├── README.md                    # Documentation
+# ├── CHANGELOG.md                 # Config version history
+# ├── shipyard/
+# │   ├── base.yaml                # Base config (this file)
+# │   ├── monorepo.yaml            # Monorepo-specific config
+# │   ├── single-repo.yaml         # Single-repo config
+# │   └── templates/
+# │       ├── changelog-detailed.tmpl
+# │       └── release-notes-team.tmpl
+# └── examples/
+#     ├── frontend-team.yaml       # Example frontend usage
+#     └── backend-team.yaml        # Example backend usage
+#
+# ==============================================================================

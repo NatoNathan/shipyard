@@ -1,0 +1,1 @@
+release-{{ range $i, $pkg := .Packages }}{{ if $i }}-{{ end }}{{ $pkg.Name }}-{{ index $.Versions $pkg.Name }}{{ end }}

@@ -1,0 +1,246 @@
+# Shipyard Configuration - Extending Remote Configuration
+#
+# Use Case: Local project extending shared team/organization configuration
+#
+# This configuration demonstrates:
+# - Extending remote base configuration
+# - Local overrides of remote settings
+# - Adding local packages to remote packages
+# - Customizing templates while keeping base metadata
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+# Remote Config: https://shipyard.tamez.dev/docs/remote-config
+
+# Remote Configuration Extension
+# This project extends the organization's base configuration
+extends:
+  # Public base configuration (no auth required)
+  - "https://configs.acme-corp.com/shipyard/base.yaml"
+
+  # Or: Git repository (recommended)
+  # - "git@github.com:acme-corp/configs.git#shipyard/base.yaml@v1.0.0"
+
+  # Or: Private repository with authentication
+  # - git: "https://github.com/acme-corp/private-configs.git"
+  #   path: "shipyard/base.yaml"
+  #   ref: "v1.0.0"
+  #   auth: "env:CONFIG_TOKEN"
+
+# Local Metadata Additions
+# These fields are added to the base config's metadata fields
+metadata:
+  fields:
+    # Additional local-only field
+    - name: "reviewer"
+      required: false
+      description: "Code reviewer username"
+      type: "string"
+
+# Local Package Definitions
+# These packages are ADDED to the base config's packages
+# Base config defines "platform-core" - we add our team's packages
+packages:
+  # Frontend application (depends on shared core)
+  - name: "web-app"
+    path: "./apps/web"
+    ecosystem: "npm"
+    dependencies:
+      # Depends on shared "platform-core" from base config
+      - package: "platform-core"
+        strategy: "linked"
+
+  # API service (depends on shared core)
+  - name: "api-service"
+    path: "./services/api"
+    ecosystem: "go"
+    dependencies:
+      - package: "platform-core"
+        strategy: "linked"
+
+  # Team-specific library
+  - name: "frontend-utils"
+    path: "./packages/utils"
+    ecosystem: "npm"
+    dependencies: []
+
+# Template Overrides
+# Override specific templates from base config
+# These local templates take precedence over remote templates
+templates:
+  # Keep base changelog template (don't override)
+  # Inherited from base config
+
+  # Override tag format for local needs
+  tagName: "frontend/{{.Package}}/v{{.Version}}"
+
+  # Keep base release notes template (don't override)
+  # Inherited from base config
+
+# Local GitHub Configuration
+# Override base config's GitHub settings
+github:
+  enabled: true
+  owner: "acme-corp"
+  repo: "frontend-platform"
+
+# Keep base consignments path (don't override)
+# Keep base history path (don't override)
+
+# ==============================================================================
+# Configuration Merging Behavior:
+# ==============================================================================
+#
+# When extending remote configs, Shipyard merges configurations:
+#
+# 1. Arrays are APPENDED:
+#    - Base packages: [platform-core]
+#    - Local packages: [web-app, api-service, frontend-utils]
+#    - Merged result: [platform-core, web-app, api-service, frontend-utils]
+#
+#    - Base metadata fields: [author, team, issue, breaking]
+#    - Local metadata fields: [reviewer]
+#    - Merged result: [author, team, issue, breaking, reviewer]
+#
+# 2. Maps are DEEP MERGED (local overwrites remote):
+#    - Base templates: {changelog: "...", tagName: "...", releaseNotes: "..."}
+#    - Local templates: {tagName: "frontend/..."}
+#    - Merged result: {changelog: "..." (base), tagName: "frontend/..." (local), releaseNotes: "..." (base)}
+#
+# 3. Scalars are OVERWRITTEN (local replaces remote):
+#    - Base github.enabled: false
+#    - Local github.enabled: true
+#    - Merged result: true
+#
+# ==============================================================================
+#
+# Multiple Remote Configs:
+# ==============================================================================
+#
+# You can extend from multiple remote configs:
+#
+# extends:
+#   # Organization base config
+#   - "git@github.com:acme-corp/configs.git#base.yaml@v1.0.0"
+#
+#   # Team-specific config
+#   - "git@github.com:acme-corp/configs.git#teams/frontend.yaml@v1.0.0"
+#
+#   # Environment-specific config
+#   - url: "https://configs.internal.acme-corp.com/prod.yaml"
+#     auth: "env:PROD_CONFIG_TOKEN"
+#
+# Merge order: First → Second → Third → Local
+# Later configs override earlier ones
+#
+# ==============================================================================
+#
+# Typical Use Cases:
+# ==============================================================================
+#
+# 1. Organization Base + Team Overrides:
+#    extends:
+#      - "git@github.com:org/configs.git#base.yaml@v1.0.0"
+#    templates:
+#      tagName: "team-prefix/{{.Package}}/v{{.Version}}"
+#
+# 2. Shared Templates + Local Packages:
+#    extends:
+#      - "https://templates.org.com/shipyard.yaml"
+#    packages:
+#      - name: "my-app"
+#        path: "./"
+#        ecosystem: "go"
+#
+# 3. Multi-Environment Configuration:
+#    extends:
+#      - "git@github.com:org/configs.git#shared.yaml@v1.0.0"
+#      - url: "https://configs.internal.org.com/${ENV}.yaml"
+#        auth: "env:CONFIG_TOKEN"
+#
+# ==============================================================================
+#
+# Testing Local Configuration:
+# ==============================================================================
+#
+# 1. Validate configuration loads:
+#    $ shipyard init --force
+#    # Should load without errors
+#
+# 2. Check merged package list:
+#    $ shipyard status
+#    # Should show both base and local packages
+#
+# 3. Verify templates:
+#    $ shipyard add --package web-app --summary "Test" --bump patch \
+#      --metadata author="dev@example.com" --metadata team="frontend"
+#    $ shipyard version --package web-app --dry-run
+#    # Check generated changelog and tag format
+#
+# 4. Verify metadata validation:
+#    $ shipyard add --package web-app --summary "Test" --bump patch
+#    # Should prompt for required fields from base config (author)
+#
+# ==============================================================================
+#
+# Troubleshooting Remote Configs:
+# ==============================================================================
+#
+# Error: "Failed to fetch remote config"
+#
+# Causes:
+# - URL not accessible
+# - Authentication required but not provided
+# - Network connectivity issues
+# - Git repository not found
+#
+# Solutions:
+# - Verify URL is correct
+# - Add auth: "env:TOKEN_VAR" for private resources
+# - Check network/VPN connection
+# - Verify git credentials are configured
+#
+# ---
+#
+# Error: "Circular dependency in remote configs"
+#
+# Cause: Remote config A extends remote config B which extends A
+#
+# Solution: Review extends chain and remove cycle
+#
+# ---
+#
+# Error: "Invalid package reference"
+#
+# Cause: Local package depends on package not in base config
+#
+# Solution: Verify base config contains the referenced package
+#
+# ==============================================================================
+#
+# Best Practices:
+# ==============================================================================
+#
+# 1. Pin Remote Config Versions:
+#    ✅ GOOD: "git@...#base.yaml@v1.0.0"
+#    ❌ BAD:  "git@...#base.yaml@main"
+#
+#    Reason: Prevents unexpected changes from breaking your build
+#
+# 2. Override Only What's Necessary:
+#    Only override templates/settings that need customization
+#    Inherit everything else from base config
+#
+# 3. Document Local Overrides:
+#    Add comments explaining why local config differs from base
+#
+# 4. Test Before Updating Base Config Version:
+#    When base config releases new version:
+#    - Test in development environment first
+#    - Review changelog for breaking changes
+#    - Update gradually across projects
+#
+# 5. Keep Local Config Minimal:
+#    Most configuration should be in base config
+#    Local config should mainly define packages
+#
+# ==============================================================================

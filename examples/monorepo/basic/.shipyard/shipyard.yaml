@@ -1,0 +1,135 @@
+# Shipyard Configuration - Basic Monorepo
+#
+# Use Case: Multiple packages/services versioned independently
+#
+# This configuration demonstrates:
+# - Multiple independent packages
+# - No dependency relationships
+# - Per-package version management
+# - Monorepo-style git tags (package/version)
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+
+# Package Definitions (required)
+# Each package is versioned independently
+packages:
+  # Frontend web application
+  - name: "web-app"
+    path: "./apps/web"
+    ecosystem: "npm"
+    dependencies: []  # No dependencies on other packages
+
+  # Backend API service
+  - name: "api-server"
+    path: "./services/api"
+    ecosystem: "go"
+    dependencies: []  # Versioned independently
+
+  # Worker service
+  - name: "worker"
+    path: "./services/worker"
+    ecosystem: "go"
+    dependencies: []  # Versioned independently
+
+  # Shared utilities (if not depended upon by others)
+  - name: "utils"
+    path: "./packages/utils"
+    ecosystem: "npm"
+    dependencies: []  # Versioned independently
+
+# Template Configuration (optional)
+# Monorepo-style tags include package name
+templates:
+  # Standard changelog format
+  changelog: "builtin:default"
+
+  # Tag format: package-name/vX.Y.Z
+  # This keeps tags organized in monorepos
+  tagName: "{{.Package}}/v{{.Version}}"
+
+  # Release notes with package name
+  releaseNotes: |
+    # {{.Package}} v{{.Version}}
+
+    {{range .Consignments}}
+    ## {{.ChangeType | upper}}
+
+    {{.Summary}}
+
+    {{end}}
+
+# Consignment Storage (optional)
+consignments:
+  path: ".shipyard/consignments"
+
+# History Storage (optional)
+history:
+  path: ".shipyard/history.json"
+
+# GitHub Integration (optional)
+github:
+  enabled: false
+  # owner: "your-org"
+  # repo: "your-monorepo"
+
+# ==============================================================================
+# Monorepo Workflow - Independent Packages:
+# ==============================================================================
+#
+# Each package is versioned independently. Changes to one package don't affect
+# others.
+#
+# 1. Add change to specific package:
+#    $ shipyard add --package web-app --summary "Add dark mode" --bump minor
+#    $ shipyard add --package api-server --summary "Fix auth bug" --bump patch
+#
+# 2. Check pending changes for all packages:
+#    $ shipyard status
+#
+#    Or for specific package:
+#    $ shipyard status --package web-app
+#
+# 3. Version specific package:
+#    $ shipyard version --package web-app
+#    # Creates tag: web-app/v1.2.0
+#
+#    Or version all packages with changes:
+#    $ shipyard version --all
+#
+# 4. Generate release notes for package:
+#    $ shipyard release-notes --package web-app
+#
+# 5. Publish to GitHub:
+#    $ GITHUB_TOKEN=xxx shipyard release-notes --package web-app --publish
+#
+# ==============================================================================
+#
+# Git Tag Organization:
+# ==============================================================================
+#
+# With the tagName template "{{.Package}}/v{{.Version}}", tags are organized:
+#
+#   web-app/v1.0.0
+#   web-app/v1.1.0
+#   api-server/v2.0.0
+#   api-server/v2.0.1
+#   worker/v1.0.0
+#   utils/v0.5.0
+#
+# List tags for a specific package:
+#   $ git tag -l "web-app/*"
+#
+# ==============================================================================
+#
+# When to Use Independent Packages:
+# ==============================================================================
+#
+# Use this pattern when:
+# - Services/apps are deployed independently
+# - No code is shared between packages
+# - Each package has its own release schedule
+# - Version numbers don't need to be synchronized
+#
+# If packages depend on each other, see the "with-dependencies" example.
+#
+# ==============================================================================

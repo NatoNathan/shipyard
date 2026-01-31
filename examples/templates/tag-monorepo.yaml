@@ -1,0 +1,196 @@
+# Shipyard Configuration - Monorepo Tag Format
+#
+# Use Case: Organizing git tags in monorepos with package prefixes
+#
+# This configuration demonstrates:
+# - Package-prefixed tag format
+# - Tag organization strategies
+# - Per-package tag customization
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+# Template Reference: https://shipyard.tamez.dev/docs/templates
+
+packages:
+  - name: "core"
+    path: "./packages/core"
+    ecosystem: "go"
+
+  - name: "api-client"
+    path: "./clients/api"
+    ecosystem: "npm"
+
+  - name: "web-app"
+    path: "./apps/web"
+    ecosystem: "npm"
+    # Override tag format for this package
+    templates:
+      tagName: "web/{{.Version}}"  # Shorter prefix for web app
+
+# Global Template Configuration
+templates:
+  changelog: "builtin:default"
+
+  # Standard monorepo tag format: package-name/vX.Y.Z
+  # This keeps tags organized and easy to filter
+  tagName: "{{.Package}}/v{{.Version}}"
+
+  releaseNotes: |
+    # {{.Package}} v{{.Version}}
+
+    Package: `{{.Package}}`
+    Tag: `{{.Package}}/v{{.Version}}`
+
+    {{range .Consignments}}
+    ## {{.ChangeType | upper}}
+
+    {{.Summary}}
+
+    {{end}}
+
+# ==============================================================================
+# Monorepo Tag Strategies:
+# ==============================================================================
+#
+# 1. Package Prefix (Recommended):
+#    Format: package-name/vX.Y.Z
+#    Example: core/v1.2.0, api-client/v2.0.1, web-app/v1.5.3
+#
+#    Pros:
+#    - Clear package identification
+#    - Easy to filter: git tag -l "core/*"
+#    - Standard monorepo practice
+#
+#    Cons:
+#    - Longer tag names
+#
+#    Template: "{{.Package}}/v{{.Version}}"
+#
+# 2. Package Prefix with Short Names:
+#    Format: short-prefix/vX.Y.Z
+#    Example: core/v1.2.0, api/v2.0.1, web/v1.5.3
+#
+#    Pros:
+#    - Shorter than full package names
+#    - Still organized by package
+#
+#    Cons:
+#    - Requires maintaining prefix mapping
+#    - Use per-package template overrides
+#
+#    Template (per-package):
+#      core:       "core/v{{.Version}}"
+#      api-client: "api/v{{.Version}}"
+#      web-app:    "web/v{{.Version}}"
+#
+# 3. Package and Scope Prefix:
+#    Format: scope/package/vX.Y.Z
+#    Example: services/api/v1.0.0, libs/core/v2.0.0, apps/web/v1.5.0
+#
+#    Pros:
+#    - Hierarchical organization
+#    - Groups by scope (services, libs, apps)
+#
+#    Cons:
+#    - Very long tag names
+#    - More complex to filter
+#
+#    Template: "{{.Scope}}/{{.Package}}/v{{.Version}}"
+#    (Requires custom .Scope metadata field)
+#
+# 4. Hyphenated Package-Version:
+#    Format: package-name-X.Y.Z
+#    Example: core-1.2.0, api-client-2.0.1
+#
+#    Pros:
+#    - Single-level naming
+#    - Works in systems that don't support "/"
+#
+#    Cons:
+#    - Less clear separation
+#    - Harder to filter
+#
+#    Template: "{{.Package}}-{{.Version}}"
+#
+# ==============================================================================
+#
+# Git Tag Operations:
+# ==============================================================================
+#
+# List all tags:
+#   $ git tag
+#
+# List tags for specific package:
+#   $ git tag -l "core/*"
+#   $ git tag -l "api-client/*"
+#
+# List latest tag for package:
+#   $ git tag -l "core/*" | sort -V | tail -1
+#
+# Check out specific version:
+#   $ git checkout core/v1.2.0
+#
+# Delete tag (local):
+#   $ git tag -d core/v1.2.0
+#
+# Delete tag (remote):
+#   $ git push origin :refs/tags/core/v1.2.0
+#
+# Push specific tag:
+#   $ git push origin core/v1.2.0
+#
+# Push all tags:
+#   $ git push origin --tags
+#
+# ==============================================================================
+#
+# Per-Package Tag Customization:
+# ==============================================================================
+#
+# You can override the tag format for specific packages:
+#
+# packages:
+#   # Standard format
+#   - name: "core"
+#     path: "./packages/core"
+#     ecosystem: "go"
+#     # Uses global tagName template
+#
+#   # Custom format for one package
+#   - name: "web-application"
+#     path: "./apps/web"
+#     ecosystem: "npm"
+#     templates:
+#       tagName: "web/{{.Version}}"  # Shorter prefix
+#
+#   # Another custom format
+#   - name: "api-server-prod"
+#     path: "./services/api"
+#     ecosystem: "go"
+#     templates:
+#       tagName: "api-server-{{.Version}}"  # No slash, hyphenated
+#
+# Result:
+#   core/v1.0.0
+#   web/1.0.0
+#   api-server-1.0.0
+#
+# ==============================================================================
+#
+# GitHub Release Integration:
+# ==============================================================================
+#
+# When using --publish flag, tags are used as GitHub release tags:
+#
+#   $ shipyard release-notes --package core --publish
+#
+# Creates GitHub release with:
+# - Tag: core/v1.2.0
+# - Title: core v1.2.0
+# - Body: Release notes from template
+#
+# GitHub release page URL:
+#   https://github.com/your-org/your-repo/releases/tag/core%2Fv1.2.0
+#
+# Note: "/" in tags is URL-encoded as "%2F" in GitHub URLs
+#
+# ==============================================================================

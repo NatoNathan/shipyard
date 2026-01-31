@@ -1,0 +1,19 @@
+packages:
+    - name: shipyard
+      path: ./
+      ecosystem: go
+templates:
+    changelog:
+        source: builtin:default
+    tagName:
+        source: builtin:default
+    releaseNotes:
+        source: builtin:default
+consignments:
+    path: .shipyard/consignments
+history:
+    path: .shipyard/history.json
+github:
+    enabled: false  # GoReleaser handles GitHub releases
+    owner: natonathan
+    repo: shipyard

@@ -1,0 +1,7 @@
+{{ .Package }}/v{{ .Version }}
+
+# Release {{ .Package }} v{{ .Version }}
+
+{{ range .Consignments -}}
+- {{ .Summary }}{{ if .Metadata.author }} ({{ .Metadata.author }}){{ end }}
+{{ end -}}

@@ -1,0 +1,13 @@
+# Release {{ .Version }}
+
+Released on {{ .Date | date "January 2, 2006" }}
+
+## Changes
+
+{{ range .Consignments -}}
+- **{{ .ChangeType | upper }}**: {{ .Summary }}
+{{ end -}}
+
+---
+
+Generated with Shipyard

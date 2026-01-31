@@ -1,0 +1,146 @@
+# Shipyard Configuration - Single Repository (NPM Package)
+#
+# Use Case: JavaScript/TypeScript library or application
+#
+# This configuration demonstrates:
+# - NPM package ecosystem setup
+# - Custom metadata field definitions
+# - Required vs optional metadata
+# - Interactive consignment creation
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+
+# Metadata Field Definitions (optional)
+# Define custom fields that must be captured in every consignment
+# These fields will be prompted during 'shipyard add' and available in templates
+metadata:
+  fields:
+    # Required field: Must be provided in every consignment
+    - name: "author"
+      required: true
+      description: "Author email address"
+      type: "string"
+
+    # Optional field: Can be omitted
+    - name: "issue"
+      required: false
+      description: "JIRA ticket reference (e.g., PROJ-123)"
+      type: "string"
+
+    # Boolean field example
+    - name: "breaking"
+      required: false
+      description: "Is this a breaking change?"
+      type: "boolean"
+
+    # Array field example
+    - name: "platforms"
+      required: false
+      description: "Affected platforms (e.g., web, mobile, desktop)"
+      type: "array"
+
+# Package Definitions (required)
+packages:
+  # Single NPM package
+  - name: "my-package"
+    # Path to package.json location
+    path: "./"
+
+    # NPM ecosystem expects package.json with {"version": "X.Y.Z"}
+    ecosystem: "npm"
+
+    # No dependencies for single-package repos
+    dependencies: []
+
+# Template Configuration (optional)
+# Custom templates can access metadata fields
+templates:
+  # Custom changelog template with metadata
+  # Multiline YAML string (implied inline template)
+  changelog: |
+    # Changelog
+
+    ## Version {{.Version}}
+
+    Released: {{.Date | date "2006-01-02"}}
+
+    {{range .Consignments}}
+    ### {{.ChangeType | upper}}
+
+    {{.Summary}}{{if .Metadata.breaking}} **[BREAKING CHANGE]**{{end}}
+
+    - Author: {{.Metadata.author}}
+    {{if .Metadata.issue}}- Issue: {{.Metadata.issue}}{{end}}
+    {{if .Metadata.platforms}}- Platforms: {{.Metadata.platforms | join ", "}}{{end}}
+
+    {{end}}
+
+  # Simple tag format (single line)
+  tagName: "v{{.Version}}"
+
+  # Enhanced release notes
+  releaseNotes: |
+    # Release {{.Version}}
+
+    {{range .Consignments}}
+    ## {{.ChangeType | upper}}{{if .Metadata.breaking}} - BREAKING CHANGE{{end}}
+
+    {{.Summary}}
+
+    *By {{.Metadata.author}}{{if .Metadata.issue}} - [{{.Metadata.issue}}]{{end}}*
+
+    {{end}}
+
+# Consignment Storage (optional)
+consignments:
+  path: ".shipyard/consignments"
+
+# History Storage (optional)
+history:
+  path: ".shipyard/history.json"
+
+# GitHub Integration (optional)
+github:
+  enabled: false
+  # owner: "your-org"
+  # repo: "your-npm-package"
+
+# ==============================================================================
+# Typical Workflow with Metadata:
+# ==============================================================================
+#
+# 1. Interactive mode (prompts for all fields):
+#    $ shipyard add
+#
+# 2. Non-interactive mode (provide required metadata):
+#    $ shipyard add \
+#      --summary "Add TypeScript support" \
+#      --bump minor \
+#      --metadata author="dev@example.com" \
+#      --metadata issue="PROJ-456" \
+#      --metadata breaking=true
+#
+# 3. Check pending changes:
+#    $ shipyard status
+#
+# 4. Create version:
+#    $ shipyard version
+#    # Updates package.json version field
+#    # Generates changelog with metadata
+#    # Creates git tag
+#
+# 5. Publish to npm:
+#    $ npm publish
+#
+# 6. Create GitHub release:
+#    $ GITHUB_TOKEN=xxx shipyard release-notes --package my-package --publish
+#
+# ==============================================================================
+#
+# Metadata Validation:
+# - 'author' is required - command will fail without it
+# - Other fields are optional
+# - Unknown metadata fields are allowed (forward compatibility)
+# - Type validation ensures values match declared types
+#
+# ==============================================================================

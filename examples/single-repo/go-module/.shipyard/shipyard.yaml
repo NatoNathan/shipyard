@@ -1,0 +1,92 @@
+# Shipyard Configuration - Single Repository (Go Module)
+#
+# Use Case: Simple Go application or library with a single package
+#
+# This configuration demonstrates:
+# - Minimal single-package setup
+# - Built-in template usage
+# - Basic change tracking workflow
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+
+# Package Definitions (required)
+# Define all packages/modules in your repository that need version management
+packages:
+  # Single package configuration for the entire repository
+  - name: "app"
+    # Path relative to repository root
+    # "./" means the root directory contains the Go module
+    path: "./"
+
+    # Ecosystem determines version file location and format
+    # "go" expects: version.go with 'const Version = "X.Y.Z"'
+    #           or: VERSION file with plain "X.Y.Z"
+    ecosystem: "go"
+
+    # Dependencies array (empty for single-package repos)
+    # No dependencies means this package versions independently
+    dependencies: []
+
+# Template Configuration (optional)
+# Templates control how changelogs, tags, and release notes are generated
+# Omit this section to use built-in defaults
+templates:
+  # Changelog template for CHANGELOG.md generation
+  # "builtin:default" uses the standard changelog format
+  changelog: "builtin:default"
+
+  # Tag name format for git tags
+  # "builtin:default" produces "vX.Y.Z" format
+  tagName: "builtin:default"
+
+  # Release notes template for GitHub releases
+  # "builtin:default" uses standard release notes format
+  releaseNotes: "builtin:default"
+
+# Consignment Storage Configuration (optional)
+# Consignments are pending change notes before they're released
+consignments:
+  # Directory where pending consignments are stored
+  # Default: ".shipyard/consignments"
+  path: ".shipyard/consignments"
+
+# History Configuration (optional)
+# History tracks all released versions and their metadata
+history:
+  # File path for version history JSON
+  # Default: ".shipyard/history.json"
+  path: ".shipyard/history.json"
+
+# GitHub Integration Configuration (optional)
+# Enable GitHub release creation when running 'shipyard release-notes --publish'
+github:
+  # Whether to create GitHub releases automatically
+  # Can be overridden by --publish flag or SHIPYARD_GITHUB_PUBLISH env var
+  enabled: false
+
+  # GitHub organization or username (uncomment when enabling)
+  # owner: "your-org"
+
+  # Repository name (uncomment when enabling)
+  # repo: "your-repo"
+
+# ==============================================================================
+# Typical Workflow:
+# ==============================================================================
+#
+# 1. Add a change note:
+#    $ shipyard add --summary "Add user authentication" --bump minor
+#
+# 2. Check pending changes:
+#    $ shipyard status
+#
+# 3. Create a version:
+#    $ shipyard version
+#
+# 4. Generate release notes:
+#    $ shipyard release-notes --package app
+#
+# 5. (Optional) Publish to GitHub:
+#    $ GITHUB_TOKEN=xxx shipyard release-notes --package app --publish
+#
+# ==============================================================================

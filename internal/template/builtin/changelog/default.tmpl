@@ -1,0 +1,19 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [{{ .Version }}] - {{ .Date | date "2006-01-02" }}
+
+{{ range .Consignments -}}
+### {{ .ChangeType | title }}
+
+{{ .Summary }}
+
+{{ if .Metadata.author -}}
+**Author**: {{ .Metadata.author }}
+{{ end -}}
+{{ if .Metadata.issue -}}
+**Issue**: {{ .Metadata.issue }}
+{{ end -}}
+
+{{ end -}}

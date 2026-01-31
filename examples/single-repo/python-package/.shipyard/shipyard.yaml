@@ -1,0 +1,161 @@
+# Shipyard Configuration - Single Repository (Python Package)
+#
+# Use Case: Python library or application
+#
+# This configuration demonstrates:
+# - Python package ecosystem setup
+# - Custom changelog format
+# - Local template file usage
+# - Poetry/setuptools compatibility
+#
+# Documentation: https://shipyard.tamez.dev/docs/config
+
+# Package Definitions (required)
+packages:
+  # Single Python package
+  - name: "mylib"
+    # Path to package root (where pyproject.toml or setup.py exists)
+    path: "./"
+
+    # Python ecosystem expects one of:
+    # - pyproject.toml with: version = "X.Y.Z"
+    # - setup.py with: version="X.Y.Z"
+    # - __version__.py with: __version__ = "X.Y.Z"
+    ecosystem: "python"
+
+    # No dependencies for single-package repos
+    dependencies: []
+
+# Template Configuration (optional)
+# This example shows different template source options
+templates:
+  # Inline template using multiline YAML string
+  # Keep a Changelog format (https://keepachangelog.com/)
+  changelog: |
+    # Changelog
+
+    All notable changes to this project will be documented in this file.
+
+    The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+    and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+    ## [{{.Version}}] - {{.Date | date "2006-01-02"}}
+
+    {{range .Consignments}}
+    ### {{.ChangeType | title}}
+
+    - {{.Summary}}
+
+    {{end}}
+
+  # Simple tag format for Python packages
+  tagName: "v{{.Version}}"
+
+  # Release notes with pip installation instructions
+  releaseNotes: |
+    # Release {{.Version}}
+
+    ## Installation
+
+    ```bash
+    pip install mylib=={{.Version}}
+    ```
+
+    ## Changes
+
+    {{range .Consignments}}
+    ### {{.ChangeType | upper}}
+
+    {{.Summary}}
+
+    {{end}}
+
+    ## Full Changelog
+
+    See [CHANGELOG.md](./CHANGELOG.md) for full history.
+
+# Consignment Storage (optional)
+consignments:
+  path: ".shipyard/consignments"
+
+# History Storage (optional)
+history:
+  path: ".shipyard/history.json"
+
+# GitHub Integration (optional)
+github:
+  enabled: false
+  # owner: "your-org"
+  # repo: "your-python-lib"
+
+# ==============================================================================
+# Python Version File Locations:
+# ==============================================================================
+#
+# Shipyard will look for version in this order:
+#
+# 1. pyproject.toml (Poetry, setuptools)
+#    [tool.poetry]
+#    version = "1.0.0"
+#
+#    or
+#
+#    [project]
+#    version = "1.0.0"
+#
+# 2. setup.py (setuptools)
+#    setup(
+#        version="1.0.0",
+#    )
+#
+# 3. __version__.py
+#    __version__ = "1.0.0"
+#
+# ==============================================================================
+#
+# Typical Workflow:
+# ==============================================================================
+#
+# 1. Add a change note:
+#    $ shipyard add --summary "Add async support" --bump minor
+#
+# 2. Check pending changes:
+#    $ shipyard status
+#
+# 3. Create a version:
+#    $ shipyard version
+#    # Updates pyproject.toml (or setup.py)
+#    # Generates CHANGELOG.md
+#    # Creates git tag
+#
+# 4. Build and publish to PyPI:
+#    $ poetry build
+#    $ poetry publish
+#
+#    or
+#
+#    $ python -m build
+#    $ twine upload dist/*
+#
+# 5. Create GitHub release:
+#    $ GITHUB_TOKEN=xxx shipyard release-notes --package mylib --publish
+#
+# ==============================================================================
+#
+# Poetry Integration:
+# ==============================================================================
+#
+# If using Poetry, version must be in pyproject.toml:
+#
+#   [tool.poetry]
+#   name = "mylib"
+#   version = "0.1.0"  # Shipyard will update this
+#
+# After 'shipyard version', commit and push:
+#
+#   $ git add pyproject.toml CHANGELOG.md
+#   $ git commit -m "Release v1.0.0"
+#   $ git push origin main --tags
+#   $ poetry publish --build
+#
+# ==============================================================================
