@@ -15,6 +15,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Install Shipyard
+        run: |
+          go install ./cmd/shipyard
+
       - name: Check for skip label
         id: skip-check
         run: |
@@ -46,9 +55,9 @@ jobs:
       - name: Check for consignments
         if: steps.skip-check.outputs.skip == 'false' && steps.changed-files.outputs.has_code_changes == 'true'
         run: |
-          # Check if any consignment files were added
+          # Check if any consignment files were added in this PR
           CONSIGNMENT_FILES=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD | grep '^\.shipyard/consignments/.*\.md$' || true)
-          
+
           if [ -z "$CONSIGNMENT_FILES" ]; then
             echo "❌ No consignment found in this PR"
             echo ""
@@ -61,8 +70,19 @@ jobs:
             echo "(e.g., CI config, dev tooling, tests only)"
             exit 1
           else
-            echo "✅ Consignment found:"
+            echo "✅ Consignment files found:"
             echo "$CONSIGNMENT_FILES"
+            echo ""
+            # Validate consignments using shipyard
+            if shipyard status --json > /dev/null 2>&1; then
+              echo "✅ Consignments are valid"
+            else
+              echo "❌ Consignment validation failed"
+              echo ""
+              echo "Please check that consignment files are properly formatted"
+              shipyard status
+              exit 1
+            fi
           fi
 
       - name: Passed

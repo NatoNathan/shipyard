@@ -26,7 +26,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.25"
 
       - name: Install Shipyard
         run: |
@@ -35,7 +35,9 @@ jobs:
       - name: Check for pending consignments
         id: check
         run: |
-          if shipyard status --json | jq -e '.packages | length > 0' > /dev/null; then
+          # Check if status output has any packages with pending consignments
+          # Output format: { "package-name": { "bump": "...", "count": N, ... } }
+          if shipyard status --json | jq -e 'to_entries | length > 0' > /dev/null; then
             echo "has_consignments=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_consignments=false" >> "$GITHUB_OUTPUT"
