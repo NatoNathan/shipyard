@@ -7,36 +7,37 @@ templates:
         source: builtin:default
     tagName:
         source: builtin:default
-    releaseNotes: |
-        # Release Notes
+    releaseNotes:
+        inline: |
+            # Release Notes
 
-        ## {{.Package}} - {{.Version}}
+            ## {{.Package}} - {{.Version}}
 
-        Released: {{.Timestamp | date "2006-01-02"}}
+            Released: {{.Timestamp | date "2006-01-02"}}
 
-        ### Changes
+            ### Changes
 
-        {{range .Consignments}}
-        - **{{.ChangeType}}**: {{.Summary}}
-        {{end}}
+            {{range .Consignments}}
+            - **{{.ChangeType}}**: {{.Summary}}
+            {{end}}
 
-        ## 📦 Installation
+            ## 📦 Installation
 
-        ### Homebrew (macOS/Linux)
+            ### Homebrew (macOS/Linux)
 
-        ```bash
-        brew install natonathan/tap/shipyard
-        ```
+            ```bash
+            brew install natonathan/tap/shipyard
+            ```
 
-        ### Go Install
+            ### Go Install
 
-        ```bash
-        go install github.com/NatoNathan/shipyard/cmd/shipyard@{{.Version}}
-        ```
+            ```bash
+            go install github.com/NatoNathan/shipyard/cmd/shipyard@{{.Version}}
+            ```
 
-        ### Binary Download
+            ### Binary Download
 
-        Download pre-built binaries for your platform from the [Assets](#assets) section below.
+            Download pre-built binaries for your platform from the [Assets](#assets) section below.
 consignments:
     path: .shipyard/consignments
 history:
