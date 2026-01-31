@@ -82,7 +82,7 @@ func (n *NPMEcosystem) GetVersionFiles() []string {
 	packageJSONPath := filepath.Join(n.path, "package.json")
 
 	if _, err := os.Stat(packageJSONPath); err == nil {
-		return []string{packageJSONPath}
+		return []string{"package.json"}
 	}
 
 	return []string{}

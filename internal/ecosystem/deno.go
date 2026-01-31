@@ -102,13 +102,13 @@ func (d *DenoEcosystem) GetVersionFiles() []string {
 	// Check for deno.json
 	denoPath := filepath.Join(d.path, "deno.json")
 	if _, err := os.Stat(denoPath); err == nil {
-		return []string{denoPath}
+		return []string{"deno.json"}
 	}
 
 	// Check for deno.jsonc
 	denoPath = filepath.Join(d.path, "deno.jsonc")
 	if _, err := os.Stat(denoPath); err == nil {
-		return []string{denoPath}
+		return []string{"deno.jsonc"}
 	}
 
 	return []string{}

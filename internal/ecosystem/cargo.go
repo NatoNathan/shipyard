@@ -90,7 +90,7 @@ func (c *CargoEcosystem) UpdateVersion(version semver.Version) error {
 func (c *CargoEcosystem) GetVersionFiles() []string {
 	cargoPath := filepath.Join(c.path, "Cargo.toml")
 	if _, err := os.Stat(cargoPath); err == nil {
-		return []string{cargoPath}
+		return []string{"Cargo.toml"}
 	}
 	return []string{}
 }

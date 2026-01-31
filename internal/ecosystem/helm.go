@@ -82,7 +82,7 @@ func (h *HelmEcosystem) UpdateVersion(version semver.Version) error {
 func (h *HelmEcosystem) GetVersionFiles() []string {
 	chartPath := filepath.Join(h.path, "Chart.yaml")
 	if _, err := os.Stat(chartPath); err == nil {
-		return []string{chartPath}
+		return []string{"Chart.yaml"}
 	}
 	return []string{}
 }

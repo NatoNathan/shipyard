@@ -103,12 +103,12 @@ func (g *GoEcosystem) GetVersionFiles() []string {
 
 	versionGoPath := filepath.Join(g.path, "version.go")
 	if _, err := os.Stat(versionGoPath); err == nil {
-		files = append(files, versionGoPath)
+		files = append(files, "version.go")
 	}
 
 	goModPath := filepath.Join(g.path, "go.mod")
 	if _, err := os.Stat(goModPath); err == nil {
-		files = append(files, goModPath)
+		files = append(files, "go.mod")
 	}
 
 	return files

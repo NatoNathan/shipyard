@@ -89,15 +89,18 @@ func (p *PythonEcosystem) UpdateVersion(version semver.Version) error {
 func (p *PythonEcosystem) GetVersionFiles() []string {
 	var files []string
 
-	candidates := []string{
-		filepath.Join(p.path, "pyproject.toml"),
-		filepath.Join(p.path, "__version__.py"),
-		filepath.Join(p.path, "setup.py"),
+	candidates := []struct {
+		fullPath string
+		filename string
+	}{
+		{filepath.Join(p.path, "pyproject.toml"), "pyproject.toml"},
+		{filepath.Join(p.path, "__version__.py"), "__version__.py"},
+		{filepath.Join(p.path, "setup.py"), "setup.py"},
 	}
 
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			files = append(files, path)
+	for _, c := range candidates {
+		if _, err := os.Stat(c.fullPath); err == nil {
+			files = append(files, c.filename)
 		}
 	}
 
