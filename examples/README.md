@@ -60,10 +60,10 @@ Edit the copied configuration to match your project structure:
 ### 3. Verify Configuration
 
 ```bash
-# Initialize or validate configuration
+# Set sail or validate configuration
 shipyard init --force
 
-# Check package detection
+# Check cargo and chart your course
 shipyard status
 ```
 

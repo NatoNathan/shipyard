@@ -174,7 +174,7 @@ tagName, message, err := generator.GenerateReleaseTagWithContext(
 
 ## Version Command Flow
 
-When running `shipyard version`:
+When sailing to the next port with `shipyard version`:
 
 1. **Read consignments** from `.shipyard/consignments/`
 2. **Calculate version bumps** for each affected package

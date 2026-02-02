@@ -30,14 +30,9 @@ func NewStatusCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Show pending consignments and calculated version bumps",
-		Long: `Display all pending consignments grouped by package with calculated version bumps.
-
-Shows:
-  - Pending consignments grouped by package
-  - Calculated version bump for each package (direct and propagated)
-  - Number of consignments per package
-`,
+		Short: "Check cargo and chart your course",
+		Long: `Review pending cargo and see which ports of call (versions) await. Shows all
+loaded consignments grouped by vessel with calculated destination coordinates.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Check for global --json flag if local --output flag wasn't explicitly set
 			if !cmd.Flags().Changed("output") {

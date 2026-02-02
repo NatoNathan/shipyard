@@ -91,8 +91,8 @@ mocks:
     go generate ./...
 
 # Run the CLI with example config
-run *ARGS:
-    go run ./cmd/shipyard {{ARGS}}
+run *ARGS: build
+    go run ./cmd/shipyard {{ ARGS }}
 
 # Watch for changes and run tests
 watch:
@@ -108,9 +108,9 @@ dev-setup:
 
 # Release build with version information
 release VERSION:
-    @echo "Building release {{VERSION}}..."
-    go build -ldflags "-X main.version={{VERSION}} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/shipyard ./cmd/shipyard
-    @echo "Release {{VERSION}} built successfully!"
+    @echo "Building release {{ VERSION }}..."
+    go build -ldflags "-X main.version={{ VERSION }} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/shipyard ./cmd/shipyard
+    @echo "Release {{ VERSION }} built successfully!"
 
 # Test GoReleaser configuration
 goreleaser-check:

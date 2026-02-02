@@ -1,6 +1,6 @@
 # Shipyard
 
-> Modern CLI tool for managing change notes, versions, and releases across monorepos and single repositories
+> Chart your project's version journey - manage cargo (changes), navigate to new ports (versions), and maintain your ship's log
 
 [![Go Report](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/natonathan/shipyard)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -8,7 +8,7 @@
 
 ## What is Shipyard?
 
-Shipyard automates semantic versioning, changelog generation, and release management for both monorepos and single-package repositories. Instead of manually updating version numbers and changelogs, you create "consignments" (markdown files describing changes), and Shipyard automatically calculates version bumps, updates files, generates changelogs, and creates git tags.
+Shipyard automates semantic versioning, changelog generation, and release management for both monorepos and single-package repositories. Instead of manually updating version numbers and changelogs, you create "consignments" (cargo manifests describing changes), and Shipyard automatically calculates version bumps, navigates your fleet to new version ports, updates ship's logs (changelogs), and plants harbor markers (git tags).
 
 ### Workflow Overview
 
@@ -17,8 +17,8 @@ Shipyard automates semantic versioning, changelog generation, and release manage
 │  shipyard   │─────▶│  shipyard   │─────▶│  shipyard   │─────▶│  shipyard   │
 │     add     │      │   status    │      │   version   │      │release-notes│
 └─────────────┘      └─────────────┘      └─────────────┘      └─────────────┘
-Create change        Review pending       Apply version        Generate &
-notes (markdown)     changes              bump & tag           publish release
+Log cargo in the     Check cargo and      Sail to the next     Tell the tale of
+ship's manifest      chart your course    port                 your voyage
 ```
 
 ## Key Features
@@ -26,7 +26,7 @@ notes (markdown)     changes              bump & tag           publish release
 - **🎯 Semantic Versioning** - Automatic version calculation based on change types (major/minor/patch)
 - **📦 Monorepo Support** - Manage multiple packages with inter-package dependencies
 - **🔗 Version Propagation** - Linked dependencies automatically propagate version changes
-- **📝 Markdown Consignments** - Track changes as reviewable markdown files in PRs
+- **📝 Markdown Consignments** - Track cargo (changes) as reviewable markdown manifests in PRs
 - **🎨 Custom Templates** - Fully customizable changelog and release note formats
 - **🌐 Remote Config** - Share configuration across teams via Git or HTTP
 - **🐙 GitHub Integration** - Optional automated GitHub release creation
@@ -71,33 +71,33 @@ shipyard --version
 
 ### Basic Usage
 
-1. **Initialize Shipyard** in your repository:
+1. **Set sail** - prepare your repository:
    ```bash
    cd /path/to/your/project
    shipyard init
    ```
 
-2. **Create a change note** when you make changes:
+2. **Log cargo** when you make changes:
    ```bash
-   shipyard add --summary "Fix authentication bug" --bump patch
+   shipyard add --summary "Fix authentication bug" --type patch
    ```
 
-3. **Review pending changes**:
+3. **Check cargo** and chart your course:
    ```bash
    shipyard status
    ```
 
-4. **Apply version bump** and generate changelog:
+4. **Sail to the next port** - apply version bumps:
    ```bash
    shipyard version
    ```
 
-5. **Push changes** to remote:
+5. **Push your voyage** to remote:
    ```bash
    git push --follow-tags
    ```
 
-That's it! Your version files, changelog, and git tags are all updated automatically.
+That's it! Your version files, ship's logs (changelogs), and harbor markers (git tags) are all updated automatically.
 
 ## Documentation
 
@@ -187,11 +187,11 @@ templates:
 
 ### Core Commands
 
-- **`shipyard init`** - Initialize Shipyard in a repository
-- **`shipyard add`** - Create a new change note (consignment)
-- **`shipyard status`** - Show pending changes and proposed versions
-- **`shipyard version`** - Apply version bumps and generate changelogs
-- **`shipyard release-notes`** - Generate and optionally publish release notes
+- **`shipyard init`** - Set sail - prepare your repository
+- **`shipyard add`** - Log cargo in the ship's manifest
+- **`shipyard status`** - Check cargo and chart your course
+- **`shipyard version`** - Sail to the next port
+- **`shipyard release-notes`** - Tell the tale of your voyage
 
 ### Flags
 
@@ -260,11 +260,11 @@ just test
 # Run CLI locally
 just run status
 
-# Create a consignment for your changes (required for PRs)
-shipyard add --summary "Add new feature" --bump minor
+# Log cargo for your changes (required for PRs)
+shipyard add --summary "Add new feature" --type minor
 ```
 
-**Important**: All PRs that modify code must include a consignment (change note). This is enforced by CI and ensures proper version tracking.
+**Important**: All PRs that modify code must include a consignment (cargo manifest). This is enforced by CI and ensures proper version tracking.
 
 ## License
 

@@ -18,10 +18,10 @@ var (
 func main() {
 	rootCmd := &cobra.Command{
 		Use:   "shipyard",
-		Short: "Modern CLI tool for managing change notes, versions, and releases",
-		Long: `Shipyard is a CLI tool for managing change notes (consignments), versions,
-and releases across both monorepos and single repositories. It provides
-dependency-aware version propagation and automated changelog generation.`,
+		Short: "Chart your project's version journey",
+		Long: `Navigate your versioning voyage with Shipyard. Manage cargo (changes) across
+your fleet (packages), chart courses to new version ports, and maintain detailed
+ship's logs of your journey.`,
 		Version: version,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Configure logger based on flags

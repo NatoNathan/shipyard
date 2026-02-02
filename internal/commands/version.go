@@ -34,38 +34,30 @@ func NewVersionCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Apply version bumps and generate release artifacts",
-		Long: `Apply version bumps based on pending consignments, generate changelogs,
-create git tags, and archive consignments to history.
+		Short: "Sail to the next port",
+		Long: `Set sail with your cargo and reach the next version port. Navigates the fleet
+through calculated routes, updates ship's logs, plants harbor markers (tags),
+and archives the voyage in history.
 
-This command:
-  1. Reads all pending consignments from .shipyard/consignments/
-  2. Calculates version bumps for each package (including dependency propagation)
-  3. Updates version files in ecosystem-specific formats
-  4. Generates changelogs using configured templates
-  5. Creates git commit with version changes
-  6. Creates annotated git tags for each package
-  7. Archives processed consignments to history.json
-  8. Deletes processed consignment files
+The voyage: Load pending cargo → Chart course with dependency-aware navigation →
+Update fleet coordinates → Record in ship's logs → Mark harbors with buoys →
+Archive journey in captain's log.
 
 Examples:
-  # Apply all pending version bumps
+  # Set sail for all vessels
   shipyard version
 
-  # Preview changes without applying
+  # Preview the route without sailing
   shipyard version --preview
 
-  # Version specific packages only
+  # Sail specific vessels only
   shipyard version --package core --package api
 
-  # Update versions and changelog, but don't commit
+  # Navigate but don't record the voyage
   shipyard version --no-commit
 
-  # Update versions and commit, but don't create tags
+  # Sail and record, but don't plant harbor markers
   shipyard version --no-tag
-
-  # Verbose output showing all steps
-  shipyard version --verbose
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runVersion(opts)
@@ -278,7 +270,33 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 	}
 
-	// 7. Create git operations (skip if preview/no-commit/no-tag)
+	// 3. Archive consignments to history (unless preview)
+	if !opts.Preview {
+		historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
+		if err := history.AppendToHistory(historyPath, consignments); err != nil {
+			return fmt.Errorf("failed to archive consignments: %w", err)
+		}
+
+		if opts.Verbose {
+			fmt.Printf("Archived %d consignment(s) to history\n", len(consignments))
+		}
+	}
+
+	// 4. Delete processed consignment files (unless preview)
+	if !opts.Preview {
+		for _, c := range consignments {
+			consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
+			if err := os.Remove(consignmentPath); err != nil {
+				return fmt.Errorf("failed to delete consignment %s: %w", c.ID, err)
+			}
+		}
+
+		if opts.Verbose {
+			fmt.Printf("Deleted %d consignment file(s)\n", len(consignments))
+		}
+	}
+
+	// 5. Create git operations (skip if preview/no-commit/no-tag)
 	if !opts.Preview {
 		// Collect files to stage (version files + changelogs)
 		filesToStage := []string{}
@@ -324,6 +342,18 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 					filesToStage = append(filesToStage, changelogPath)
 				}
 			}
+		}
+
+		// Add history.json to staging
+		historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
+		if _, err := os.Stat(historyPath); err == nil {
+			filesToStage = append(filesToStage, historyPath)
+		}
+
+		// Add deleted consignment files to staging
+		for _, c := range consignments {
+			consignmentPath := filepath.Join(projectPath, ".shipyard", "consignments", c.ID+".md")
+			filesToStage = append(filesToStage, consignmentPath)
 		}
 
 		// Create generator for commit message and tags
@@ -419,32 +449,6 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 			if opts.Verbose {
 				fmt.Printf("Created %d tag(s)\n", len(packageTags))
 			}
-		}
-	}
-
-	// 8. Archive consignments to history (unless preview)
-	if !opts.Preview {
-		historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
-		if err := history.AppendToHistory(historyPath, consignments); err != nil {
-			return fmt.Errorf("failed to archive consignments: %w", err)
-		}
-
-		if opts.Verbose {
-			fmt.Printf("Archived %d consignment(s) to history\n", len(consignments))
-		}
-	}
-
-	// 9. Delete processed consignment files (unless preview)
-	if !opts.Preview {
-		for _, c := range consignments {
-			consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
-			if err := os.Remove(consignmentPath); err != nil {
-				return fmt.Errorf("failed to delete consignment %s: %w", c.ID, err)
-			}
-		}
-
-		if opts.Verbose {
-			fmt.Printf("Deleted %d consignment file(s)\n", len(consignments))
 		}
 	}
 

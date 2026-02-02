@@ -410,18 +410,11 @@ func AddCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Create a new consignment (change note)",
-		Long: `Create a new consignment to document code changes.
-
-Consignments are used to track changes across packages and generate version
-bumps and changelogs. Each consignment records:
-  - Which packages are affected
-  - The type of change (patch/minor/major)
-  - A detailed summary of the change
-  - Optional metadata (author, issue tracker, etc.)
-
-In interactive mode (no flags), you'll be prompted for each field.
-In non-interactive mode (with flags), the consignment is created immediately.`,
+		Short: "Log cargo in the ship's manifest",
+		Long: `Record new cargo in your ship's manifest. Each consignment documents what's
+being shipped (changes), which vessels carry it (packages), and how it affects
+the voyage (patch/minor/major). Interactive mode guides you through manifest
+creation, or use flags to log cargo directly.`,
 		Example: `  # Interactive mode
   shipyard add
 

@@ -23,11 +23,10 @@ func NewReleaseNotesCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "release-notes",
-		Short: "Generate release notes from version history",
-		Long: `Generate formatted release notes from the version history.
-
-By default, outputs to stdout. Use --output to write to a file.
-Use --package to filter by specific package.`,
+		Short: "Tell the tale of your voyage",
+		Long: `Recount the journey from the captain's log. Transforms version history into
+tales of ports visited and cargo delivered. Filter by vessel or destination,
+write to parchment (file) or speak aloud (stdout).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runReleaseNotes(opts)
 		},

@@ -31,23 +31,13 @@ func InitCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Initialize Shipyard in the current repository",
-		Long: `Initialize Shipyard by creating the necessary configuration files and directory structure.
+		Short: "Set sail - prepare your repository",
+		Long: `Prepare your repository for the versioning voyage ahead. Sets up the shipyard
+with cargo manifests, navigation charts, and the captain's log.
 
-This command will:
-  1. Verify the directory is a git repository
-  2. Prompt for repository type (monorepo vs single)
-  3. Detect or configure packages
-  4. Create .shipyard/shipyard.yaml configuration
-  5. Create .shipyard/consignments/ directory for pending changes
-  6. Create .shipyard/history.json for processed changes
-
-Interactive mode is enabled by default. You will be prompted to:
-  - Choose between monorepo or single repository
-  - Review and select detected packages
-  - Confirm package details
-
-Use --yes to skip all prompts and accept defaults.`,
+In interactive mode, you'll configure your fleet (packages) and choose between
+sailing solo or commanding a flotilla (monorepo). Use --yes to set sail with
+default configurations.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get current working directory
 			cwd, err := os.Getwd()

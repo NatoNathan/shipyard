@@ -11,11 +11,9 @@ import (
 func NewCompletionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish|powershell]",
-		Short: "Generate shell completion script",
-		Long: `Generate shell completion scripts for Shipyard.
-
-The completion command generates shell completion scripts for various shells.
-These scripts enable tab-completion for commands, flags, and arguments.
+		Short: "Teach your shell to speak Shipyard",
+		Long: `Train your shell to understand the shipyard's language. Enables your navigator
+(shell) to suggest commands, flags, and arguments as you chart your course.
 
 Installation Instructions:
 
