@@ -112,14 +112,20 @@ release VERSION:
     go build -ldflags "-X main.version={{ VERSION }} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/shipyard ./cmd/shipyard
     @echo "Release {{ VERSION }} built successfully!"
 
-# Test GoReleaser configuration
-goreleaser-check:
-    goreleaser check
+# Test Dagger build stage
+dagger-build:
+    ./bin/dagger call -m ./dagger build-only --source=. --version=v0.0.0-dev
 
-# Build snapshot (no release)
-goreleaser-snapshot:
-    goreleaser release --snapshot --clean
+# Test Dagger package stage (exports to ./dist)
+dagger-package:
+    ./bin/dagger call -m ./dagger package-only --source=. --version=v0.0.0-dev export --path=./dist
 
-# Release (requires git tag)
-goreleaser-release:
-    goreleaser release --clean
+# Test full Dagger release pipeline (requires tokens)
+dagger-test-release:
+    ./bin/dagger call -m ./dagger release \
+      --source=. \
+      --version=v0.0.0-test \
+      --github-token=env:GITHUB_TOKEN \
+      --npm-token=env:NPM_TOKEN \
+      --docker-registry=ghcr.io/natonathan/shipyard \
+      --docker-token=env:GITHUB_TOKEN

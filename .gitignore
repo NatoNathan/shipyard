@@ -43,3 +43,6 @@ bin/
 *.tmp
 *.log
 .env*
+
+
+history.json.lock

@@ -3,13 +3,14 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,29 +18,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up Dagger
+        uses: dagger/dagger-for-github@v6
         with:
-          go-version: '1.25'
+          version: "latest"
 
-      - name: Run GoReleaser (creates draft)
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
+      - name: Run Dagger Release Pipeline
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-
-      - name: Generate Release Notes
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION_TAG: ${{ github.ref_name }}
         run: |
-          go install ./cmd/shipyard
-          shipyard release-notes --package shipyard > release-notes.md
-
-      - name: Update and Publish Release
-        run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          gh release edit "$TAG" --draft=false --notes-file release-notes.md
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          dagger call -m ./dagger release \
+            --source=. \
+            --version="$VERSION_TAG" \
+            --github-token=env:GITHUB_TOKEN \
+            --npm-token=env:NPM_TOKEN \
+            --docker-registry=ghcr.io/natonathan/shipyard \
+            --docker-token=env:GITHUB_TOKEN

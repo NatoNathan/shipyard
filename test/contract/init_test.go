@@ -147,7 +147,7 @@ func TestInitContract_HelpFlag(t *testing.T) {
 
 	// Verify output contains help information
 	outputStr := string(output)
-	assert.Contains(t, outputStr, "Initialize Shipyard", "Output should contain command description")
+	assert.Contains(t, outputStr, "Prepare your repository", "Output should contain command description")
 	assert.Contains(t, outputStr, "Usage:", "Output should contain usage section")
 	assert.Contains(t, outputStr, "--force", "Output should mention --force flag")
 	assert.Contains(t, outputStr, "--remote", "Output should mention --remote flag")
