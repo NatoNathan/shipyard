@@ -189,7 +189,7 @@ func TestAddContract_HelpFlag(t *testing.T) {
 
 	// Verify output contains help information
 	outputStr := string(output)
-	assert.Contains(t, outputStr, "Create a new consignment", "Output should contain command description")
+	assert.Contains(t, outputStr, "Record new cargo", "Output should contain command description")
 	assert.Contains(t, outputStr, "Usage:", "Output should contain usage section")
 	assert.Contains(t, outputStr, "--package", "Output should mention --package flag")
 	assert.Contains(t, outputStr, "--type", "Output should mention --type flag")
