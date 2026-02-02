@@ -51,8 +51,8 @@ jobs:
 
           shipyard version
 
-          # Push commit and tags
-          git push --follow-tags
+          # Push commit and all tags
+          git push && git push --tags
 
       - name: No consignments
         if: steps.check.outputs.has_consignments == 'false'

@@ -30,7 +30,7 @@ ship's manifest      chart your course    port                 your voyage
 - **🎨 Custom Templates** - Fully customizable changelog and release note formats
 - **🌐 Remote Config** - Share configuration across teams via Git or HTTP
 - **🐙 GitHub Integration** - Optional automated GitHub release creation
-- **🚀 Multi-Ecosystem** - Supports Go, NPM, Python, and Docker
+- **🚀 Multi-Ecosystem** - Supports Go, NPM, Python, Helm, Cargo (Rust), and Deno
 
 ## Quick Start
 
@@ -201,7 +201,7 @@ Perfect for libraries, applications, or services with one package:
 packages:
   - name: "app"
     path: "./"
-    ecosystem: "go"  # or npm, python, docker
+    ecosystem: "go"  # or npm, python, helm, cargo, deno
 ```
 
 **See**: [Single-repo examples](examples/single-repo/)
@@ -306,10 +306,12 @@ github:
 ```
 
 **Supported Ecosystems**:
-- **Go**: `version.go` with `const Version = "X.Y.Z"`
+- **Go**: `version.go` with `const Version = "X.Y.Z"` or `go.mod` with `// version: X.Y.Z`
 - **NPM**: `package.json` with `"version": "X.Y.Z"`
-- **Python**: `pyproject.toml`, `setup.py`, or `__version__.py`
-- **Docker**: `Dockerfile` with `LABEL version="X.Y.Z"`
+- **Python**: `pyproject.toml` (Poetry or PEP 621), `__version__.py`, or `setup.py`
+- **Helm**: `Chart.yaml` with `version: X.Y.Z`
+- **Cargo (Rust)**: `Cargo.toml` with `version = "X.Y.Z"` in `[package]`
+- **Deno**: `deno.json` or `deno.jsonc` with `"version": "X.Y.Z"`
 
 See [Configuration Schema](https://shipyard.tamez.dev/docs/config) for full details and [examples/](examples/) for real-world configurations.
 
