@@ -25,14 +25,15 @@ jobs:
 
       - name: Run Dagger Release Pipeline
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DOCKER_TOKEN: ${{ github.token }}
           VERSION_TAG: ${{ github.ref_name }}
         run: |
           dagger call -m ./dagger release \
             --source=. \
             --version="$VERSION_TAG" \
-            --github-token=env:GITHUB_TOKEN \
+            --github-token=env:GH_TOKEN \
             --npm-token=env:NPM_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
-            --docker-token=env:GITHUB_TOKEN
+            --docker-token=env:DOCKER_TOKEN

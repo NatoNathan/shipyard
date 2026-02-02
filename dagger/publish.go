@@ -21,12 +21,20 @@ func (m *Shipyard) PublishGitHub(
 ) error {
 	repo := "NatoNathan/shipyard"
 
-	// Container with GitHub CLI
+	// Container with GitHub CLI (installed from Alpine packages to avoid ghcr.io pull issues)
 	gh := dag.Container().
-		From("ghcr.io/cli/cli:latest").
+		From("alpine:latest").
+		WithExec([]string{"apk", "add", "--no-cache", "--repository=https://dl-cdn.alpinelinux.org/alpine/edge/community", "github-cli"}).
 		WithSecretVariable("GITHUB_TOKEN", githubToken).
 		WithMountedDirectory("/artifacts", artifacts).
 		WithWorkdir("/artifacts")
+
+	// Delete existing release if present (idempotent for re-runs)
+	fmt.Printf("Cleaning up any existing release %s...\n", version)
+	gh = gh.WithExec([]string{
+		"sh", "-c",
+		"gh release delete " + version + " --repo " + repo + " --yes 2>/dev/null || true",
+	})
 
 	// Create draft release with all artifacts
 	fmt.Printf("Creating GitHub release %s...\n", version)
@@ -130,9 +138,8 @@ func (m *Shipyard) PublishHomebrew(
 		WithSecretVariable("GITHUB_TOKEN", githubToken).
 		WithWorkdir("/work").
 		WithExec([]string{
-			"git", "clone",
-			fmt.Sprintf("https://x-access-token:$(cat /run/secrets/GITHUB_TOKEN)@github.com/%s.git", repo),
-			".",
+			"sh", "-c",
+			fmt.Sprintf("git clone https://x-access-token:$GITHUB_TOKEN@github.com/%s.git .", repo),
 		}).
 		WithNewFile("Formula/shipyard.rb", formula).
 		WithExec([]string{"git", "config", "user.name", "github-actions[bot]"}).
@@ -141,7 +148,7 @@ func (m *Shipyard) PublishHomebrew(
 		WithExec([]string{"git", "commit", "-m", fmt.Sprintf("Update shipyard to %s", version)}).
 		WithExec([]string{
 			"sh", "-c",
-			"git push https://x-access-token:$(cat /run/secrets/GITHUB_TOKEN)@github.com/" + repo + ".git main",
+			"git push https://x-access-token:$GITHUB_TOKEN@github.com/" + repo + ".git main",
 		})
 
 	_, err = git.Sync(ctx)
