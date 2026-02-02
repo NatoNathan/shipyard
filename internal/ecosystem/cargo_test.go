@@ -146,9 +146,9 @@ func TestCargoEcosystem_GetVersionFiles(t *testing.T) {
 		cargo := NewCargoEcosystem(tempDir)
 		files := cargo.GetVersionFiles()
 
-		// Verify: Cargo.toml returned
+		// Verify: Cargo.toml returned (relative path)
 		require.Len(t, files, 1)
-		assert.Equal(t, cargoPath, files[0])
+		assert.Equal(t, "Cargo.toml", files[0])
 	})
 
 	t.Run("returns empty for missing Cargo.toml", func(t *testing.T) {
