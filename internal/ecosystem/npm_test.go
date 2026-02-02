@@ -174,7 +174,7 @@ func TestNPMEcosystem_GetVersionFiles(t *testing.T) {
 	eco := NewNPMEcosystem(tmpDir)
 	files := eco.GetVersionFiles()
 
-	assert.Contains(t, files, packageJSONPath)
+	assert.Contains(t, files, "package.json")
 }
 
 func TestNPMEcosystem_Detect(t *testing.T) {

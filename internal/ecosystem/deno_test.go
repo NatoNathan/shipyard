@@ -163,9 +163,9 @@ func TestDenoEcosystem_GetVersionFiles(t *testing.T) {
 		deno := NewDenoEcosystem(tempDir)
 		files := deno.GetVersionFiles()
 
-		// Verify: deno.json returned
+		// Verify: deno.json returned (relative path)
 		require.Len(t, files, 1)
-		assert.Equal(t, denoPath, files[0])
+		assert.Equal(t, "deno.json", files[0])
 	})
 
 	t.Run("returns deno.jsonc path", func(t *testing.T) {
@@ -178,9 +178,9 @@ func TestDenoEcosystem_GetVersionFiles(t *testing.T) {
 		deno := NewDenoEcosystem(tempDir)
 		files := deno.GetVersionFiles()
 
-		// Verify: deno.jsonc returned
+		// Verify: deno.jsonc returned (relative path)
 		require.Len(t, files, 1)
-		assert.Equal(t, denoPath, files[0])
+		assert.Equal(t, "deno.jsonc", files[0])
 	})
 
 	t.Run("returns empty for missing config", func(t *testing.T) {

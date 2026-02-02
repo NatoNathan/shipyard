@@ -278,8 +278,8 @@ func TestGoEcosystem_GetVersionFiles(t *testing.T) {
 	eco := NewGoEcosystem(tmpDir)
 	files := eco.GetVersionFiles()
 
-	// Should return at least version.go
-	assert.Contains(t, files, filepath.Join(tmpDir, "version.go"))
+	// Should return at least version.go (relative path)
+	assert.Contains(t, files, "version.go")
 }
 
 func TestGoEcosystem_Detect(t *testing.T) {

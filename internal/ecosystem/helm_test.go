@@ -144,9 +144,9 @@ func TestHelmEcosystem_GetVersionFiles(t *testing.T) {
 		helm := NewHelmEcosystem(tempDir)
 		files := helm.GetVersionFiles()
 
-		// Verify: Chart.yaml returned
+		// Verify: Chart.yaml returned (relative path)
 		require.Len(t, files, 1)
-		assert.Equal(t, chartPath, files[0])
+		assert.Equal(t, "Chart.yaml", files[0])
 	})
 
 	t.Run("returns empty for missing Chart.yaml", func(t *testing.T) {
