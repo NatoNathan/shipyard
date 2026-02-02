@@ -36,38 +36,116 @@ ship's manifest      chart your course    port                 your voyage
 
 ### Installation
 
-**Go Install (Recommended)**:
+**Quick Install (macOS/Linux)**:
 ```bash
-go install github.com/natonathan/shipyard/cmd/shipyard@latest
+curl -sSL https://raw.githubusercontent.com/natonathan/shipyard/main/install.sh | sh
 ```
 
-**Download Binary**:
+This script automatically detects your platform, downloads the latest release, verifies checksums, and installs to `/usr/local/bin/shipyard`.
+
+**Custom installation directory**:
 ```bash
-# macOS (Apple Silicon)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard-darwin-arm64
-chmod +x shipyard-darwin-arm64
-sudo mv shipyard-darwin-arm64 /usr/local/bin/shipyard
-
-# macOS (Intel)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard-darwin-amd64
-chmod +x shipyard-darwin-amd64
-sudo mv shipyard-darwin-amd64 /usr/local/bin/shipyard
-
-# Linux (x86_64)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard-linux-amd64
-chmod +x shipyard-linux-amd64
-sudo mv shipyard-linux-amd64 /usr/local/bin/shipyard
+curl -sSL https://raw.githubusercontent.com/natonathan/shipyard/main/install.sh | INSTALL_DIR=~/.local/bin sh
 ```
 
-**Homebrew**:
+---
+
+**Homebrew (macOS/Linux)**:
 ```bash
 brew install natonathan/tap/shipyard
 ```
 
-**Verify Installation**:
+---
+
+**npm (Cross-platform)**:
+```bash
+# Global install
+npm install -g shipyard-cli
+
+# Or use without installing
+npx shipyard-cli [command]
+```
+
+**Note**: The npm package downloads the platform-specific binary automatically on installation.
+
+---
+
+**Go Install (Developers)**:
+```bash
+go install github.com/natonathan/shipyard/cmd/shipyard@latest
+```
+
+---
+
+**Docker (Containerized)**:
+```bash
+# Pull the image
+docker pull ghcr.io/natonathan/shipyard:latest
+
+# Run commands
+docker run --rm -v $(pwd):/workspace -w /workspace ghcr.io/natonathan/shipyard:latest [command]
+
+# Example: Check version
+docker run --rm ghcr.io/natonathan/shipyard:latest --version
+```
+
+**Available tags**: `latest`, `v1.2.3`, `1.2.3`
+**Platforms**: `linux/amd64`, `linux/arm64`
+
+---
+
+**Direct Binary Download (Manual)**:
+```bash
+# macOS (Apple Silicon)
+curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_darwin_arm64.tar.gz
+tar -xzf shipyard_v1.0.0_darwin_arm64.tar.gz
+chmod +x shipyard
+sudo mv shipyard /usr/local/bin/shipyard
+
+# macOS (Intel)
+curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_darwin_amd64.tar.gz
+tar -xzf shipyard_v1.0.0_darwin_amd64.tar.gz
+chmod +x shipyard
+sudo mv shipyard /usr/local/bin/shipyard
+
+# Linux (x86_64)
+curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_linux_amd64.tar.gz
+tar -xzf shipyard_v1.0.0_linux_amd64.tar.gz
+chmod +x shipyard
+sudo mv shipyard /usr/local/bin/shipyard
+
+# Linux (ARM64)
+curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_linux_arm64.tar.gz
+tar -xzf shipyard_v1.0.0_linux_arm64.tar.gz
+chmod +x shipyard
+sudo mv shipyard /usr/local/bin/shipyard
+
+# Windows (PowerShell)
+Invoke-WebRequest -Uri "https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_windows_amd64.zip" -OutFile "shipyard.zip"
+Expand-Archive -Path shipyard.zip -DestinationPath .
+Move-Item -Path shipyard.exe -Destination "C:\Program Files\shipyard\shipyard.exe"
+```
+
+**Note**: Replace `v1.0.0` with the actual version number from the [releases page](https://github.com/natonathan/shipyard/releases/latest).
+
+---
+
+### Verify Installation
+
+Check that Shipyard is installed correctly:
+
 ```bash
 shipyard --version
+# Output: shipyard version v1.0.0 (commit: abc1234, built: 2026-02-02T19:14:46Z)
+
+shipyard --help
+# Shows available commands
 ```
+
+**Supported Platforms**:
+- macOS: Intel (amd64), Apple Silicon (arm64)
+- Linux: x86_64 (amd64), ARM64 (arm64)
+- Windows: x86_64 (amd64)
 
 ### Basic Usage
 

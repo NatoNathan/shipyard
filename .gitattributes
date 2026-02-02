@@ -1,0 +1,2 @@
+# Ensure shell scripts use Unix line endings (LF not CRLF)
+install.sh text eol=lf
