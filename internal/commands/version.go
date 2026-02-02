@@ -26,6 +26,8 @@ type VersionCommandOptions struct {
 	NoTag    bool     // --no-tag: Skip git tag creation
 	Packages []string // --package: Filter to specific packages
 	Verbose  bool     // --verbose: Show detailed output
+	Release  bool     // --release: Create a GitHub release after tagging
+	Draft    bool     // --draft: Create GitHub release as draft (requires --release)
 }
 
 // NewVersionCommand creates the version command
@@ -58,6 +60,12 @@ Examples:
 
   # Sail and record, but don't plant harbor markers
   shipyard version --no-tag
+
+  # Version and create a GitHub release
+  shipyard version --release
+
+  # Version and create a draft GitHub release
+  shipyard version --release --draft
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runVersion(opts)
@@ -70,6 +78,8 @@ Examples:
 	cmd.Flags().BoolVar(&opts.NoTag, "no-tag", false, "Skip creating git tags")
 	cmd.Flags().StringSliceVarP(&opts.Packages, "package", "p", []string{}, "Filter to specific packages (can be specified multiple times)")
 	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "Show detailed output")
+	cmd.Flags().BoolVar(&opts.Release, "release", false, "Create a GitHub release after tagging")
+	cmd.Flags().BoolVar(&opts.Draft, "draft", false, "Create GitHub release as draft (requires --release)")
 
 	// Register package name completion
 	RegisterPackageCompletions(cmd, "package")
@@ -448,6 +458,19 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 
 			if opts.Verbose {
 				fmt.Printf("Created %d tag(s)\n", len(packageTags))
+			}
+
+			// Create GitHub releases if --release flag is set
+			if opts.Release {
+				for _, tag := range packageTags {
+					releaseOpts := &ReleaseOptions{
+						Version: tag.Name,
+						Draft:   opts.Draft,
+					}
+					if err := runReleaseWithDir(projectPath, releaseOpts); err != nil {
+						return fmt.Errorf("failed to create GitHub release for %s: %w", tag.Name, err)
+					}
+				}
 			}
 		}
 	}

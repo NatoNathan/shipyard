@@ -43,6 +43,7 @@ consignments:
 history:
     path: .shipyard/history.json
 github:
-    enabled: false  # GoReleaser handles GitHub releases
+    enabled: true
     owner: natonathan
     repo: shipyard
+    token: "env:GITHUB_TOKEN"

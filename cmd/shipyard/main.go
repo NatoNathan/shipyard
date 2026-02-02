@@ -53,6 +53,7 @@ ship's logs of your journey.`,
 	rootCmd.AddCommand(commands.AddCmd())
 	rootCmd.AddCommand(commands.NewVersionCommand())
 	rootCmd.AddCommand(commands.NewStatusCommand())
+	rootCmd.AddCommand(commands.NewReleaseCommand())
 	rootCmd.AddCommand(commands.NewReleaseNotesCommand())
 	rootCmd.AddCommand(commands.NewCompletionCommand())
 

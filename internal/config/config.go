@@ -92,9 +92,10 @@ type HistoryConfig struct {
 
 // GitHubConfig holds GitHub integration settings
 type GitHubConfig struct {
-	Owner string `yaml:"owner,omitempty"`
-	Repo  string `yaml:"repo,omitempty"`
-	Token string `yaml:"token,omitempty"` // Format: "env:VAR_NAME"
+	Enabled bool   `yaml:"enabled,omitempty"`
+	Owner   string `yaml:"owner,omitempty"`
+	Repo    string `yaml:"repo,omitempty"`
+	Token   string `yaml:"token,omitempty"` // Format: "env:VAR_NAME"
 }
 
 // Package represents a versionable package
