@@ -1,6 +1,6 @@
 module github.com/NatoNathan/shipyard
 
-// version: 0.0.0
+// version: 0.1.0
 
 go 1.25.1
 
