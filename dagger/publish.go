@@ -331,7 +331,6 @@ process.exit(result.status || 0);
 func (m *Shipyard) generateInstallScript(version string) string {
 	return fmt.Sprintf(`const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const tar = require('tar');
 const AdmZip = require('adm-zip');
 
@@ -359,71 +358,52 @@ const url = 'https://github.com/NatoNathan/shipyard/releases/download/' + versio
 
 console.log('Downloading shipyard binary for', platform);
 
-// Helper function to follow redirects (GitHub returns 302 to release-assets.githubusercontent.com)
-function download(url, maxRedirects = 5) {
-  return new Promise((resolve, reject) => {
-    if (maxRedirects <= 0) {
-      return reject(new Error('Too many redirects'));
-    }
-
-    https.get(url, (res) => {
-      // Handle redirects (301, 302, 303, 307, 308)
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return resolve(download(res.headers.location, maxRedirects - 1));
-      }
-
-      if (res.statusCode !== 200) {
-        return reject(new Error('Failed to download: ' + res.statusCode));
-      }
-
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', reject);
-    }).on('error', reject);
-  });
-}
-
-download(url)
-  .then((buffer) => {
-    // Ensure bin directory exists
-    if (!fs.existsSync(binDir)) {
-      fs.mkdirSync(binDir, { recursive: true });
-    }
-
-    // Extract based on format
-    const extractedName = process.platform === 'win32' ? 'shipyard.exe' : 'shipyard';
-    const extractedPath = path.join(binDir, extractedName);
-
-    if (ext === 'zip') {
-      const zip = new AdmZip(buffer);
-      zip.extractAllTo(binDir, true);
-    } else {
-      const tmpPath = path.join(binDir, filename);
-      fs.writeFileSync(tmpPath, buffer);
-      tar.x({ file: tmpPath, cwd: binDir, sync: true });
-      fs.unlinkSync(tmpPath);
-    }
-
-    // Rename extracted binary to hidden name
-    if (fs.existsSync(extractedPath)) {
-      if (fs.existsSync(binPath)) {
-        fs.unlinkSync(binPath);
-      }
-      fs.renameSync(extractedPath, binPath);
-    }
-
-    // Make executable
-    if (process.platform !== 'win32') {
-      fs.chmodSync(binPath, 0o755);
-    }
-
-    console.log('✓ Shipyard installed successfully');
-  })
-  .catch((err) => {
-    console.error('Download failed:', err.message);
+(async () => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error('Failed to download:', res.status, res.statusText);
     process.exit(1);
-  });
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  // Ensure bin directory exists
+  if (!fs.existsSync(binDir)) {
+    fs.mkdirSync(binDir, { recursive: true });
+  }
+
+  // Extract based on format
+  const extractedName = process.platform === 'win32' ? 'shipyard.exe' : 'shipyard';
+  const extractedPath = path.join(binDir, extractedName);
+
+  if (ext === 'zip') {
+    const zip = new AdmZip(buffer);
+    zip.extractAllTo(binDir, true);
+  } else {
+    const tmpPath = path.join(binDir, filename);
+    fs.writeFileSync(tmpPath, buffer);
+    tar.x({ file: tmpPath, cwd: binDir, sync: true });
+    fs.unlinkSync(tmpPath);
+  }
+
+  // Rename extracted binary to hidden name
+  if (fs.existsSync(extractedPath)) {
+    if (fs.existsSync(binPath)) {
+      fs.unlinkSync(binPath);
+    }
+    fs.renameSync(extractedPath, binPath);
+  }
+
+  // Make executable
+  if (process.platform !== 'win32') {
+    fs.chmodSync(binPath, 0o755);
+  }
+
+  console.log('✓ Shipyard installed successfully');
+})().catch((err) => {
+  console.error('Download failed:', err.message);
+  process.exit(1);
+});
 `, version)
 }
 
