@@ -33,11 +33,11 @@ trap cleanup EXIT INT TERM
 
 # Print functions
 print_info() {
-  printf "${BLUE}==>${NC} %s\n" "$1"
+  printf "${BLUE}==>${NC} %s\n" "$1" >&2
 }
 
 print_success() {
-  printf "${GREEN}==>${NC} %s\n" "$1"
+  printf "${GREEN}==>${NC} %s\n" "$1" >&2
 }
 
 print_error() {
@@ -45,7 +45,7 @@ print_error() {
 }
 
 print_warning() {
-  printf "${YELLOW}Warning:${NC} %s\n" "$1"
+  printf "${YELLOW}Warning:${NC} %s\n" "$1" >&2
 }
 
 # Check if command exists
