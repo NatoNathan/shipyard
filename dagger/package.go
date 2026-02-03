@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"dagger/shipyard/internal/dagger"
 	"fmt"
-	"io"
 )
 
 // Package creates distribution archives and checksums
@@ -92,22 +90,30 @@ func archiveFilename(platform Platform, version string) string {
 	return fmt.Sprintf("shipyard_%s_%s_%s.%s", version, platform.OS, platform.Arch, ext)
 }
 
-// calculateChecksum computes SHA256 checksum for a file
+// calculateChecksum computes SHA256 checksum for a file using sha256sum in a container
+// Note: We use a container-based approach because Dagger's file.Contents() returns a string,
+// which can corrupt binary data. Using sha256sum ensures we hash the raw bytes correctly.
 func calculateChecksum(ctx context.Context, file *dagger.File, filename string) (string, error) {
-	// Read file contents
-	contents, err := file.Contents(ctx)
+	// Use sha256sum in a container to calculate checksum of binary file correctly
+	output, err := dag.Container().
+		From("alpine:latest").
+		WithMountedFile("/file", file).
+		WithExec([]string{"sha256sum", "/file"}).
+		Stdout(ctx)
+
 	if err != nil {
 		return "", err
 	}
 
-	// Calculate SHA256
-	hash := sha256.New()
-	if _, err := io.WriteString(hash, contents); err != nil {
-		return "", err
+	// Parse the checksum from sha256sum output (format: "checksum  /file\n")
+	// Extract just the hash part (first 64 characters)
+	if len(output) < 64 {
+		return "", fmt.Errorf("unexpected sha256sum output: %s", output)
 	}
+	checksumHex := output[:64]
 
 	// Format as "checksum  filename"
-	return fmt.Sprintf("%x  %s", hash.Sum(nil), filename), nil
+	return fmt.Sprintf("%s  %s", checksumHex, filename), nil
 }
 
 // PackageOnly is a convenience function for testing package stage in isolation
