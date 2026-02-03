@@ -20,6 +20,7 @@ jobs:
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,6 +32,9 @@ jobs:
         uses: dagger/dagger-for-github@v6
         with:
           version: "latest"
+
+      - name: Login to GHCR
+        run: echo "${{ steps.app-token.outputs.token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Run Dagger Release Pipeline
         env:
