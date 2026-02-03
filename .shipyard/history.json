@@ -1,102 +1,60 @@
 [
   {
-    "ID": "20260131-012152-6u4dsb",
-    "Timestamp": "2026-01-31T01:21:52Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added repository initialization with shipyard init command\n\nImplemented the init command to bootstrap Shipyard in any repository. Supports both single-repo and monorepo configurations with interactive prompts.\n\n## Features\n\n- Interactive setup wizard with package detection\n- Automatic ecosystem detection (Go, NPM, Python, Docker)\n- Monorepo vs single-repo selection\n- Remote configuration support\n- Default template initialization\n- Creates .shipyard/ directory structure\n\n## Commands\n\n- shipyard init - Interactive initialization\n- shipyard init --remote \u003curl\u003e - Initialize from remote config\n\n## Details\n\n- Detects existing package.json, go.mod, pyproject.toml\n- Creates shipyard.yaml configuration file\n- Sets up consignments and history directories\n- Validates configuration on creation",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012201-ksk7gr",
-    "Timestamp": "2026-01-31T01:22:01Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added consignment management with shipyard add command\n\nImplemented the add command for creating change notes (consignments) as markdown files with YAML frontmatter.\n\n## Features\n\n- Interactive mode with prompts for package, type, and summary\n- Non-interactive mode with flags for automation\n- Multi-package support for changes affecting multiple components\n- Custom metadata support (author, issue, etc.)\n- Automatic ID and timestamp generation\n- Editor integration for detailed summaries\n\n## File Format\n\n- YAML frontmatter with id, timestamp, packages, changeType\n- Markdown body for change description\n- Stored in .shipyard/consignments/\n- Unique ID format: YYYYMMDD-HHMMSS-random6\n\n## Validation\n\n- Package name validation against config\n- Change type validation (patch, minor, major)\n- Summary required and non-empty",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012216-4tymj0",
-    "Timestamp": "2026-01-31T01:22:16Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added status command for viewing pending changes\n\nImplemented the status command to preview pending consignments and calculated version bumps before applying them.\n\n## Features\n\n- Lists all pending consignments grouped by package\n- Shows current version and proposed new version for each package\n- Displays change type (patch, minor, major) for each consignment\n- Interactive table view with color-coded change types\n- JSON output mode for automation\n- Package filtering support\n\n## Output\n\n- Package name and current version\n- Proposed version bump with semantic versioning\n- List of pending consignments with summaries\n- Change type indicators (🔴 major, 🟡 minor, 🟢 patch)\n- Total count of changes per package\n\n## Use Cases\n\n- Review changes before version bump\n- Verify correct change types\n- Check version propagation effects\n- Generate status reports for CI/CD",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012231-6cmi4a",
-    "Timestamp": "2026-01-31T01:22:31Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added version command for applying semantic version bumps\n\nImplemented the version command to calculate and apply version bumps based on pending consignments.\n\n## Features\n\n- Automatic semantic version calculation from consignments\n- Dependency-aware version propagation\n- Updates version files across all affected packages\n- Generates changelog entries\n- Archives processed consignments to history before committing\n- Deletes processed consignment files before committing\n- Creates git commit with all changes (versions, changelogs, history, deletions)\n- Creates git tags for each version\n- Dry-run mode with --preview flag\n\n## Version Bumping\n\n- Patch: x.y.Z increments (bug fixes)\n- Minor: x.Y.0 increments (new features)\n- Major: X.0.0 increments (breaking changes)\n- Highest change type wins per package\n\n## Operation Order\n\n1. Reads pending consignments from .shipyard/consignments/\n2. Calculates version bumps for each package (including dependency propagation)\n3. Updates version files in ecosystem-specific formats\n4. Generates changelogs using configured templates\n5. Archives processed consignments to history.json\n6. Deletes processed consignment files\n7. Stages all changes (versions, changelogs, history.json, deleted consignments)\n8. Creates git commit with detailed message\n9. Creates annotated git tags for each package\n\n## Git Integration\n\n- Creates annotated tags (e.g., v1.2.3 or core-v1.2.3)\n- Commits all version-related changes atomically\n- Includes history archival and consignment cleanup in commit\n- Preserves git history with detailed messages\n\n## Safety\n\n- Preview mode shows changes without applying\n- Validates all consignments before processing\n- Atomic operations with rollback on failure\n- Warns about uncommitted changes\n- No-commit and no-tag flags for incremental workflows",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012241-o79btj",
-    "Timestamp": "2026-01-31T01:22:41Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added release-notes command for changelog generation\n\nImplemented the release-notes command to generate formatted release notes from version history.\n\n## Features\n\n- Generates release notes from archived consignments\n- Template-based formatting with customization\n- Multiple output formats (markdown, JSON)\n- Package-specific or repository-wide notes\n- Version filtering and date ranges\n- GitHub release integration (optional)\n\n## Output Options\n\n- Print to stdout for display\n- Write to file for documentation\n- Publish to GitHub releases API\n- Multiple format support\n\n## Template Support\n\n- Default built-in template\n- Custom templates via configuration\n- Access to full consignment metadata\n- Group by change type or package\n- Custom formatting with Go templates\n\n## GitHub Integration\n\n- Automatic release creation\n- Markdown formatting for GitHub\n- Attachment support\n- Draft and prerelease options",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012251-cg57o5",
-    "Timestamp": "2026-01-31T01:22:51Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added monorepo support with dependency graph management\n\nImplemented comprehensive monorepo support with dependency tracking and topological ordering.\n\n## Features\n\n- Multiple package management in single repository\n- Dependency graph construction and validation\n- Cycle detection with detailed error reporting\n- Topological sorting for correct build order\n- Package-specific version tracking\n- Independent or linked versioning strategies\n\n## Dependency Strategies\n\n- **fixed**: Pin to specific version (e.g., 1.2.3)\n- **linked**: Follow parent package version exactly\n- **independent**: Version independently\n\n## Graph Operations\n\n- Build dependency graph from configuration\n- Detect circular dependencies\n- Compute topological sort for processing order\n- Find strongly connected components (Tarjan algorithm)\n- Cache graph for performance\n\n## Validation\n\n- Validates package references exist\n- Prevents circular dependencies\n- Checks version strategy compatibility\n- Reports detailed error locations",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012300-5zwwnb",
-    "Timestamp": "2026-01-31T01:23:00Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added version propagation for dependency-aware versioning\n\nImplemented automatic version propagation through dependency chains.\n\n## Features\n\n- Automatic version bumps for dependent packages\n- Cascade propagation through dependency chains\n- Strategy-aware propagation (linked vs fixed vs independent)\n- Conflict detection and resolution\n- Minimum version calculation across multiple dependencies\n- Direct vs transitive dependency handling\n\n## Propagation Rules\n\n- **Linked dependencies**: Always match parent version\n- **Fixed dependencies**: Update when parent changes\n- **Independent**: No automatic propagation\n- Multiple sources: Highest version wins\n\n## Conflict Resolution\n\n- Detects incompatible version requirements\n- Reports conflict chains with full path\n- Suggests resolution strategies\n- Validates propagation results\n\n## Use Cases\n\n- Shared library updates propagate to consumers\n- Breaking changes cascade appropriately\n- Internal dependencies stay synchronized\n- Prevent version skew in monorepos",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012312-n1skvc",
-    "Timestamp": "2026-01-31T01:23:12Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added template system for customizable output formats\n\nImplemented flexible template system for changelogs and release notes with built-in and custom template support.\n\n## Features\n\n- Go template-based rendering engine\n- Built-in default templates for common formats\n- Custom template support via files or remote URLs\n- Template validation and error reporting\n- Rich template functions for formatting\n- Access to full consignment metadata\n\n## Built-in Templates\n\n- **builtin:default** - Standard changelog format\n- **builtin:github** - GitHub-optimized markdown\n- **builtin:keepachangelog** - Keep a Changelog format\n- Customizable tag name format\n\n## Custom Templates\n\n- Load from local files\n- Load from remote URLs (Git, HTTP)\n- Inline templates in configuration\n- Template inheritance and includes\n\n## Template Data\n\n- Package information (name, version, ecosystem)\n- Consignment list with metadata\n- Version history\n- Timestamp and date functions\n- Custom metadata access\n\n## Functions\n\n- String manipulation (upper, lower, title, trim)\n- Date formatting\n- Collection operations (join, range, filter)\n- Markdown rendering",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012415-vpq7ol",
-    "Timestamp": "2026-01-31T01:24:15Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added multi-ecosystem support for Go, NPM, Python, Helm, and Cargo\n\nImplemented ecosystem-specific version file handling for multiple programming languages and platforms.\n\n## Supported Ecosystems\n\n### Go\n- Version file: version.go or any .go file\n- Format: const Version = \"X.Y.Z\"\n- Module-aware updates\n\n### NPM\n- Version file: package.json\n- Format: \"version\": \"X.Y.Z\"\n- Preserves JSON formatting and other fields\n\n### Python\n- Multiple file support:\n  - pyproject.toml: version = \"X.Y.Z\"\n  - setup.py: version=\"X.Y.Z\"\n  - __version__.py: __version__ = \"X.Y.Z\"\n- PEP 440 compliant versioning\n\n### Helm\n- Version file: Chart.yaml\n- Format: version: X.Y.Z\n- Updates both version and appVersion fields\n- Preserves chart metadata\n\n### Cargo (Rust)\n- Version file: Cargo.toml\n- Format: version = \"X.Y.Z\"\n- Preserves TOML structure and dependencies\n\n## Features\n\n- Automatic ecosystem detection\n- Custom version file paths\n- Multiple version files per package\n- Preserves file formatting\n- Validates version format per ecosystem\n- Idempotent updates\n- GetVersionFiles() returns relative paths for correct staging\n- Comprehensive test coverage for all ecosystems",
-    "Metadata": null
-  },
-  {
-    "ID": "20260131-012434-9m88jd",
-    "Timestamp": "2026-01-31T01:24:34Z",
-    "Packages": [
-      "shipyard"
-    ],
-    "ChangeType": "minor",
-    "Summary": "Added configuration system with local and remote config support\n\nImplemented flexible configuration system with local files and remote config loading.\n\n## Configuration File\n\n- Default: .shipyard/shipyard.yaml\n- YAML format with full schema validation\n- Package definitions with dependencies\n- Template configuration\n- GitHub integration settings\n\n## Remote Configuration\n\n- Load configuration from Git repositories\n- Load from HTTP/HTTPS URLs\n- Configuration inheritance and overrides\n- Local config overrides remote config\n- Caching for performance\n\n## Configuration Schema\n\n### Packages\n- name: Package identifier\n- path: Package directory path\n- ecosystem: Language/platform type\n- dependencies: Package dependency list with strategies\n\n### Templates\n- changelog: Changelog template source\n- tagName: Git tag format template\n- releaseNotes: Release notes template\n\n### Paths\n- consignments: Pending changes directory\n- history: Archived changes file\n\n### GitHub Integration\n- enabled: Enable/disable GitHub features\n- owner: Repository owner\n- repo: Repository name\n\n## Validation\n\n- Schema validation on load\n- Package reference validation\n- Dependency cycle detection\n- Template source validation\n- Path existence checks",
-    "Metadata": null
+    "version": "0.1.0",
+    "package": "shipyard",
+    "tag": "v0.1.0",
+    "timestamp": "2026-02-02T19:59:28Z",
+    "consignments": [
+      {
+        "id": "20260131-012152-6u4dsb",
+        "summary": "Added repository initialization with shipyard init command\n\nImplemented the init command to bootstrap Shipyard in any repository. Supports both single-repo and monorepo configurations with interactive prompts.\n\n## Features\n\n- Interactive setup wizard with package detection\n- Automatic ecosystem detection (Go, NPM, Python, Docker)\n- Monorepo vs single-repo selection\n- Remote configuration support\n- Default template initialization\n- Creates .shipyard/ directory structure\n\n## Commands\n\n- shipyard init - Interactive initialization\n- shipyard init --remote <url> - Initialize from remote config\n\n## Details\n\n- Detects existing package.json, go.mod, pyproject.toml\n- Creates shipyard.yaml configuration file\n- Sets up consignments and history directories\n- Validates configuration on creation",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012201-ksk7gr",
+        "summary": "Added consignment management with shipyard add command\n\nImplemented the add command for creating change notes (consignments) as markdown files with YAML frontmatter.\n\n## Features\n\n- Interactive mode with prompts for package, type, and summary\n- Non-interactive mode with flags for automation\n- Multi-package support for changes affecting multiple components\n- Custom metadata support (author, issue, etc.)\n- Automatic ID and timestamp generation\n- Editor integration for detailed summaries\n\n## File Format\n\n- YAML frontmatter with id, timestamp, packages, changeType\n- Markdown body for change description\n- Stored in .shipyard/consignments/\n- Unique ID format: YYYYMMDD-HHMMSS-random6\n\n## Validation\n\n- Package name validation against config\n- Change type validation (patch, minor, major)\n- Summary required and non-empty",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012216-4tymj0",
+        "summary": "Added status command for viewing pending changes\n\nImplemented the status command to preview pending consignments and calculated version bumps before applying them.\n\n## Features\n\n- Lists all pending consignments grouped by package\n- Shows current version and proposed new version for each package\n- Displays change type (patch, minor, major) for each consignment\n- Interactive table view with color-coded change types\n- JSON output mode for automation\n- Package filtering support\n\n## Output\n\n- Package name and current version\n- Proposed version bump with semantic versioning\n- List of pending consignments with summaries\n- Change type indicators (🔴 major, 🟡 minor, 🟢 patch)\n- Total count of changes per package\n\n## Use Cases\n\n- Review changes before version bump\n- Verify correct change types\n- Check version propagation effects\n- Generate status reports for CI/CD",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012231-6cmi4a",
+        "summary": "Added version command for applying semantic version bumps\n\nImplemented the version command to calculate and apply version bumps based on pending consignments.\n\n## Features\n\n- Automatic semantic version calculation from consignments\n- Dependency-aware version propagation\n- Updates version files across all affected packages\n- Generates changelog entries\n- Archives processed consignments to history before committing\n- Deletes processed consignment files before committing\n- Creates git commit with all changes (versions, changelogs, history, deletions)\n- Creates git tags for each version\n- Dry-run mode with --preview flag\n\n## Version Bumping\n\n- Patch: x.y.Z increments (bug fixes)\n- Minor: x.Y.0 increments (new features)\n- Major: X.0.0 increments (breaking changes)\n- Highest change type wins per package\n\n## Operation Order\n\n1. Reads pending consignments from .shipyard/consignments/\n2. Calculates version bumps for each package (including dependency propagation)\n3. Updates version files in ecosystem-specific formats\n4. Generates changelogs using configured templates\n5. Archives processed consignments to history.json\n6. Deletes processed consignment files\n7. Stages all changes (versions, changelogs, history.json, deleted consignments)\n8. Creates git commit with detailed message\n9. Creates annotated git tags for each package\n\n## Git Integration\n\n- Creates annotated tags (e.g., v1.2.3 or core-v1.2.3)\n- Commits all version-related changes atomically\n- Includes history archival and consignment cleanup in commit\n- Preserves git history with detailed messages\n\n## Safety\n\n- Preview mode shows changes without applying\n- Validates all consignments before processing\n- Atomic operations with rollback on failure\n- Warns about uncommitted changes\n- No-commit and no-tag flags for incremental workflows",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012241-o79btj",
+        "summary": "Added release-notes command for changelog generation\n\nImplemented the release-notes command to generate formatted release notes from version history.\n\n## Features\n\n- Generates release notes from archived consignments\n- Template-based formatting with customization\n- Multiple output formats (markdown, JSON)\n- Package-specific or repository-wide notes\n- Version filtering and date ranges\n- GitHub release integration (optional)\n\n## Output Options\n\n- Print to stdout for display\n- Write to file for documentation\n- Publish to GitHub releases API\n- Multiple format support\n\n## Template Support\n\n- Default built-in template\n- Custom templates via configuration\n- Access to full consignment metadata\n- Group by change type or package\n- Custom formatting with Go templates\n\n## GitHub Integration\n\n- Automatic release creation\n- Markdown formatting for GitHub\n- Attachment support\n- Draft and prerelease options",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012251-cg57o5",
+        "summary": "Added monorepo support with dependency graph management\n\nImplemented comprehensive monorepo support with dependency tracking and topological ordering.\n\n## Features\n\n- Multiple package management in single repository\n- Dependency graph construction and validation\n- Cycle detection with detailed error reporting\n- Topological sorting for correct build order\n- Package-specific version tracking\n- Independent or linked versioning strategies\n\n## Dependency Strategies\n\n- **fixed**: Pin to specific version (e.g., 1.2.3)\n- **linked**: Follow parent package version exactly\n- **independent**: Version independently\n\n## Graph Operations\n\n- Build dependency graph from configuration\n- Detect circular dependencies\n- Compute topological sort for processing order\n- Find strongly connected components (Tarjan algorithm)\n- Cache graph for performance\n\n## Validation\n\n- Validates package references exist\n- Prevents circular dependencies\n- Checks version strategy compatibility\n- Reports detailed error locations",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012300-5zwwnb",
+        "summary": "Added version propagation for dependency-aware versioning\n\nImplemented automatic version propagation through dependency chains.\n\n## Features\n\n- Automatic version bumps for dependent packages\n- Cascade propagation through dependency chains\n- Strategy-aware propagation (linked vs fixed vs independent)\n- Conflict detection and resolution\n- Minimum version calculation across multiple dependencies\n- Direct vs transitive dependency handling\n\n## Propagation Rules\n\n- **Linked dependencies**: Always match parent version\n- **Fixed dependencies**: Update when parent changes\n- **Independent**: No automatic propagation\n- Multiple sources: Highest version wins\n\n## Conflict Resolution\n\n- Detects incompatible version requirements\n- Reports conflict chains with full path\n- Suggests resolution strategies\n- Validates propagation results\n\n## Use Cases\n\n- Shared library updates propagate to consumers\n- Breaking changes cascade appropriately\n- Internal dependencies stay synchronized\n- Prevent version skew in monorepos",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012312-n1skvc",
+        "summary": "Added template system for customizable output formats\n\nImplemented flexible template system for changelogs and release notes with built-in and custom template support.\n\n## Features\n\n- Go template-based rendering engine\n- Built-in default templates for common formats\n- Custom template support via files or remote URLs\n- Template validation and error reporting\n- Rich template functions for formatting\n- Access to full consignment metadata\n\n## Built-in Templates\n\n- **builtin:default** - Standard changelog format\n- **builtin:github** - GitHub-optimized markdown\n- **builtin:keepachangelog** - Keep a Changelog format\n- Customizable tag name format\n\n## Custom Templates\n\n- Load from local files\n- Load from remote URLs (Git, HTTP)\n- Inline templates in configuration\n- Template inheritance and includes\n\n## Template Data\n\n- Package information (name, version, ecosystem)\n- Consignment list with metadata\n- Version history\n- Timestamp and date functions\n- Custom metadata access\n\n## Functions\n\n- String manipulation (upper, lower, title, trim)\n- Date formatting\n- Collection operations (join, range, filter)\n- Markdown rendering",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012415-vpq7ol",
+        "summary": "Added multi-ecosystem support for Go, NPM, Python, Helm, and Cargo\n\nImplemented ecosystem-specific version file handling for multiple programming languages and platforms.\n\n## Supported Ecosystems\n\n### Go\n- Version file: version.go or any .go file\n- Format: const Version = \"X.Y.Z\"\n- Module-aware updates\n\n### NPM\n- Version file: package.json\n- Format: \"version\": \"X.Y.Z\"\n- Preserves JSON formatting and other fields\n\n### Python\n- Multiple file support:\n  - pyproject.toml: version = \"X.Y.Z\"\n  - setup.py: version=\"X.Y.Z\"\n  - __version__.py: __version__ = \"X.Y.Z\"\n- PEP 440 compliant versioning\n\n### Helm\n- Version file: Chart.yaml\n- Format: version: X.Y.Z\n- Updates both version and appVersion fields\n- Preserves chart metadata\n\n### Cargo (Rust)\n- Version file: Cargo.toml\n- Format: version = \"X.Y.Z\"\n- Preserves TOML structure and dependencies\n\n## Features\n\n- Automatic ecosystem detection\n- Custom version file paths\n- Multiple version files per package\n- Preserves file formatting\n- Validates version format per ecosystem\n- Idempotent updates\n- GetVersionFiles() returns relative paths for correct staging\n- Comprehensive test coverage for all ecosystems",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260131-012434-9m88jd",
+        "summary": "Added configuration system with local and remote config support\n\nImplemented flexible configuration system with local files and remote config loading.\n\n## Configuration File\n\n- Default: .shipyard/shipyard.yaml\n- YAML format with full schema validation\n- Package definitions with dependencies\n- Template configuration\n- GitHub integration settings\n\n## Remote Configuration\n\n- Load configuration from Git repositories\n- Load from HTTP/HTTPS URLs\n- Configuration inheritance and overrides\n- Local config overrides remote config\n- Caching for performance\n\n## Configuration Schema\n\n### Packages\n- name: Package identifier\n- path: Package directory path\n- ecosystem: Language/platform type\n- dependencies: Package dependency list with strategies\n\n### Templates\n- changelog: Changelog template source\n- tagName: Git tag format template\n- releaseNotes: Release notes template\n\n### Paths\n- consignments: Pending changes directory\n- history: Archived changes file\n\n### GitHub Integration\n- enabled: Enable/disable GitHub features\n- owner: Repository owner\n- repo: Repository name\n\n## Validation\n\n- Schema validation on load\n- Package reference validation\n- Dependency cycle detection\n- Template source validation\n- Path existence checks",
+        "changeType": "minor"
+      }
+    ]
   }
 ]
