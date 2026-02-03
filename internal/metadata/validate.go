@@ -9,7 +9,7 @@ import (
 
 // ValidateMetadata validates metadata against the configuration
 func ValidateMetadata(cfg *config.Config, metadata map[string]string) error {
-	if cfg.Metadata.Fields == nil || len(cfg.Metadata.Fields) == 0 {
+	if len(cfg.Metadata.Fields) == 0 {
 		return nil
 	}
 

@@ -17,6 +17,14 @@ install:
 test:
     go test -v -race -cover ./...
 
+# Run tests via Dagger
+test-dagger:
+    dagger call test --source=. --show-output
+
+# Run tests with race detection via Dagger (slower, uses CGO)
+test-dagger-race:
+    dagger call test --source=. --show-output --race
+
 # Run unit tests only
 test-unit:
     go test -v -race -cover -short ./...
@@ -32,6 +40,10 @@ test-contract:
 # Run linters
 lint:
     golangci-lint run
+
+# Run linters via Dagger
+lint-dagger:
+    dagger call lint --source=.
 
 # Format code
 fmt:
@@ -76,6 +88,22 @@ verify:
 ci: lint test verify
     @echo "All CI checks passed!"
 
+# Run all CI checks via Dagger
+ci-dagger:
+    dagger call ci --source=.
+
+# Run tests and export coverage file via Dagger
+coverage-dagger:
+    dagger call coverage --source=. export --path=./coverage.out
+
+# Run coverage report via Dagger
+coverage-report-dagger:
+    dagger call coverage-report --source=.
+
+# Run coverage with threshold check via Dagger
+coverage-check-dagger threshold="80":
+    dagger call coverage-report --source=. --threshold={{ threshold }}
+
 # Build for multiple platforms
 build-all:
     GOOS=linux GOARCH=amd64 go build -o bin/shipyard-linux-amd64 ./cmd/shipyard
@@ -114,15 +142,15 @@ release VERSION:
 
 # Test Dagger build stage
 dagger-build:
-    ./bin/dagger call -m ./dagger build-only --source=. --version=v0.0.0-dev
+    dagger call build-only --source=. --version=v0.0.0-dev
 
 # Test Dagger package stage (exports to ./dist)
 dagger-package:
-    ./bin/dagger call -m ./dagger package-only --source=. --version=v0.0.0-dev export --path=./dist
+    dagger call package-only --source=. --version=v0.0.0-dev export --path=./dist
 
 # Test full Dagger release pipeline (requires tokens)
 dagger-test-release:
-    ./bin/dagger call -m ./dagger release \
+    dagger call release \
       --source=. \
       --version=v0.0.0-test \
       --github-token=env:GITHUB_TOKEN \

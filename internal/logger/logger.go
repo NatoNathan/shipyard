@@ -106,8 +106,8 @@ func (l *Logger) Error(format string, args ...interface{}) {
 func (l *Logger) log(level Level, format string, args ...interface{}) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	message := fmt.Sprintf(format, args...)
-	
-	fmt.Fprintf(l.writer, "[%s] %s %s\n", level.String(), timestamp, message)
+
+	_, _ = fmt.Fprintf(l.writer, "[%s] %s %s\n", level.String(), timestamp, message)
 }
 
 // SetLevel changes the logging level
@@ -148,4 +148,9 @@ func (l *Logger) Warnf(format string, args ...interface{}) {
 // Errorf is a convenience method for logging error messages
 func (l *Logger) Errorf(format string, args ...interface{}) {
 	l.Error(format, args...)
+}
+
+// Writer returns the underlying writer
+func (l *Logger) Writer() io.Writer {
+	return l.writer
 }

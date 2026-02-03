@@ -2,18 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
-## [{{ .Version }}] - {{ .Date | date "2006-01-02" }}
+{{- range . }}
+{{- if gt (len .Consignments) 0 }}
 
-{{ range .Consignments -}}
-### {{ .ChangeType | title }}
+## [{{ .Version }}] - {{ .Timestamp | date "2006-01-02" }}
+{{- if .Package }}
+**Package**: {{ .Package }}
+{{- end }}
 
-{{ .Summary }}
+{{- $major := list }}
+{{- $minor := list }}
+{{- $patch := list }}
 
-{{ if .Metadata.author -}}
-**Author**: {{ .Metadata.author }}
-{{ end -}}
-{{ if .Metadata.issue -}}
-**Issue**: {{ .Metadata.issue }}
-{{ end -}}
+{{- range .Consignments }}
+  {{- if eq .ChangeType "major" }}
+    {{- $major = append $major . }}
+  {{- else if eq .ChangeType "minor" }}
+    {{- $minor = append $minor . }}
+  {{- else if eq .ChangeType "patch" }}
+    {{- $patch = append $patch . }}
+  {{- end }}
+{{- end }}
 
-{{ end -}}
+{{- if $major }}
+
+### Breaking Changes
+{{- range $major }}
+- {{ .Summary }}
+{{- end }}
+{{- end }}
+
+{{- if $minor }}
+
+### Features
+{{- range $minor }}
+- {{ .Summary }}
+{{- end }}
+{{- end }}
+
+{{- if $patch }}
+
+### Bug Fixes
+{{- range $patch }}
+- {{ .Summary }}
+{{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}

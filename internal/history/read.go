@@ -10,15 +10,17 @@ import (
 type Entry struct {
 	Version      string        `json:"version"`
 	Package      string        `json:"package"`
+	Tag          string        `json:"tag"`          // Git tag name for this version
 	Timestamp    time.Time     `json:"timestamp"`
 	Consignments []Consignment `json:"consignments"`
 }
 
 // Consignment represents a change in a version
 type Consignment struct {
-	ID         string `json:"id"`
-	Summary    string `json:"summary"`
-	ChangeType string `json:"changeType"`
+	ID         string                 `json:"id"`
+	Summary    string                 `json:"summary"`
+	ChangeType string                 `json:"changeType"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // ReadHistory reads history entries from a JSON file

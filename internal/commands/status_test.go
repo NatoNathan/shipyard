@@ -129,8 +129,8 @@ func TestStatusCommand_ShowsVersionBumps(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	// Verify: Output shows version bump
-	assert.Contains(t, output, "minor")
+	// Verify: Output shows version bump with version range arrow
+	assert.Contains(t, output, "→")
 }
 
 // TestStatusCommand_PackageFilter tests filtering by package
@@ -236,10 +236,10 @@ func TestStatusCommand_ShowsPropagatedBumps(t *testing.T) {
 	assert.Contains(t, output, "core", "should show core package with direct bump")
 	assert.Contains(t, output, "api", "should show api package with propagated bump")
 
-	// Verify: Core shows direct bump, API shows propagated bump
-	// The output should indicate which bumps are direct vs propagated
-	assert.Contains(t, output, "minor", "should show minor bump")
-	assert.Contains(t, output, "propagated", "should indicate propagated bump for api package")
+	// Verify: Core shows direct bump with consignment details in verbose mode
+	// API shows propagated bump with version change
+	assert.Contains(t, output, "Core feature", "should show consignment summary in verbose mode")
+	assert.Contains(t, output, "→", "should show version ranges with arrow")
 }
 
 // TestStatusCommand_QuietMode tests quiet output mode

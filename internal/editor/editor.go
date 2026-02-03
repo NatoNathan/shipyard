@@ -19,16 +19,16 @@ func OpenEditorWithFunc(dir, initialContent string, editorFunc func(string) erro
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tempPath := f.Name()
-	defer os.Remove(tempPath) // Clean up temp file
+	defer func() { _ = os.Remove(tempPath) }() // Clean up temp file
 
 	// Write initial content
 	if initialContent != "" {
 		if _, err := f.WriteString(initialContent); err != nil {
-			f.Close()
+			_ = f.Close()
 			return "", fmt.Errorf("failed to write initial content: %w", err)
 		}
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Open editor
 	if editorFunc != nil {

@@ -160,3 +160,119 @@ func TestCombinedFilters(t *testing.T) {
 		assert.Equal(t, "1.1.0", filtered[0].Version)
 	})
 }
+
+// TestFilterConsignmentsByMetadata tests filtering consignments within entries by metadata
+func TestFilterConsignmentsByMetadata(t *testing.T) {
+	entries := []Entry{
+		{
+			Version: "1.0.0",
+			Package: "core",
+			Consignments: []Consignment{
+				{ID: "c1", Summary: "Prod change", ChangeType: "minor", Metadata: map[string]interface{}{"environment": "production"}},
+				{ID: "c2", Summary: "Dev change", ChangeType: "patch", Metadata: map[string]interface{}{"environment": "development"}},
+			},
+		},
+		{
+			Version: "1.1.0",
+			Package: "core",
+			Consignments: []Consignment{
+				{ID: "c3", Summary: "Another prod change", ChangeType: "minor", Metadata: map[string]interface{}{"environment": "production"}},
+			},
+		},
+		{
+			Version: "1.2.0",
+			Package: "api",
+			Consignments: []Consignment{
+				{ID: "c4", Summary: "No metadata", ChangeType: "patch"},
+			},
+		},
+	}
+
+	t.Run("filters consignments by string metadata", func(t *testing.T) {
+		result := FilterConsignmentsByMetadata(entries, "environment", "production")
+
+		// All entries returned, but only matching consignments
+		require.Len(t, result, 3)
+
+		// First entry: should have 1 consignment (c1)
+		assert.Len(t, result[0].Consignments, 1)
+		assert.Equal(t, "c1", result[0].Consignments[0].ID)
+
+		// Second entry: should have 1 consignment (c3)
+		assert.Len(t, result[1].Consignments, 1)
+		assert.Equal(t, "c3", result[1].Consignments[0].ID)
+
+		// Third entry: should have 0 consignments (no match)
+		assert.Len(t, result[2].Consignments, 0)
+	})
+
+	t.Run("preserves entries with no matching consignments", func(t *testing.T) {
+		result := FilterConsignmentsByMetadata(entries, "environment", "staging")
+
+		// All entries returned, all with empty consignments
+		require.Len(t, result, 3)
+		assert.Len(t, result[0].Consignments, 0)
+		assert.Len(t, result[1].Consignments, 0)
+		assert.Len(t, result[2].Consignments, 0)
+	})
+
+	t.Run("handles missing metadata key", func(t *testing.T) {
+		result := FilterConsignmentsByMetadata(entries, "team", "backend")
+
+		// All entries returned with empty consignments
+		require.Len(t, result, 3)
+		for _, entry := range result {
+			assert.Len(t, entry.Consignments, 0)
+		}
+	})
+
+	t.Run("handles empty entries", func(t *testing.T) {
+		result := FilterConsignmentsByMetadata([]Entry{}, "environment", "production")
+		assert.Len(t, result, 0)
+	})
+}
+
+// TestSortByTimestamp tests sorting entries by timestamp
+func TestSortByTimestamp(t *testing.T) {
+	t.Run("sorts descending (newest first)", func(t *testing.T) {
+		entries := []Entry{
+			{Version: "1.0.0", Timestamp: mustParseTime("2026-01-01T10:00:00Z")},
+			{Version: "1.2.0", Timestamp: mustParseTime("2026-01-03T10:00:00Z")},
+			{Version: "1.1.0", Timestamp: mustParseTime("2026-01-02T10:00:00Z")},
+		}
+
+		result := SortByTimestamp(entries, true)
+		require.Len(t, result, 3)
+		assert.Equal(t, "1.2.0", result[0].Version)
+		assert.Equal(t, "1.1.0", result[1].Version)
+		assert.Equal(t, "1.0.0", result[2].Version)
+	})
+
+	t.Run("sorts ascending (oldest first)", func(t *testing.T) {
+		entries := []Entry{
+			{Version: "1.2.0", Timestamp: mustParseTime("2026-01-03T10:00:00Z")},
+			{Version: "1.0.0", Timestamp: mustParseTime("2026-01-01T10:00:00Z")},
+			{Version: "1.1.0", Timestamp: mustParseTime("2026-01-02T10:00:00Z")},
+		}
+
+		result := SortByTimestamp(entries, false)
+		require.Len(t, result, 3)
+		assert.Equal(t, "1.0.0", result[0].Version)
+		assert.Equal(t, "1.1.0", result[1].Version)
+		assert.Equal(t, "1.2.0", result[2].Version)
+	})
+
+	t.Run("handles empty entries", func(t *testing.T) {
+		result := SortByTimestamp([]Entry{}, true)
+		assert.Len(t, result, 0)
+	})
+}
+
+// mustParseTime is a helper for parsing time strings in tests
+func mustParseTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}

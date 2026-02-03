@@ -28,20 +28,86 @@ func TestRenderReleaseNotes(t *testing.T) {
 			},
 		}
 
+		// Test: Render release notes using default template
+		output, err := RenderReleaseNotes(entries)
+
+		// Verify: Valid markdown output from default template
+		require.NoError(t, err)
+		assert.Contains(t, output, "# Release Notes", "Should have title")
+		assert.Contains(t, output, "core v1.1.0", "Should have package and version")
+		assert.Contains(t, output, "2026-01-30", "Should have release date")
+		assert.Contains(t, output, "## Changes", "Should have changes section")
+		assert.Contains(t, output, "Minor", "Should show change type")
+		assert.Contains(t, output, "Add new feature", "Should list changes")
+		assert.Contains(t, output, "Fix critical bug", "Should list all changes")
+	})
+
+	t.Run("renders version without consignments", func(t *testing.T) {
+		// Setup: Create entry with no consignments
+		entries := []history.Entry{
+			{
+				Version:      "1.0.0",
+				Package:      "core",
+				Timestamp:    timestamp,
+				Consignments: []history.Consignment{},
+			},
+		}
+
 		// Test: Render release notes
 		output, err := RenderReleaseNotes(entries)
 
-		// Verify: Valid markdown output
+		// Verify: Shows "no changes" message from template
 		require.NoError(t, err)
-		assert.Contains(t, output, "# Release Notes", "Should have title")
-		assert.Contains(t, output, "## core - 1.1.0", "Should have version header")
-		assert.Contains(t, output, "Released: 2026-01-30", "Should have release date")
-		assert.Contains(t, output, "### Changes", "Should have changes section")
-		assert.Contains(t, output, "- **minor**: Add new feature", "Should list changes with type")
-		assert.Contains(t, output, "- **patch**: Fix critical bug", "Should list all changes")
+		assert.Contains(t, output, "core v1.0.0")
+		assert.Contains(t, output, "No changes", "Should show no changes message")
 	})
 
-	t.Run("renders multiple versions", func(t *testing.T) {
+	t.Run("returns message for empty history", func(t *testing.T) {
+		// Setup: Empty entries
+		entries := []history.Entry{}
+
+		// Test: Render release notes
+		output, err := RenderReleaseNotes(entries)
+
+		// Verify: Returns appropriate message
+		require.NoError(t, err)
+		assert.Contains(t, output, "No releases found", "Should indicate no releases")
+	})
+}
+
+// TestRenderReleaseNotesWithTemplate tests template selection
+func TestRenderReleaseNotesWithTemplate(t *testing.T) {
+	timestamp := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
+
+	t.Run("uses builtin grouped template", func(t *testing.T) {
+		// Setup: Create entries with multiple change types
+		entries := []history.Entry{
+			{
+				Version:   "2.0.0",
+				Package:   "api",
+				Timestamp: timestamp,
+				Consignments: []history.Consignment{
+					{ID: "c1", Summary: "Breaking change", ChangeType: "major"},
+					{ID: "c2", Summary: "New feature", ChangeType: "minor"},
+					{ID: "c3", Summary: "Bug fix", ChangeType: "patch"},
+				},
+			},
+		}
+
+		// Test: Render with grouped template
+		output, err := RenderReleaseNotesWithTemplate(entries, "builtin:grouped")
+
+		// Verify: Changes grouped by type
+		require.NoError(t, err)
+		assert.Contains(t, output, "## Breaking Changes")
+		assert.Contains(t, output, "## Features")
+		assert.Contains(t, output, "## Bug Fixes")
+		assert.Contains(t, output, "Breaking change")
+		assert.Contains(t, output, "New feature")
+		assert.Contains(t, output, "Bug fix")
+	})
+
+	t.Run("auto-selects changelog template for multiple entries", func(t *testing.T) {
 		// Setup: Create multiple history entries
 		entries := []history.Entry{
 			{
@@ -62,147 +128,58 @@ func TestRenderReleaseNotes(t *testing.T) {
 			},
 		}
 
-		// Test: Render release notes
-		output, err := RenderReleaseNotes(entries)
+		// Test: Render with multiple entries (should use changelog template)
+		output, err := RenderReleaseNotesWithTemplate(entries, "builtin:default")
 
-		// Verify: Both versions present
+		// Verify: Both versions present in changelog format
 		require.NoError(t, err)
-		assert.Contains(t, output, "## core - 1.1.0")
-		assert.Contains(t, output, "## core - 1.0.1")
+		assert.Contains(t, output, "# Changelog")
+		assert.Contains(t, output, "[1.1.0]")
+		assert.Contains(t, output, "[1.0.1]")
 		assert.Contains(t, output, "Add feature")
 		assert.Contains(t, output, "Fix bug")
 	})
 
-	t.Run("renders version without consignments", func(t *testing.T) {
-		// Setup: Create entry with no consignments
+	t.Run("uses changelog keyword", func(t *testing.T) {
+		// Setup: Create multiple entries
 		entries := []history.Entry{
 			{
-				Version:      "1.0.0",
-				Package:      "core",
-				Timestamp:    timestamp,
-				Consignments: []history.Consignment{},
-			},
-		}
-
-		// Test: Render release notes
-		output, err := RenderReleaseNotes(entries)
-
-		// Verify: Version header present but no changes section
-		require.NoError(t, err)
-		assert.Contains(t, output, "## core - 1.0.0")
-		assert.NotContains(t, output, "### Changes", "Should not have changes section for empty consignments")
-	})
-
-	t.Run("returns message for empty history", func(t *testing.T) {
-		// Setup: Empty entries
-		entries := []history.Entry{}
-
-		// Test: Render release notes
-		output, err := RenderReleaseNotes(entries)
-
-		// Verify: Returns appropriate message
-		require.NoError(t, err)
-		assert.Contains(t, output, "No releases found", "Should indicate no releases")
-	})
-
-	t.Run("handles nil consignments slice", func(t *testing.T) {
-		// Setup: Create entry with nil consignments
-		entries := []history.Entry{
-			{
-				Version:      "1.0.0",
-				Package:      "core",
-				Timestamp:    timestamp,
-				Consignments: nil,
-			},
-		}
-
-		// Test: Render release notes
-		output, err := RenderReleaseNotes(entries)
-
-		// Verify: No error, version rendered without changes
-		require.NoError(t, err)
-		assert.Contains(t, output, "## core - 1.0.0")
-	})
-}
-
-// TestRenderReleaseNotesWithOptions tests rendering with options
-func TestRenderReleaseNotesWithOptions(t *testing.T) {
-	timestamp := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
-
-	entries := []history.Entry{
-		{
-			Version:   "1.1.0",
-			Package:   "core",
-			Timestamp: timestamp,
-			Consignments: []history.Consignment{
-				{ID: "c1", Summary: "Add feature", ChangeType: "minor"},
-			},
-		},
-	}
-
-	t.Run("groups changes by type", func(t *testing.T) {
-		// Setup: Create entries with multiple change types
-		entriesWithTypes := []history.Entry{
-			{
-				Version:   "2.0.0",
-				Package:   "api",
+				Version:   "1.1.0",
+				Package:   "core",
 				Timestamp: timestamp,
 				Consignments: []history.Consignment{
-					{ID: "c1", Summary: "Breaking change", ChangeType: "major"},
-					{ID: "c2", Summary: "New feature", ChangeType: "minor"},
-					{ID: "c3", Summary: "Bug fix", ChangeType: "patch"},
-					{ID: "c4", Summary: "Another feature", ChangeType: "minor"},
+					{ID: "c1", Summary: "Add feature", ChangeType: "minor"},
 				},
 			},
 		}
 
-		// Test: Render with grouping
-		opts := &RenderOptions{GroupByType: true}
-		output, err := RenderReleaseNotesWithOptions(entriesWithTypes, opts)
+		// Test: Use "changelog" keyword
+		output, err := RenderReleaseNotesWithTemplate(entries, "changelog")
 
-		// Verify: Changes grouped by type
+		// Verify: Uses changelog template
 		require.NoError(t, err)
+		assert.Contains(t, output, "# Changelog")
+	})
 
-		// Check structure has grouped sections
-		lines := strings.Split(output, "\n")
-		var hasMajorSection, hasMinorSection, hasPatchSection bool
-		for _, line := range lines {
-			if strings.Contains(line, "#### Breaking Changes") || strings.Contains(line, "#### Major") {
-				hasMajorSection = true
-			}
-			if strings.Contains(line, "#### Features") || strings.Contains(line, "#### Minor") {
-				hasMinorSection = true
-			}
-			if strings.Contains(line, "#### Bug Fixes") || strings.Contains(line, "#### Patch") {
-				hasPatchSection = true
-			}
+	t.Run("uses release-notes keyword", func(t *testing.T) {
+		// Setup: Create single entry
+		entries := []history.Entry{
+			{
+				Version:   "1.1.0",
+				Package:   "core",
+				Timestamp: timestamp,
+				Consignments: []history.Consignment{
+					{ID: "c1", Summary: "Add feature", ChangeType: "minor"},
+				},
+			},
 		}
 
-		assert.True(t, hasMajorSection || strings.Contains(output, "Breaking change"), "Should have major changes")
-		assert.True(t, hasMinorSection || strings.Contains(output, "New feature"), "Should have minor changes")
-		assert.True(t, hasPatchSection || strings.Contains(output, "Bug fix"), "Should have patch changes")
-	})
+		// Test: Use "release-notes" keyword
+		output, err := RenderReleaseNotesWithTemplate(entries, "release-notes")
 
-	t.Run("uses default options when nil", func(t *testing.T) {
-		// Test: Render with nil options
-		output, err := RenderReleaseNotesWithOptions(entries, nil)
-
-		// Verify: Still renders successfully
+		// Verify: Uses release notes template
 		require.NoError(t, err)
-		assert.Contains(t, output, "Release Notes")
-		assert.Contains(t, output, "1.1.0")
-	})
-}
-
-// TestRenderOptions tests the options structure
-func TestRenderOptions(t *testing.T) {
-	t.Run("default options", func(t *testing.T) {
-		// Test: Get default options
-		opts := DefaultRenderOptions()
-
-		// Verify: Sensible defaults
-		assert.NotNil(t, opts)
-		assert.False(t, opts.GroupByType, "Should not group by default")
+		assert.Contains(t, output, "# Release Notes")
 	})
 }
 
@@ -230,17 +207,13 @@ func TestMarkdownFormatting(t *testing.T) {
 
 		// Check for proper markdown headers
 		assert.True(t, strings.HasPrefix(output, "#"), "Should start with markdown header")
-		assert.Contains(t, output, "\n##", "Should have second-level headers")
-		assert.Contains(t, output, "\n###", "Should have third-level headers")
+		assert.Contains(t, output, "##", "Should have second-level headers")
 
 		// Check for proper list formatting
-		assert.Contains(t, output, "\n- ", "Should have bullet points")
-
-		// Check for proper line endings
-		assert.True(t, strings.HasSuffix(output, "\n"), "Should end with newline")
+		assert.Contains(t, output, "- ", "Should have bullet points")
 	})
 
-	t.Run("escapes special markdown characters", func(t *testing.T) {
+	t.Run("preserves special markdown characters", func(t *testing.T) {
 		// Setup: Create entry with special characters
 		specialEntries := []history.Entry{
 			{

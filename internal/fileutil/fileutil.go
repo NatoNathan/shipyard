@@ -28,7 +28,7 @@ func AtomicWrite(path string, data []byte, perm os.FileMode) error {
 	// Atomic rename
 	if err := os.Rename(tmpFile, path); err != nil {
 		// Clean up temp file on error
-		os.Remove(tmpFile)
+		_ = os.Remove(tmpFile)
 		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 	

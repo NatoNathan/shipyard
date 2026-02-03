@@ -2,70 +2,76 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up Dagger
+        uses: dagger/dagger-for-github@v7
         with:
-          go-version: '1.25'
-          cache: true
-      
-      - name: Download dependencies
-        run: go mod download
-      
+          version: "0.19.10"
+
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out ./...
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.out
-          fail_ci_if_error: false
+        run: dagger call test --source . --show-output
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up Dagger
+        uses: dagger/dagger-for-github@v7
         with:
-          go-version: '1.25'
-          cache: true
+          version: "0.19.10"
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-      - name: Run golangci-lint
-        run: golangci-lint run --timeout=5m
+      - name: Run linter
+        run: dagger call lint --source .
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Set up Go
-        uses: actions/setup-go@v5
+
+      - name: Set up Dagger
+        uses: dagger/dagger-for-github@v7
         with:
-          go-version: '1.25'
-          cache: true
-      
+          version: "0.19.10"
+
       - name: Build
-        run: go build -v ./cmd/shipyard
+        run: dagger call build-only --source . --version "dev"
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Dagger
+        uses: dagger/dagger-for-github@v7
+        with:
+          version: "0.19.10"
+
+      - name: Run tests with coverage
+        run: dagger call coverage --source . export --path ./coverage.out
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          fail_ci_if_error: true
+
+      - name: Check coverage threshold
+        run: dagger call coverage-report --source . --threshold 80

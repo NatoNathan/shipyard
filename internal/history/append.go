@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/NatoNathan/shipyard/internal/consignment"
 	"github.com/gofrs/flock"
 )
 
-// AppendToHistory appends consignments to the history file with file locking
+// AppendToHistory appends history entries to the history file with file locking
 // Returns error if file doesn't exist, contains invalid JSON, or write fails
-func AppendToHistory(historyPath string, consignments []*consignment.Consignment) error {
+func AppendToHistory(historyPath string, entries []Entry) error {
 	// Early return for empty list
-	if len(consignments) == 0 {
+	if len(entries) == 0 {
 		return nil
 	}
 
@@ -24,7 +23,7 @@ func AppendToHistory(historyPath string, consignments []*consignment.Consignment
 	if err := fileLock.Lock(); err != nil {
 		return fmt.Errorf("failed to acquire lock: %w", err)
 	}
-	defer fileLock.Unlock()
+	defer func() { _ = fileLock.Unlock() }()
 
 	// Read existing history
 	data, err := os.ReadFile(historyPath)
@@ -33,15 +32,13 @@ func AppendToHistory(historyPath string, consignments []*consignment.Consignment
 	}
 
 	// Parse existing history
-	var history []consignment.Consignment
+	var history []Entry
 	if err := json.Unmarshal(data, &history); err != nil {
 		return fmt.Errorf("failed to unmarshal history: %w", err)
 	}
 
-	// Append new consignments
-	for _, c := range consignments {
-		history = append(history, *c)
-	}
+	// Append new entries
+	history = append(history, entries...)
 
 	// Marshal updated history
 	updatedData, err := json.MarshalIndent(history, "", "  ")
@@ -58,7 +55,7 @@ func AppendToHistory(historyPath string, consignments []*consignment.Consignment
 	// Atomic rename
 	if err := os.Rename(tempPath, historyPath); err != nil {
 		// Clean up temp file on failure
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 

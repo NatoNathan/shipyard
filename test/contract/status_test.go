@@ -46,7 +46,7 @@ func TestStatusCommand_ExitCodes(t *testing.T) {
 		// Verify: Exit code 0
 		require.NoError(t, err, "status should exit 0 with consignments")
 		assert.Contains(t, string(output), "core")
-		assert.Contains(t, string(output), "patch")
+		assert.Contains(t, string(output), "1.0.0 → 1.0.1")
 	})
 
 	t.Run("exit 1 when not initialized", func(t *testing.T) {
@@ -80,11 +80,11 @@ func TestStatusCommand_OutputFormat(t *testing.T) {
 		cmd.Dir = tempDir
 		output, err := cmd.CombinedOutput()
 
-		// Verify: Table format
+		// Verify: Table format with version range
 		require.NoError(t, err, "command failed with output: %s", string(output))
-		assert.Contains(t, string(output), "Package:")
-		assert.Contains(t, string(output), "Bump:")
-		assert.Contains(t, string(output), "Consignments:")
+		assert.Contains(t, string(output), "📦 Pending consignments")
+		assert.Contains(t, string(output), "core")
+		assert.Contains(t, string(output), "→")
 	})
 
 	t.Run("json format with --output json", func(t *testing.T) {
@@ -183,7 +183,7 @@ func TestStatusCommand_GlobalJSONFlag(t *testing.T) {
 
 		// Verify: Table output (local flag wins)
 		require.NoError(t, err)
-		assert.Contains(t, string(output), "Package:", "Should output table format when local flag specified")
+		assert.Contains(t, string(output), "📦 Pending consignments", "Should output table format when local flag specified")
 		assert.NotContains(t, string(output), "{", "Should not be JSON when local flag overrides")
 	})
 }

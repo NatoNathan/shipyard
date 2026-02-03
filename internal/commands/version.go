@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 
 	"github.com/NatoNathan/shipyard/internal/changelog"
 	"github.com/NatoNathan/shipyard/internal/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/git"
 	"github.com/NatoNathan/shipyard/internal/graph"
 	"github.com/NatoNathan/shipyard/internal/history"
+	"github.com/NatoNathan/shipyard/internal/template"
 	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/NatoNathan/shipyard/internal/version"
 	"github.com/NatoNathan/shipyard/pkg/semver"
@@ -230,35 +232,119 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 	}
 
-	// 7. Generate changelogs (unless preview)
+	// 3. Generate tag names (needed for history entries)
+	var packageTags map[string]changelog.PackageTag
 	if !opts.Preview {
 		generator := changelog.NewChangelogGenerator()
 		generator.SetBaseDir(projectPath)
 
+		tagTemplateSource := "builtin:default"
+		if cfg.Templates.TagName != nil && cfg.Templates.TagName.Source != "" {
+			tagTemplateSource = cfg.Templates.TagName.Source
+		}
+
+		versions := make(map[string]semver.Version)
+		for pkgName, bump := range versionBumps {
+			versions[pkgName] = bump.NewVersion
+		}
+
+		var err error
+		packageTags, err = generator.GenerateAllPackageTags(consignments, versions, tagTemplateSource)
+		if err != nil {
+			return fmt.Errorf("failed to generate tags: %w", err)
+		}
+	}
+
+	// 4. Archive consignments to history with version context (unless preview)
+	if !opts.Preview {
+		historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
+
+		// Build history entries with version context
+		var historyEntries []history.Entry
 		for _, pkg := range cfg.Packages {
 			bump, hasBump := versionBumps[pkg.Name]
 			if !hasBump {
 				continue
 			}
 
-			// Generate changelog for this package
+			// Filter consignments for this package
 			pkgConsignments := filterConsignmentsForPackage(consignments, pkg.Name)
 			if len(pkgConsignments) == 0 {
 				continue
 			}
 
-			// Use builtin template if no override specified
-			templateSource := "builtin:default"
+			// Convert to history.Consignment format
+			historyConsignments := make([]history.Consignment, len(pkgConsignments))
+			for i, c := range pkgConsignments {
+				historyConsignments[i] = history.Consignment{
+					ID:         c.ID,
+					Summary:    c.Summary,
+					ChangeType: string(c.ChangeType),
+					Metadata:   c.Metadata,
+				}
+			}
+
+			// Get tag name for this package
+			tagName := ""
+			if tag, exists := packageTags[pkg.Name]; exists {
+				tagName = tag.Name
+			}
+
+			// Create entry with version context
+			entry := history.Entry{
+				Version:      bump.NewVersion.String(),
+				Package:      pkg.Name,
+				Tag:          tagName,
+				Timestamp:    time.Now(),
+				Consignments: historyConsignments,
+			}
+			historyEntries = append(historyEntries, entry)
+		}
+
+		// Archive with proper structure
+		if err := history.AppendToHistory(historyPath, historyEntries); err != nil {
+			return fmt.Errorf("failed to archive consignments: %w", err)
+		}
+
+		if opts.Verbose {
+			fmt.Printf("Archived %d history entry/entries to history\n", len(historyEntries))
+		}
+	}
+
+	// 5. Generate changelogs (unless preview) - Must happen AFTER archiving so current version is in history
+	if !opts.Preview {
+		// Read complete history to regenerate changelogs (now includes newly archived entries)
+		historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
+		allEntries, err := history.ReadHistory(historyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read history for changelog generation: %w", err)
+		}
+
+		for _, pkg := range cfg.Packages {
+			_, hasBump := versionBumps[pkg.Name]
+			if !hasBump {
+				continue
+			}
+
+			// Filter history for this package
+			pkgEntries := history.FilterByPackage(allEntries, pkg.Name)
+			if len(pkgEntries) == 0 {
+				continue
+			}
+
+			// Determine template source from config
+			templateSource := "changelog" // Auto-selects builtin changelog template
 			if cfg.Templates.Changelog.Source != "" {
 				templateSource = cfg.Templates.Changelog.Source
 			}
 
-			changelogContent, err := generator.GenerateForPackage(pkgConsignments, pkg.Name, bump.NewVersion, templateSource)
+			// Generate full changelog from all history (multi-version)
+			changelogContent, err := template.RenderReleaseNotesWithTemplate(pkgEntries, templateSource)
 			if err != nil {
 				return fmt.Errorf("failed to generate changelog for %s: %w", pkg.Name, err)
 			}
 
-			// Write changelog to file
+			// Write (replace) changelog to file
 			changelogPath := filepath.Join(projectPath, pkg.Path, "CHANGELOG.md")
 			if err := os.WriteFile(changelogPath, []byte(changelogContent), 0644); err != nil {
 				return fmt.Errorf("failed to write changelog for %s: %w", pkg.Name, err)
@@ -270,19 +356,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 	}
 
-	// 3. Archive consignments to history (unless preview)
-	if !opts.Preview {
-		historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
-		if err := history.AppendToHistory(historyPath, consignments); err != nil {
-			return fmt.Errorf("failed to archive consignments: %w", err)
-		}
-
-		if opts.Verbose {
-			fmt.Printf("Archived %d consignment(s) to history\n", len(consignments))
-		}
-	}
-
-	// 4. Delete processed consignment files (unless preview)
+	// 6. Delete processed consignment files (unless preview)
 	if !opts.Preview {
 		for _, c := range consignments {
 			consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
@@ -296,7 +370,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 	}
 
-	// 5. Create git operations (skip if preview/no-commit/no-tag)
+	// 7. Create git operations (skip if preview/no-commit/no-tag)
 	if !opts.Preview {
 		// Collect files to stage (version files + changelogs)
 		filesToStage := []string{}
@@ -398,23 +472,8 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 			}
 		}
 
-		// Create tags
-		if !opts.NoTag {
-			tagTemplateSource := "builtin:default"
-			if cfg.Templates.TagName != nil && cfg.Templates.TagName.Source != "" {
-				tagTemplateSource = cfg.Templates.TagName.Source
-			}
-
-			versions := make(map[string]semver.Version)
-			for pkgName, bump := range versionBumps {
-				versions[pkgName] = bump.NewVersion
-			}
-
-			packageTags, err := generator.GenerateAllPackageTags(consignments, versions, tagTemplateSource)
-			if err != nil {
-				return fmt.Errorf("failed to generate tags: %w", err)
-			}
-
+		// Create tags (using already-generated packageTags from step 3)
+		if !opts.NoTag && len(packageTags) > 0 {
 			// Separate annotated and lightweight tags
 			annotatedTags := make(map[string]string)
 			lightweightTags := []string{}

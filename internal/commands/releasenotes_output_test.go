@@ -18,9 +18,9 @@ func TestReleaseNotesCommand_OutputFile(t *testing.T) {
 
 		outputFile := filepath.Join(tempDir, "RELEASE_NOTES.md")
 
-		// Test: Run with --output flag
+		// Test: Run with --output flag (multi-package repo requires --package)
 		cmd := NewReleaseNotesCommand()
-		cmd.SetArgs([]string{"--output", outputFile})
+		cmd.SetArgs([]string{"--package", "core", "--output", outputFile})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -43,9 +43,9 @@ func TestReleaseNotesCommand_OutputFile(t *testing.T) {
 		// Create existing file
 		require.NoError(t, os.WriteFile(outputFile, []byte("old content"), 0644))
 
-		// Test: Run with --output flag
+		// Test: Run with --output flag (multi-package repo requires --package)
 		cmd := NewReleaseNotesCommand()
-		cmd.SetArgs([]string{"--output", outputFile})
+		cmd.SetArgs([]string{"--package", "core", "--output", outputFile})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -68,9 +68,9 @@ func TestReleaseNotesCommand_OutputFile(t *testing.T) {
 
 		outputFile := filepath.Join(docsDir, "CHANGELOG.md")
 
-		// Test: Run with --output flag to subdirectory
+		// Test: Run with --output flag to subdirectory (multi-package repo requires --package)
 		cmd := NewReleaseNotesCommand()
-		cmd.SetArgs([]string{"--output", outputFile})
+		cmd.SetArgs([]string{"--package", "core", "--output", outputFile})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -151,9 +151,9 @@ func TestReleaseNotesCommand_OutputFormats(t *testing.T) {
 
 		outputFile := filepath.Join(tempDir, "v1.1.0.md")
 
-		// Test: Run with both --version and --output flags
+		// Test: Run with both --version and --output flags (multi-package repo requires --package)
 		cmd := NewReleaseNotesCommand()
-		cmd.SetArgs([]string{"--version", "1.1.0", "--output", outputFile})
+		cmd.SetArgs([]string{"--package", "core", "--version", "1.1.0", "--output", outputFile})
 
 		err := cmd.Execute()
 		require.NoError(t, err)

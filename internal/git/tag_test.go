@@ -496,3 +496,130 @@ func TestMixedTagTypes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, commit, tagObj.Target)
 }
+
+// TestVerifyTagExists_Success tests verifying an existing tag
+func TestVerifyTagExists_Success(t *testing.T) {
+	// Setup: Create temp git repo with a commit and tag
+	tempDir := t.TempDir()
+	repo, err := gogit.PlainInit(tempDir, false)
+	require.NoError(t, err)
+
+	// Create initial commit
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+
+	testFile := tempDir + "/test.txt"
+	require.NoError(t, os.WriteFile(testFile, []byte("test"), 0644))
+	_, err = worktree.Add("test.txt")
+	require.NoError(t, err)
+
+	_, err = worktree.Commit("Initial commit", &gogit.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+
+	// Create a tag
+	tagName := "v1.0.0"
+	err = CreateAnnotatedTag(tempDir, tagName, "Test release")
+	require.NoError(t, err)
+
+	// Test: Verify tag exists
+	exists, err := VerifyTagExists(tempDir, tagName)
+
+	// Verify: Returns true, no error
+	require.NoError(t, err)
+	assert.True(t, exists)
+}
+
+// TestVerifyTagExists_NotFound tests verifying a non-existent tag
+func TestVerifyTagExists_NotFound(t *testing.T) {
+	// Setup: Create temp git repo with commit but no tag
+	tempDir := t.TempDir()
+	repo, err := gogit.PlainInit(tempDir, false)
+	require.NoError(t, err)
+
+	// Create initial commit
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+
+	testFile := tempDir + "/test.txt"
+	require.NoError(t, os.WriteFile(testFile, []byte("test"), 0644))
+	_, err = worktree.Add("test.txt")
+	require.NoError(t, err)
+
+	_, err = worktree.Commit("Initial commit", &gogit.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+
+	// Test: Verify non-existent tag
+	exists, err := VerifyTagExists(tempDir, "v9.9.9")
+
+	// Verify: Returns false, no error
+	require.NoError(t, err)
+	assert.False(t, exists)
+}
+
+// TestVerifyTagExists_InvalidRepo tests error when repo path is invalid
+func TestVerifyTagExists_InvalidRepo(t *testing.T) {
+	// Test: Call VerifyTagExists on non-existent path
+	exists, err := VerifyTagExists("/nonexistent/path", "v1.0.0")
+
+	// Verify: Returns false with error
+	assert.Error(t, err)
+	assert.False(t, exists)
+	assert.Contains(t, err.Error(), "failed to open repository")
+}
+
+// TestVerifyTagPushedToRemote_InvalidRepo tests error when repo path is invalid
+func TestVerifyTagPushedToRemote_InvalidRepo(t *testing.T) {
+	// Test: Call VerifyTagPushedToRemote on non-existent path
+	pushed, err := VerifyTagPushedToRemote("/nonexistent/path", "origin", "v1.0.0")
+
+	// Verify: Returns false with error
+	assert.Error(t, err)
+	assert.False(t, pushed)
+	assert.Contains(t, err.Error(), "failed to open repository")
+}
+
+// TestVerifyTagPushedToRemote_NoRemote tests error when remote doesn't exist
+func TestVerifyTagPushedToRemote_NoRemote(t *testing.T) {
+	// Setup: Create temp git repo with commit but no remote
+	tempDir := t.TempDir()
+	repo, err := gogit.PlainInit(tempDir, false)
+	require.NoError(t, err)
+
+	// Create initial commit
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+
+	testFile := tempDir + "/test.txt"
+	require.NoError(t, os.WriteFile(testFile, []byte("test"), 0644))
+	_, err = worktree.Add("test.txt")
+	require.NoError(t, err)
+
+	_, err = worktree.Commit("Initial commit", &gogit.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+
+	// Test: Call VerifyTagPushedToRemote without setting up remote
+	pushed, err := VerifyTagPushedToRemote(tempDir, "origin", "v1.0.0")
+
+	// Verify: Returns false with error
+	assert.Error(t, err)
+	assert.False(t, pushed)
+	assert.Contains(t, err.Error(), "failed to get remote")
+}
