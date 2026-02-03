@@ -283,19 +283,48 @@ func (m *Shipyard) createNPMPackage(ctx context.Context, version string) *dagger
   },
   "homepage": "https://github.com/NatoNathan/shipyard",
   "dependencies": {
-    "tar": "^6.2.0",
+    "tar": "^7.5.0",
     "adm-zip": "^0.5.10"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }`, versionNum)
 
 	installScript := m.generateInstallScript(version)
 	readme := m.generateNPMReadme(version)
 
+	binWrapper := `#!/usr/bin/env node
+const { spawnSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+const binDir = path.join(__dirname, '..', 'bin');
+const binName = process.platform === 'win32' ? 'shipyard.exe' : 'shipyard';
+const binPath = path.join(binDir, binName);
+const realBinary = path.join(binDir, '.shipyard-binary');
+
+// Check if real binary exists
+if (!fs.existsSync(realBinary)) {
+  console.error('Shipyard binary not found. Installing...');
+  const installScript = path.join(__dirname, '..', 'install.js');
+  const result = spawnSync('node', [installScript], { stdio: 'inherit' });
+  if (result.status !== 0) {
+    console.error('Failed to install shipyard binary');
+    process.exit(1);
+  }
+}
+
+// Execute the real binary
+const result = spawnSync(realBinary, process.argv.slice(2), { stdio: 'inherit' });
+process.exit(result.status || 0);
+`
+
 	return dag.Directory().
 		WithNewFile("package.json", packageJSON).
 		WithNewFile("install.js", installScript).
 		WithNewFile("README.md", readme).
-		WithNewFile("bin/shipyard", "#!/bin/sh\n# Placeholder - real binary installed by postinstall\n")
+		WithNewFile("bin/shipyard", binWrapper)
 }
 
 // generateInstallScript creates the npm postinstall script
@@ -308,7 +337,8 @@ const AdmZip = require('adm-zip');
 
 const version = '%s';
 const binDir = path.join(__dirname, 'bin');
-const binPath = path.join(binDir, process.platform === 'win32' ? 'shipyard.exe' : 'shipyard');
+const binName = '.shipyard-binary' + (process.platform === 'win32' ? '.exe' : '');
+const binPath = path.join(binDir, binName);
 
 // Platform mapping
 const platformMap = {
@@ -346,6 +376,9 @@ https.get(url, (res) => {
     }
 
     // Extract based on format
+    const extractedName = process.platform === 'win32' ? 'shipyard.exe' : 'shipyard';
+    const extractedPath = path.join(binDir, extractedName);
+
     if (ext === 'zip') {
       const zip = new AdmZip(buffer);
       zip.extractAllTo(binDir, true);
@@ -354,6 +387,14 @@ https.get(url, (res) => {
       fs.writeFileSync(tmpPath, buffer);
       tar.x({ file: tmpPath, cwd: binDir, sync: true });
       fs.unlinkSync(tmpPath);
+    }
+
+    // Rename extracted binary to hidden name
+    if (fs.existsSync(extractedPath)) {
+      if (fs.existsSync(binPath)) {
+        fs.unlinkSync(binPath);
+      }
+      fs.renameSync(extractedPath, binPath);
     }
 
     // Make executable
