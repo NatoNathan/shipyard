@@ -1,18 +1,11 @@
-# Changelog
+# Release Notes: {{ .Package }} v{{ .Version }}
 
-All notable changes to this project will be documented in this file.
-
-{{- range . }}
-{{- if gt (len .Consignments) 0 }}
-
-## [{{ .Version }}] - {{ .Timestamp | date "2006-01-02" }}
-{{- if .Package }}
-**Package**: {{ .Package }}
-{{- end }}
+Released: {{ .Timestamp | date "2006-01-02" }}
 
 {{- $major := list }}
 {{- $minor := list }}
 {{- $patch := list }}
+{{- $other := dict }}
 
 {{- range .Consignments }}
   {{- if eq .ChangeType "major" }}
@@ -21,12 +14,16 @@ All notable changes to this project will be documented in this file.
     {{- $minor = append $minor . }}
   {{- else if eq .ChangeType "patch" }}
     {{- $patch = append $patch . }}
+  {{- else }}
+    {{- $changes := index $other .ChangeType | default list }}
+    {{- $changes = append $changes . }}
+    {{- $other = set $other .ChangeType $changes }}
   {{- end }}
 {{- end }}
 
 {{- if $major }}
 
-### Breaking Changes
+## Breaking Changes
 {{- range $major }}
 - {{ .Summary }}
 {{- end }}
@@ -34,7 +31,7 @@ All notable changes to this project will be documented in this file.
 
 {{- if $minor }}
 
-### Features
+## Features
 {{- range $minor }}
 - {{ .Summary }}
 {{- end }}
@@ -42,11 +39,16 @@ All notable changes to this project will be documented in this file.
 
 {{- if $patch }}
 
-### Bug Fixes
+## Bug Fixes
 {{- range $patch }}
 - {{ .Summary }}
 {{- end }}
 {{- end }}
 
+{{- range $type, $changes := $other }}
+
+## {{ $type | title }}
+{{- range $changes }}
+- {{ .Summary }}
 {{- end }}
 {{- end }}

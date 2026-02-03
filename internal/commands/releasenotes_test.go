@@ -16,9 +16,9 @@ func TestReleaseNotesCommand_Basic(t *testing.T) {
 		tempDir := setupReleaseNotesTestRepo(t)
 		defer changeToDir(t, tempDir)()
 
-		// Test: Run release-notes command
+		// Test: Run release-notes command (multi-package repo requires --package)
 		cmd := NewReleaseNotesCommand()
-		cmd.SetArgs([]string{})
+		cmd.SetArgs([]string{"--package", "core"})
 
 		output := captureOutput(func() {
 			err := cmd.Execute()

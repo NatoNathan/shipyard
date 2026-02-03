@@ -107,7 +107,25 @@ func (g *ChangelogGenerator) GenerateForPackageWithTemplate(
 	filtered := filterConsignmentsForPackage(consignments, packageName)
 
 	// Build single-package context
-	context := g.buildSinglePackageContext(packageName, version, filtered)
+	singleContext := g.buildSinglePackageContext(packageName, version, filtered)
+
+	// Wrap in array for changelog template (which expects multi-version format)
+	// Convert to Entry-like structure with Timestamp instead of Date
+	type Entry struct {
+		Package      string
+		Version      string
+		Timestamp    time.Time
+		Consignments interface{}
+	}
+
+	context := []Entry{
+		{
+			Package:      packageName,
+			Version:      version.String(),
+			Timestamp:    time.Now(),
+			Consignments: singleContext["Consignments"],
+		},
+	}
 
 	// Render template
 	result, err := g.renderer.Render(inlineTemplate, context)

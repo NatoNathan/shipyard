@@ -59,3 +59,13 @@ type ReleaseAsset struct {
 	DownloadURL string
 	Size        int64
 }
+
+// CreateReleaseRequest represents a request to create a GitHub release
+type CreateReleaseRequest struct {
+	TagName         string `json:"tag_name"`
+	Name            string `json:"name"`
+	Body            string `json:"body"`
+	Draft           bool   `json:"draft"`
+	Prerelease      bool   `json:"prerelease"`
+	TargetCommitish string `json:"target_commitish,omitempty"`
+}

@@ -1,13 +1,15 @@
-# Release {{ .Version }}
+# Release Notes: {{ .Package }} v{{ .Version }}
 
-Released on {{ .Date | date "January 2, 2006" }}
+Released: {{ .Timestamp | date "2006-01-02" }}
+
+{{- if .Consignments }}
 
 ## Changes
 
-{{ range .Consignments -}}
-- **{{ .ChangeType | upper }}**: {{ .Summary }}
-{{ end -}}
+{{- range .Consignments }}
+- **{{ .ChangeType | title }}**: {{ .Summary }}
+{{- end }}
+{{- else }}
 
----
-
-Generated with Shipyard
+_No changes in this release._
+{{- end }}

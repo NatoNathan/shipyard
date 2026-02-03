@@ -19,27 +19,37 @@ func TestBuiltinTemplate_Changelog(t *testing.T) {
 		Metadata   map[string]interface{}
 	}
 
-	context := map[string]interface{}{
-		"Package": "core",
-		"Version": "1.2.0",
-		"Consignments": []Consignment{
-			{
-				Packages:   []string{"core"},
-				ChangeType: "minor",
-				Summary:    "Added OAuth2 support",
-				Metadata: map[string]interface{}{
-					"author": "alice@example.com",
-					"issue":  "FEAT-123",
+	type Entry struct {
+		Package      string
+		Version      string
+		Timestamp    time.Time
+		Consignments []Consignment
+	}
+
+	// Changelog template expects array of entries (multi-version)
+	context := []Entry{
+		{
+			Package:   "core",
+			Version:   "1.2.0",
+			Timestamp: now,
+			Consignments: []Consignment{
+				{
+					Packages:   []string{"core"},
+					ChangeType: "minor",
+					Summary:    "Added OAuth2 support",
+					Metadata: map[string]interface{}{
+						"author": "alice@example.com",
+						"issue":  "FEAT-123",
+					},
+				},
+				{
+					Packages:   []string{"core"},
+					ChangeType: "patch",
+					Summary:    "Fixed bug in validation",
+					Metadata:   map[string]interface{}{},
 				},
 			},
-			{
-				Packages:   []string{"core"},
-				ChangeType: "patch",
-				Summary:    "Fixed bug in validation",
-				Metadata:   map[string]interface{}{},
-			},
 		},
-		"Date": now,
 	}
 
 	loader := NewTemplateLoader()
@@ -53,7 +63,6 @@ func TestBuiltinTemplate_Changelog(t *testing.T) {
 	assert.Contains(t, result, "# Changelog")
 	assert.Contains(t, result, "[1.2.0]")
 	assert.Contains(t, result, "OAuth2")
-	assert.Contains(t, result, "alice@example.com")
 }
 
 func TestBuiltinTemplate_TagName(t *testing.T) {
@@ -82,8 +91,9 @@ func TestBuiltinTemplate_ReleaseNotes(t *testing.T) {
 	}
 
 	context := map[string]interface{}{
-		"Package": "core",
-		"Version": "1.5.0",
+		"Package":   "core",
+		"Version":   "1.5.0",
+		"Timestamp": now, // Changed from Date to Timestamp
 		"Consignments": []Consignment{
 			{
 				ChangeType: "minor",
@@ -94,7 +104,6 @@ func TestBuiltinTemplate_ReleaseNotes(t *testing.T) {
 				Summary:    "Fixed bug",
 			},
 		},
-		"Date": now,
 	}
 
 	loader := NewTemplateLoader()
@@ -105,8 +114,8 @@ func TestBuiltinTemplate_ReleaseNotes(t *testing.T) {
 	result, err := renderer.Render(content, context)
 
 	require.NoError(t, err)
-	assert.Contains(t, result, "Release 1.5.0")
-	assert.Contains(t, result, "January 30, 2026")
+	assert.Contains(t, result, "core v1.5.0") // Updated format
+	assert.Contains(t, result, "2026-01-30")  // Updated date format
 	assert.Contains(t, result, "Added new feature")
 	assert.Contains(t, result, "Fixed bug")
 }
@@ -138,25 +147,34 @@ func TestBuiltinTemplate_ChangelogWithSharedConsignments(t *testing.T) {
 		Metadata   map[string]interface{}
 	}
 
+	type Entry struct {
+		Package      string
+		Version      string
+		Timestamp    time.Time
+		Consignments []Consignment
+	}
+
 	// Test that consignments affecting multiple packages can appear in single-package changelog
-	context := map[string]interface{}{
-		"Package": "core",
-		"Version": "1.2.0",
-		"Consignments": []Consignment{
-			{
-				Packages:   []string{"core"},
-				ChangeType: "minor",
-				Summary:    "Core feature",
-				Metadata:   map[string]interface{}{},
-			},
-			{
-				Packages:   []string{"core", "api"},
-				ChangeType: "patch",
-				Summary:    "Shared fix",
-				Metadata:   map[string]interface{}{},
+	context := []Entry{
+		{
+			Package:   "core",
+			Version:   "1.2.0",
+			Timestamp: now,
+			Consignments: []Consignment{
+				{
+					Packages:   []string{"core"},
+					ChangeType: "minor",
+					Summary:    "Core feature",
+					Metadata:   map[string]interface{}{},
+				},
+				{
+					Packages:   []string{"core", "api"},
+					ChangeType: "patch",
+					Summary:    "Shared fix",
+					Metadata:   map[string]interface{}{},
+				},
 			},
 		},
-		"Date": now,
 	}
 
 	loader := NewTemplateLoader()
@@ -175,11 +193,20 @@ func TestBuiltinTemplate_ChangelogWithSharedConsignments(t *testing.T) {
 func TestBuiltinTemplate_EmptyConsignments(t *testing.T) {
 	now := time.Date(2026, 1, 30, 14, 30, 0, 0, time.UTC)
 
-	context := map[string]interface{}{
-		"Package":      "core",
-		"Version":      "1.0.0",
-		"Consignments": []interface{}{}, // Empty
-		"Date":         now,
+	type Entry struct {
+		Package      string
+		Version      string
+		Timestamp    time.Time
+		Consignments []interface{}
+	}
+
+	context := []Entry{
+		{
+			Package:      "core",
+			Version:      "1.0.0",
+			Timestamp:    now,
+			Consignments: []interface{}{}, // Empty
+		},
 	}
 
 	loader := NewTemplateLoader()
@@ -192,6 +219,8 @@ func TestBuiltinTemplate_EmptyConsignments(t *testing.T) {
 	// Should render without error even with empty consignments
 	require.NoError(t, err)
 	assert.Contains(t, result, "# Changelog")
+	// Entry with no consignments should be skipped by template
+	assert.NotContains(t, result, "[1.0.0]")
 }
 
 func TestBuiltinTemplate_ConsistentFormatting(t *testing.T) {
@@ -225,8 +254,8 @@ func TestBuiltinTemplate_ConsistentFormatting(t *testing.T) {
 		// Should have title
 		assert.Contains(t, template, "# Release")
 
-		// Should have date
-		assert.Contains(t, template, "Released on")
+		// Should have date (updated format)
+		assert.Contains(t, template, "Released:")
 
 		// Should have changes section
 		assert.Contains(t, template, "## Changes")

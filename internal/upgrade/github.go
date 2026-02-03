@@ -128,3 +128,70 @@ func IsNewer(currentVersion, releaseVersion string) (bool, error) {
 
 	return release.Compare(current) > 0, nil
 }
+
+// CreateRelease creates a new GitHub release
+func (c *GitHubClient) CreateRelease(ctx context.Context, owner, repo string, release *CreateReleaseRequest) (*ReleaseInfo, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/releases", c.baseURL, owner, repo)
+
+	// Marshal request body
+	bodyBytes, err := json.Marshal(release)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(bodyBytes)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add headers
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	if c.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.authToken)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create release: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check for rate limiting
+	if resp.StatusCode == http.StatusForbidden {
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+		if remaining == "0" {
+			resetTime := resp.Header.Get("X-RateLimit-Reset")
+			return nil, fmt.Errorf("GitHub API rate limit exceeded. Reset at %s. Set GITHUB_TOKEN environment variable to increase rate limit", resetTime)
+		}
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var ghRelease githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&ghRelease); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Convert to ReleaseInfo
+	releaseInfo := &ReleaseInfo{
+		TagName:     ghRelease.TagName,
+		Name:        ghRelease.Name,
+		Body:        ghRelease.Body,
+		PublishedAt: ghRelease.PublishedAt,
+		Prerelease:  ghRelease.Prerelease,
+		Assets:      make([]ReleaseAsset, len(ghRelease.Assets)),
+	}
+
+	for i, asset := range ghRelease.Assets {
+		releaseInfo.Assets[i] = ReleaseAsset{
+			Name:        asset.Name,
+			DownloadURL: asset.BrowserDownloadURL,
+			Size:        asset.Size,
+		}
+	}
+
+	return releaseInfo, nil
+}

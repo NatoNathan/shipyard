@@ -2,107 +2,77 @@ package template
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/NatoNathan/shipyard/internal/history"
 )
 
-// RenderOptions configures release notes rendering
-type RenderOptions struct {
-	GroupByType bool // Group changes by type (major, minor, patch)
-}
-
-// DefaultRenderOptions returns default rendering options
-func DefaultRenderOptions() *RenderOptions {
-	return &RenderOptions{
-		GroupByType: false,
-	}
-}
-
-// RenderReleaseNotes renders release notes using the builtin markdown template
+// RenderReleaseNotes renders release notes using the default template
 func RenderReleaseNotes(entries []history.Entry) (string, error) {
-	return RenderReleaseNotesWithOptions(entries, nil)
+	return RenderReleaseNotesWithTemplate(entries, "builtin:default")
 }
 
-// RenderReleaseNotesWithOptions renders release notes with custom options
-func RenderReleaseNotesWithOptions(entries []history.Entry, opts *RenderOptions) (string, error) {
-	if opts == nil {
-		opts = DefaultRenderOptions()
-	}
-
+// RenderReleaseNotesWithTemplate renders release notes using a specific template
+// templateSource can be:
+// - "builtin:default" or "builtin:grouped" - builtin templates
+// - "file:/path/to/template.tmpl" - file path
+// - "https://example.com/template.tmpl" - remote URL
+// - inline template content (multiline string)
+// - "changelog" - auto-maps to changelog template for multi-version
+// - "release-notes" - auto-maps to release-notes template for single-version
+func RenderReleaseNotesWithTemplate(entries []history.Entry, templateSource string) (string, error) {
 	if len(entries) == 0 {
 		return "No releases found\n", nil
 	}
 
-	var sb strings.Builder
+	// Handle special auto-selection cases
+	var templateType TemplateType
+	var source string
 
-	// Main title
-	sb.WriteString("# Release Notes\n\n")
-
-	// Render each version
-	for _, entry := range entries {
-		// Version header
-		sb.WriteString(fmt.Sprintf("## %s - %s\n\n", entry.Package, entry.Version))
-		sb.WriteString(fmt.Sprintf("Released: %s\n\n", entry.Timestamp.Format("2006-01-02")))
-
-		// Render changes
-		if len(entry.Consignments) > 0 {
-			if opts.GroupByType {
-				renderGroupedChanges(&sb, entry.Consignments)
-			} else {
-				renderFlatChanges(&sb, entry.Consignments)
-			}
+	switch templateSource {
+	case "changelog":
+		// Multi-version changelog (always full history)
+		templateType = TemplateTypeChangelog
+		source = "builtin:default" // default.tmpl expects array of entries
+	case "release-notes":
+		// Single-version release notes
+		templateType = TemplateTypeReleaseNotes
+		source = "builtin:default"
+	default:
+		// User-specified template - determine type by entry count
+		if len(entries) > 1 {
+			templateType = TemplateTypeChangelog
+		} else {
+			templateType = TemplateTypeReleaseNotes
 		}
+		source = templateSource
 	}
 
-	return sb.String(), nil
-}
+	// Create loader and renderer
+	loader := NewTemplateLoader()
+	renderer := NewTemplateRenderer()
 
-// renderFlatChanges renders changes as a flat list
-func renderFlatChanges(sb *strings.Builder, consignments []history.Consignment) {
-	sb.WriteString("### Changes\n\n")
-	for _, c := range consignments {
-		sb.WriteString(fmt.Sprintf("- **%s**: %s\n", c.ChangeType, c.Summary))
-	}
-	sb.WriteString("\n")
-}
-
-// renderGroupedChanges renders changes grouped by type
-func renderGroupedChanges(sb *strings.Builder, consignments []history.Consignment) {
-	// Group by type
-	groups := make(map[string][]history.Consignment)
-	for _, c := range consignments {
-		groups[c.ChangeType] = append(groups[c.ChangeType], c)
+	// Load template
+	templateContent, err := loader.Load(source, templateType)
+	if err != nil {
+		return "", fmt.Errorf("failed to load template: %w", err)
 	}
 
-	// Render in order: major, minor, patch
-	typeOrder := []struct {
-		key   string
-		title string
-	}{
-		{"major", "#### Breaking Changes"},
-		{"minor", "#### Features"},
-		{"patch", "#### Bug Fixes"},
+	// Prepare context based on template type
+	var context interface{}
+
+	if templateType == TemplateTypeChangelog {
+		// Multi-entry context for changelog (array of entries)
+		context = entries
+	} else {
+		// Single-entry context for release notes
+		context = entries[0]
 	}
 
-	for _, typeInfo := range typeOrder {
-		if changes, ok := groups[typeInfo.key]; ok && len(changes) > 0 {
-			sb.WriteString(fmt.Sprintf("%s\n\n", typeInfo.title))
-			for _, c := range changes {
-				sb.WriteString(fmt.Sprintf("- %s\n", c.Summary))
-			}
-			sb.WriteString("\n")
-		}
+	// Render template
+	output, err := renderer.Render(templateContent, context)
+	if err != nil {
+		return "", fmt.Errorf("failed to render template: %w", err)
 	}
 
-	// Render any other types not in the standard order
-	for changeType, changes := range groups {
-		if changeType != "major" && changeType != "minor" && changeType != "patch" {
-			sb.WriteString(fmt.Sprintf("#### %s\n\n", strings.Title(changeType)))
-			for _, c := range changes {
-				sb.WriteString(fmt.Sprintf("- %s\n", c.Summary))
-			}
-			sb.WriteString("\n")
-		}
-	}
+	return output, nil
 }
