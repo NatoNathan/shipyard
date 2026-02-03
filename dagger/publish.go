@@ -359,17 +359,33 @@ const url = 'https://github.com/NatoNathan/shipyard/releases/download/' + versio
 
 console.log('Downloading shipyard binary for', platform);
 
-https.get(url, (res) => {
-  if (res.statusCode !== 200) {
-    console.error('Failed to download:', res.statusCode);
-    process.exit(1);
-  }
+// Helper function to follow redirects (GitHub returns 302 to release-assets.githubusercontent.com)
+function download(url, maxRedirects = 5) {
+  return new Promise((resolve, reject) => {
+    if (maxRedirects <= 0) {
+      return reject(new Error('Too many redirects'));
+    }
 
-  const chunks = [];
-  res.on('data', (chunk) => chunks.push(chunk));
-  res.on('end', () => {
-    const buffer = Buffer.concat(chunks);
+    https.get(url, (res) => {
+      // Handle redirects (301, 302, 303, 307, 308)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return resolve(download(res.headers.location, maxRedirects - 1));
+      }
 
+      if (res.statusCode !== 200) {
+        return reject(new Error('Failed to download: ' + res.statusCode));
+      }
+
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+download(url)
+  .then((buffer) => {
     // Ensure bin directory exists
     if (!fs.existsSync(binDir)) {
       fs.mkdirSync(binDir, { recursive: true });
@@ -403,11 +419,11 @@ https.get(url, (res) => {
     }
 
     console.log('✓ Shipyard installed successfully');
+  })
+  .catch((err) => {
+    console.error('Download failed:', err.message);
+    process.exit(1);
   });
-}).on('error', (err) => {
-  console.error('Download failed:', err.message);
-  process.exit(1);
-});
 `, version)
 }
 
