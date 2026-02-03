@@ -56,5 +56,18 @@
         "changeType": "minor"
       }
     ]
+  },
+  {
+    "version": "0.2.0",
+    "package": "shipyard",
+    "tag": "v0.2.0",
+    "timestamp": "2026-02-03T00:00:00Z",
+    "consignments": [
+      {
+        "id": "placeholder-0.2.0",
+        "summary": "Placeholder for accidentally published version to npm",
+        "changeType": "minor"
+      }
+    ]
   }
 ]
