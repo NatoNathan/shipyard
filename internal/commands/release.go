@@ -140,7 +140,7 @@ func runRelease(opts *ReleaseOptions) error {
 
 	// Publish release
 	ctx := context.Background()
-	if err := publisher.PublishRelease(ctx, opts.Package, version, selectedEntry.Tag, releaseNotes, opts.Draft); err != nil {
+	if err := publisher.PublishRelease(ctx, opts.Package, version, selectedEntry.Tag, releaseNotes, opts.Draft, opts.Prerelease); err != nil {
 		return err
 	}
 

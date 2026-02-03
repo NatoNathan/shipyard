@@ -3,10 +3,10 @@ package github
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"github.com/NatoNathan/shipyard/internal/config"
+	"github.com/NatoNathan/shipyard/internal/git"
 	"github.com/NatoNathan/shipyard/internal/upgrade"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
@@ -35,6 +35,7 @@ func (p *ReleasePublisher) PublishRelease(
 	tagName string,
 	releaseNotes string,
 	draft bool,
+	prerelease bool,
 ) error {
 	// Validate GitHub config
 	if p.config.GitHub.Owner == "" || p.config.GitHub.Repo == "" {
@@ -60,7 +61,7 @@ func (p *ReleasePublisher) PublishRelease(
 		Name:       title,
 		Body:       releaseNotes,
 		Draft:      draft,
-		Prerelease: false, // TODO: Make this configurable
+		Prerelease: prerelease,
 	}
 
 	// Call GitHub API
@@ -74,14 +75,12 @@ func (p *ReleasePublisher) PublishRelease(
 
 // verifyTagExists checks if the tag exists locally
 func (p *ReleasePublisher) verifyTagExists(tagName string) error {
-	cmd := exec.Command("git", "tag", "-l", tagName)
-	cmd.Dir = p.repoPath
-	output, err := cmd.Output()
+	exists, err := git.VerifyTagExists(p.repoPath, tagName)
 	if err != nil {
 		return fmt.Errorf("failed to check local tags: %w", err)
 	}
 
-	if strings.TrimSpace(string(output)) == "" {
+	if !exists {
 		return fmt.Errorf("tag %s does not exist locally", tagName)
 	}
 
@@ -90,14 +89,12 @@ func (p *ReleasePublisher) verifyTagExists(tagName string) error {
 
 // verifyTagPushed checks if the tag has been pushed to the remote
 func (p *ReleasePublisher) verifyTagPushed(tagName string) error {
-	cmd := exec.Command("git", "ls-remote", "--tags", "origin", tagName)
-	cmd.Dir = p.repoPath
-	output, err := cmd.Output()
+	pushed, err := git.VerifyTagPushedToRemote(p.repoPath, "origin", tagName)
 	if err != nil {
 		return fmt.Errorf("failed to check remote tags: %w", err)
 	}
 
-	if strings.TrimSpace(string(output)) == "" {
+	if !pushed {
 		return fmt.Errorf("tag %s not found on remote", tagName)
 	}
 
