@@ -278,23 +278,21 @@ func outputTableWithBumps(grouped map[string][]*consignment.Consignment, version
 		return nil
 	}
 
-	// Normal/verbose mode
-	fmt.Println("Pending Consignments:")
+	// Normal/verbose mode with emoji header
+	fmt.Println("📦 Pending consignments")
 	fmt.Println()
 
 	// Show all packages with version bumps (direct or propagated)
 	for pkg, bump := range versionBumps {
 		consignments := grouped[pkg]
 
-		fmt.Printf("Package: %s\n", pkg)
-		fmt.Printf("  Version: %s -> %s\n", bump.OldVersion, bump.NewVersion)
-		fmt.Printf("  Bump: %s (%s)\n", bump.ChangeType, bump.Source)
-		fmt.Printf("  Consignments: %d\n", len(consignments))
+		// Package name with version range using arrow
+		fmt.Printf("%s (%s → %s)\n", pkg, bump.OldVersion, bump.NewVersion)
 
 		if opts.Verbose && len(consignments) > 0 {
-			fmt.Println("  Changes:")
+			// List consignments with ID, summary, and type
 			for _, c := range consignments {
-				fmt.Printf("    - [%s] %s (%s)\n", c.ChangeType, c.Summary, c.ID)
+				fmt.Printf("  - %s: %s (%s)\n", c.ID, c.Summary, c.ChangeType)
 			}
 		}
 		fmt.Println()

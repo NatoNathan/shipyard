@@ -20,7 +20,9 @@ import (
 type InitOptions struct {
 	Force  bool
 	Remote string
-	Yes    bool // Skip prompts and use defaults
+	Yes    bool  // Skip prompts and use defaults
+	JSON   bool  // Output in JSON format
+	Quiet  bool  // Suppress output
 }
 
 // InitCmd creates the init command
@@ -45,10 +47,15 @@ default configurations.`,
 				return fmt.Errorf("failed to get current directory: %w", err)
 			}
 
+			// Extract global flags
+			globalFlags := GetGlobalFlags(cmd)
+
 			return runInit(cwd, InitOptions{
 				Force:  force,
 				Remote: remote,
 				Yes:    yes,
+				JSON:   globalFlags.JSON,
+				Quiet:  globalFlags.Quiet,
 			})
 		},
 	}
@@ -106,14 +113,29 @@ func runInit(projectPath string, options InitOptions) error {
 		return fmt.Errorf("failed to initialize history file: %w", err)
 	}
 
-	// Print success message with styled output
-	fmt.Println()
-	fmt.Println(ui.SuccessMessage("Shipyard initialized successfully"))
-	fmt.Println()
-	fmt.Println(ui.KeyValue("Configuration", configPath))
-	fmt.Println(ui.KeyValue("Consignments directory", filepath.Join(shipyardDir, "consignments")))
-	fmt.Println(ui.KeyValue("History file", historyPath))
-	fmt.Println()
+	// Output based on format flags
+	if options.JSON {
+		// JSON output
+		jsonData := map[string]interface{}{
+			"success":              true,
+			"configPath":           configPath,
+			"consignmentsDir":      filepath.Join(shipyardDir, "consignments"),
+			"historyFile":          historyPath,
+			"initialized":          true,
+		}
+		return PrintJSON(os.Stdout, jsonData)
+	}
+
+	if !options.Quiet {
+		// Print success message with styled output
+		fmt.Println()
+		fmt.Println(ui.SuccessMessage("Shipyard initialized successfully"))
+		fmt.Println()
+		fmt.Println(ui.KeyValue("Configuration", configPath))
+		fmt.Println(ui.KeyValue("Consignments directory", filepath.Join(shipyardDir, "consignments")))
+		fmt.Println(ui.KeyValue("History file", historyPath))
+		fmt.Println()
+	}
 
 	return nil
 }

@@ -27,6 +27,8 @@ type AddOptions struct {
 	Summary   string
 	Metadata  map[string]string
 	Timestamp time.Time // For testing
+	JSON      bool      // Output in JSON format
+	Quiet     bool      // Suppress output
 }
 
 // runAdd executes the add command logic
@@ -104,15 +106,32 @@ func runAdd(projectPath string, options AddOptions) error {
 		return fmt.Errorf("failed to write consignment: %w", err)
 	}
 
-	// Success message with styled output
+	// Output based on format flags
 	filename := fmt.Sprintf("%s.md", id)
-	fmt.Println()
-	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created consignment: %s", filename)))
-	fmt.Println()
-	fmt.Println(ui.KeyValue("Packages", strings.Join(options.Packages, ", ")))
-	fmt.Println(ui.KeyValue("Type", options.Type))
-	fmt.Println(ui.KeyValue("Summary", truncateSummary(options.Summary, 60)))
-	fmt.Println()
+
+	if options.JSON {
+		// JSON output
+		jsonData := map[string]interface{}{
+			"success":  true,
+			"id":       id,
+			"filename": filename,
+			"packages": options.Packages,
+			"type":     options.Type,
+			"summary":  options.Summary,
+		}
+		return PrintJSON(os.Stdout, jsonData)
+	}
+
+	if !options.Quiet {
+		// Success message with styled output
+		fmt.Println()
+		fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created consignment: %s", filename)))
+		fmt.Println()
+		fmt.Println(ui.KeyValue("Packages", strings.Join(options.Packages, ", ")))
+		fmt.Println(ui.KeyValue("Type", options.Type))
+		fmt.Println(ui.KeyValue("Summary", truncateSummary(options.Summary, 60)))
+		fmt.Println()
+	}
 
 	return nil
 }
@@ -433,6 +452,9 @@ creation, or use flags to log cargo directly.`,
 				return fmt.Errorf("failed to get current directory: %w", err)
 			}
 
+			// Extract global flags
+			globalFlags := GetGlobalFlags(cmd)
+
 			// Parse metadata flags
 			metadataMap := make(map[string]string)
 			for _, m := range metadata {
@@ -451,11 +473,13 @@ creation, or use flags to log cargo directly.`,
 					Type:     typeName,
 					Summary:  summary,
 					Metadata: metadataMap,
+					JSON:     globalFlags.JSON,
+					Quiet:    globalFlags.Quiet,
 				})
 			}
 
 			// Interactive mode: prompt for missing fields
-			return runInteractiveAdd(projectPath, packages, typeName, summary, metadataMap)
+			return runInteractiveAdd(projectPath, packages, typeName, summary, metadataMap, globalFlags)
 		},
 	}
 
@@ -471,7 +495,7 @@ creation, or use flags to log cargo directly.`,
 }
 
 // runInteractiveAdd runs the add command in interactive mode
-func runInteractiveAdd(projectPath string, packages []string, typeName, summary string, metadata map[string]string) error {
+func runInteractiveAdd(projectPath string, packages []string, typeName, summary string, metadata map[string]string, globalFlags GlobalFlags) error {
 	// Load config to get available packages
 	cfg, err := config.LoadFromDir(projectPath)
 	if err != nil {
@@ -524,5 +548,7 @@ func runInteractiveAdd(projectPath string, packages []string, typeName, summary 
 		Type:     string(changeType),
 		Summary:  summary,
 		Metadata: metadata,
+		JSON:     globalFlags.JSON,
+		Quiet:    globalFlags.Quiet,
 	})
 }
