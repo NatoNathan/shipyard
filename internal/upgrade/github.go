@@ -68,7 +68,7 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, owner, repo string)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch release: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check for rate limiting
 	if resp.StatusCode == http.StatusForbidden {
@@ -155,7 +155,7 @@ func (c *GitHubClient) CreateRelease(ctx context.Context, owner, repo string, re
 	if err != nil {
 		return nil, fmt.Errorf("failed to create release: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check for rate limiting
 	if resp.StatusCode == http.StatusForbidden {

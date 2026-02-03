@@ -23,7 +23,7 @@ func AppendToHistory(historyPath string, entries []Entry) error {
 	if err := fileLock.Lock(); err != nil {
 		return fmt.Errorf("failed to acquire lock: %w", err)
 	}
-	defer fileLock.Unlock()
+	defer func() { _ = fileLock.Unlock() }()
 
 	// Read existing history
 	data, err := os.ReadFile(historyPath)
@@ -55,7 +55,7 @@ func AppendToHistory(historyPath string, entries []Entry) error {
 	// Atomic rename
 	if err := os.Rename(tempPath, historyPath); err != nil {
 		// Clean up temp file on failure
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 

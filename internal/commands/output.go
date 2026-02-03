@@ -46,13 +46,13 @@ func PrintJSON(w io.Writer, data interface{}) error {
 // PrintSuccess outputs a success message respecting the quiet flag
 func PrintSuccess(w io.Writer, msg string, quiet bool) {
 	if !quiet {
-		fmt.Fprintln(w, msg)
+		_, _ = fmt.Fprintln(w, msg)
 	}
 }
 
 // PrintKeyValue outputs a key-value pair respecting the quiet flag
 func PrintKeyValue(w io.Writer, key, value string, quiet bool) {
 	if !quiet {
-		fmt.Fprintf(w, "%s: %s\n", key, value)
+		_, _ = fmt.Fprintf(w, "%s: %s\n", key, value)
 	}
 }

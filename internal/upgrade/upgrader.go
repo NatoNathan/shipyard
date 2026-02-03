@@ -175,7 +175,7 @@ func (u *ScriptUpgrader) downloadFile(ctx context.Context, url string) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
@@ -216,7 +216,7 @@ func (u *ScriptUpgrader) extractBinary(tarballData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	tarballPath := filepath.Join(tmpDir, "shipyard.tar.gz")
 	if err := os.WriteFile(tarballPath, tarballData, 0644); err != nil {
@@ -250,14 +250,14 @@ func (u *ScriptUpgrader) atomicReplace(newBinary []byte) error {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath) // Clean up if something fails
+	defer func() { _ = os.Remove(tmpPath) }() // Clean up if something fails
 
 	// Write new binary
 	if _, err := tmpFile.Write(newBinary); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		return fmt.Errorf("failed to write new binary: %w", err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Make executable
 	if err := os.Chmod(tmpPath, 0755); err != nil {
@@ -273,12 +273,12 @@ func (u *ScriptUpgrader) atomicReplace(newBinary []byte) error {
 	// Move new binary into place
 	if err := os.Rename(tmpPath, u.binaryPath); err != nil {
 		// Try to restore backup
-		os.Rename(backupPath, u.binaryPath)
+		_ = os.Rename(backupPath, u.binaryPath)
 		return fmt.Errorf("failed to install new binary: %w", err)
 	}
 
 	// Remove backup on success
-	os.Remove(backupPath)
+	_ = os.Remove(backupPath)
 
 	return nil
 }

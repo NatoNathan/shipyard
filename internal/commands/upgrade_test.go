@@ -279,53 +279,6 @@ func TestVersionInfo_Structure(t *testing.T) {
 	})
 }
 
-func TestTruncateString(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		maxLen   int
-		expected string
-	}{
-		{
-			name:     "shorter than max",
-			input:    "short",
-			maxLen:   10,
-			expected: "short",
-		},
-		{
-			name:     "equal to max",
-			input:    "exactlen",
-			maxLen:   8,
-			expected: "exactlen",
-		},
-		{
-			name:     "longer than max",
-			input:    "this is a very long string",
-			maxLen:   10,
-			expected: "this is...",
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			maxLen:   10,
-			expected: "",
-		},
-		{
-			name:     "trims whitespace before ellipsis",
-			input:    "test   string",
-			maxLen:   8,
-			expected: "test...",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := truncateString(tt.input, tt.maxLen)
-			assert.Equal(t, tt.expected, result)
-			assert.LessOrEqual(t, len(result), tt.maxLen)
-		})
-	}
-}
 
 func TestUpgradeCommand_UsageMessage(t *testing.T) {
 	versionInfo := VersionInfo{

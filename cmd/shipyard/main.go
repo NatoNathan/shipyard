@@ -36,7 +36,7 @@ ship's logs of your journey.`,
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Help()
+			_ = cmd.Help()
 		},
 	}
 

@@ -11,7 +11,6 @@ type textInputModel struct {
 	message      string
 	defaultValue string
 	value        string
-	cursor       int
 	done         bool
 	err          error
 }

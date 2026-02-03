@@ -161,6 +161,6 @@ func canWriteFile(path string) bool {
 	if err != nil {
 		return false
 	}
-	file.Close()
+	_ = file.Close()
 	return true
 }

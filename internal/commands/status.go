@@ -301,17 +301,3 @@ func outputTableWithBumps(grouped map[string][]*consignment.Consignment, version
 	return nil
 }
 
-// getHighestChangeType returns the highest priority change type from a list of consignments
-func getHighestChangeType(consignments []*consignment.Consignment) string {
-	highest := "patch"
-
-	for _, c := range consignments {
-		if c.ChangeType == "major" {
-			return "major"
-		} else if c.ChangeType == "minor" && highest != "major" {
-			highest = "minor"
-		}
-	}
-
-	return highest
-}

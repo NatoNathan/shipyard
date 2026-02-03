@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/NatoNathan/shipyard/internal/errors"
@@ -96,10 +95,11 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 	// Step 2: Check if we can upgrade
 	if !installInfo.CanUpgrade {
 		fmt.Println(ui.ErrorMessage(fmt.Sprintf("Cannot upgrade: %s", installInfo.Reason)))
-		if installInfo.Method == upgrade.InstallMethodDocker {
+		switch installInfo.Method {
+		case upgrade.InstallMethodDocker:
 			fmt.Println("\nTo upgrade Docker installations:")
 			fmt.Println("  docker pull natonathan/shipyard:latest")
-		} else if installInfo.Method == upgrade.InstallMethodUnknown {
+		case upgrade.InstallMethodUnknown:
 			fmt.Println("\nManual upgrade instructions:")
 			fmt.Println("  Visit https://github.com/NatoNathan/shipyard/releases/latest")
 		}
@@ -231,10 +231,3 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 	return nil
 }
 
-// truncateString truncates a string to the specified length
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return strings.TrimSpace(s[:maxLen-3]) + "..."
-}
