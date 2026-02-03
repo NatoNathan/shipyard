@@ -149,3 +149,8 @@ func (l *Logger) Warnf(format string, args ...interface{}) {
 func (l *Logger) Errorf(format string, args ...interface{}) {
 	l.Error(format, args...)
 }
+
+// Writer returns the underlying writer
+func (l *Logger) Writer() io.Writer {
+	return l.writer
+}

@@ -147,6 +147,40 @@ shipyard --help
 - Linux: x86_64 (amd64), ARM64 (arm64)
 - Windows: x86_64 (amd64)
 
+---
+
+### Upgrading Shipyard
+
+Upgrade to the latest version:
+
+```bash
+shipyard upgrade
+```
+
+The upgrade command automatically detects your installation method (Homebrew, npm, Go install, or script install) and upgrades accordingly.
+
+**Options**:
+- `--yes` - Skip confirmation prompt
+- `--dry-run` - Show what would happen without upgrading
+- `--force` - Force reinstall of current version
+
+**Examples**:
+```bash
+# Upgrade with confirmation
+shipyard upgrade
+
+# Upgrade without confirmation
+shipyard upgrade --yes
+
+# See what would change
+shipyard upgrade --dry-run
+```
+
+**Note**: Docker installations cannot be upgraded with this command. Instead, pull a new image:
+```bash
+docker pull ghcr.io/natonathan/shipyard:latest
+```
+
 ### Basic Usage
 
 1. **Set sail** - prepare your repository:

@@ -131,3 +131,53 @@ func NewDependencyError(message string, cycle []string) error {
 		Cycle:   cycle,
 	}
 }
+
+// UpgradeError indicates an error during the upgrade process
+type UpgradeError struct {
+	Message string
+	Cause   error
+}
+
+func (e *UpgradeError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("upgrade error: %s: %v", e.Message, e.Cause)
+	}
+	return fmt.Sprintf("upgrade error: %s", e.Message)
+}
+
+func (e *UpgradeError) Unwrap() error {
+	return e.Cause
+}
+
+// NewUpgradeError creates a new UpgradeError
+func NewUpgradeError(message string, cause error) error {
+	return &UpgradeError{
+		Message: message,
+		Cause:   cause,
+	}
+}
+
+// NetworkError indicates a network-related error
+type NetworkError struct {
+	Message string
+	Cause   error
+}
+
+func (e *NetworkError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("network error: %s: %v", e.Message, e.Cause)
+	}
+	return fmt.Sprintf("network error: %s", e.Message)
+}
+
+func (e *NetworkError) Unwrap() error {
+	return e.Cause
+}
+
+// NewNetworkError creates a new NetworkError
+func NewNetworkError(message string, cause error) error {
+	return &NetworkError{
+		Message: message,
+		Cause:   cause,
+	}
+}

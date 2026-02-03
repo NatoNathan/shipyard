@@ -48,6 +48,13 @@ ship's logs of your journey.`,
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress non-error output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
 
+	// Create version info for commands that need it
+	versionInfo := commands.VersionInfo{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}
+
 	// Add subcommands
 	rootCmd.AddCommand(commands.InitCmd())
 	rootCmd.AddCommand(commands.AddCmd())
@@ -55,6 +62,7 @@ ship's logs of your journey.`,
 	rootCmd.AddCommand(commands.NewStatusCommand())
 	rootCmd.AddCommand(commands.NewReleaseNotesCommand())
 	rootCmd.AddCommand(commands.NewCompletionCommand())
+	rootCmd.AddCommand(commands.NewUpgradeCommand(versionInfo))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
