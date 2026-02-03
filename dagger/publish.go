@@ -23,7 +23,8 @@ func (m *Shipyard) PublishGitHub(
 
 	// Container with GitHub CLI
 	gh := dag.Container().
-		From("ghcr.io/cli/cli:latest").
+		From("alpine:latest").
+		WithExec([]string{"apk", "add", "--no-cache", "github-cli"}).
 		WithSecretVariable("GITHUB_TOKEN", githubToken).
 		WithMountedDirectory("/artifacts", artifacts).
 		WithWorkdir("/artifacts")
