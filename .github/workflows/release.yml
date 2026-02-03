@@ -27,7 +27,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Set up Dagger
-        uses: dagger/dagger-for-github@v6
+        uses: dagger/dagger-for-github@v7
         with:
           version: "latest"
 
