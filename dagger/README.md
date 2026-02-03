@@ -24,6 +24,74 @@ This Dagger module handles building, packaging, and releasing the Shipyard CLI t
 
 All commands should be run from the repository root directory.
 
+### Run Tests
+
+Run all tests with race detection:
+
+```bash
+dagger call test --source=.
+```
+
+With verbose output:
+
+```bash
+dagger call test --source=. --show-output
+```
+
+With race detection (uses larger image with CGO):
+
+```bash
+dagger call test --source=. --show-output --race
+```
+
+### Run Linter
+
+Run golangci-lint:
+
+```bash
+dagger call lint --source=.
+```
+
+With custom timeout:
+
+```bash
+dagger call lint --source=. --timeout=10m
+```
+
+### Run Full CI Pipeline
+
+Run tests, lint, and build in sequence:
+
+```bash
+dagger call ci --source=.
+```
+
+With race detection in tests:
+
+```bash
+dagger call ci --source=. --race
+```
+
+### Run Coverage
+
+Export coverage file:
+
+```bash
+dagger call coverage --source=. export --path=./coverage.out
+```
+
+Get coverage report with function breakdown:
+
+```bash
+dagger call coverage-report --source=.
+```
+
+Check coverage against a threshold (fails if below):
+
+```bash
+dagger call coverage-report --source=. --threshold=80
+```
+
 ### Test Build Stage
 
 Build binaries for all platforms:
@@ -77,7 +145,17 @@ dagger call -m ./dagger release \
 
 ## Architecture
 
-The pipeline has three stages:
+The module provides both CI and release capabilities:
+
+### CI Functions (`ci.go`)
+
+- **Test**: Runs `go test -coverprofile=coverage.out ./...` (optional `--race` flag)
+- **Lint**: Installs and runs golangci-lint v2
+- **CI**: Runs test, lint, and build in sequence
+- **Coverage**: Runs tests and exports `coverage.out` file
+- **CoverageReport**: Runs tests and returns coverage percentage with optional threshold check
+
+### Release Pipeline (three stages):
 
 1. **Build Stage** (`build.go`)
    - Cross-compiles for: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64
@@ -209,6 +287,7 @@ New capabilities:
 ## Files
 
 - `main.go` - Release orchestrator
+- `ci.go` - CI functions (test, lint)
 - `build.go` - Cross-platform build stage
 - `package.go` - Archive and checksum generation
 - `publish.go` - All publishing functions

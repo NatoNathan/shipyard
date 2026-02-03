@@ -5,7 +5,7 @@ version: 2
 
 run:
   timeout: 5m
-  tests: false  # Don't run linters on test files
+  tests: false # Don't run linters on test files
   build-tags:
     - integration
     - contract
@@ -20,11 +20,11 @@ output:
 linters:
   disable-all: true
   enable:
-    - errcheck      # Check for unchecked errors
-    - govet         # Official Go static analyzer
-    - ineffassign   # Detect ineffective assignments
-    - staticcheck   # Go static analysis tool
-    - unused        # Check for unused code
+    - errcheck # Check for unchecked errors
+    - govet # Official Go static analyzer
+    - ineffassign # Detect ineffective assignments
+    - staticcheck # Go static analysis tool
+    - unused # Check for unused code
 
 linters-settings:
   errcheck:
@@ -55,14 +55,14 @@ linters-settings:
     disable:
       - shadow
       - fieldalignment
-  
+
   gocyclo:
     min-complexity: 15
-  
+
   gosec:
     excludes:
       - G204 # Subprocess launched with variable - needed for editor integration
-  
+
   revive:
     rules:
       - name: exported
@@ -128,4 +128,3 @@ issues:
     - text: "G304"
       linters:
         - gosec
-

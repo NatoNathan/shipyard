@@ -3,6 +3,7 @@ package upgrade
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -126,6 +127,11 @@ func TestCanWriteFile(t *testing.T) {
 	})
 
 	t.Run("readonly file", func(t *testing.T) {
+		// Skip on root user (e.g., in Docker containers) - root can write to any file
+		if runtime.GOOS != "windows" && os.Geteuid() == 0 {
+			t.Skip("skipping readonly test when running as root")
+		}
+
 		tmpDir := t.TempDir()
 		testFile := filepath.Join(tmpDir, "readonly")
 

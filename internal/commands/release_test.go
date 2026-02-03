@@ -31,6 +31,8 @@ func TestReleaseCommand_MissingGitHubConfig(t *testing.T) {
 	historyDir := filepath.Join(tempDir, ".shipyard")
 	require.NoError(t, os.MkdirAll(historyDir, 0755))
 	historyPath := filepath.Join(historyDir, "history.json")
+	// Create empty history file first (required by AppendToHistory)
+	require.NoError(t, os.WriteFile(historyPath, []byte("[]"), 0644))
 	entries := []history.Entry{
 		{
 			Version: "1.0.0",
@@ -79,6 +81,8 @@ func TestReleaseCommand_MissingToken(t *testing.T) {
 	historyDir := filepath.Join(tempDir, ".shipyard")
 	require.NoError(t, os.MkdirAll(historyDir, 0755))
 	historyPath := filepath.Join(historyDir, "history.json")
+	// Create empty history file first (required by AppendToHistory)
+	require.NoError(t, os.WriteFile(historyPath, []byte("[]"), 0644))
 	entries := []history.Entry{
 		{
 			Version: "1.0.0",
@@ -176,6 +180,8 @@ func TestReleaseCommand_MultiPackageRequiresFlag(t *testing.T) {
 	historyDir := filepath.Join(tempDir, ".shipyard")
 	require.NoError(t, os.MkdirAll(historyDir, 0755))
 	historyPath := filepath.Join(historyDir, "history.json")
+	// Create empty history file first (required by AppendToHistory)
+	require.NoError(t, os.WriteFile(historyPath, []byte("[]"), 0644))
 	entries := []history.Entry{
 		{Version: "1.0.0", Package: "core", Tag: "core/v1.0.0"},
 		{Version: "1.0.0", Package: "api", Tag: "api/v1.0.0"},
@@ -249,6 +255,8 @@ func TestReleaseCommand_SpecificTag(t *testing.T) {
 	historyDir := filepath.Join(tempDir, ".shipyard")
 	require.NoError(t, os.MkdirAll(historyDir, 0755))
 	historyPath := filepath.Join(historyDir, "history.json")
+	// Create empty history file first (required by AppendToHistory)
+	require.NoError(t, os.WriteFile(historyPath, []byte("[]"), 0644))
 	entries := []history.Entry{
 		{Version: "1.0.0", Package: "core", Tag: "v1.0.0"},
 		{Version: "1.1.0", Package: "core", Tag: "v1.1.0"},
@@ -304,6 +312,8 @@ func TestReleaseCommand_InvalidTag(t *testing.T) {
 	historyDir := filepath.Join(tempDir, ".shipyard")
 	require.NoError(t, os.MkdirAll(historyDir, 0755))
 	historyPath := filepath.Join(historyDir, "history.json")
+	// Create empty history file first (required by AppendToHistory)
+	require.NoError(t, os.WriteFile(historyPath, []byte("[]"), 0644))
 	entries := []history.Entry{
 		{Version: "1.0.0", Package: "core", Tag: "v1.0.0"},
 	}
