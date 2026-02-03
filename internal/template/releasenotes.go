@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/NatoNathan/shipyard/internal/history"
 )
@@ -62,7 +63,14 @@ func RenderReleaseNotesWithTemplate(entries []history.Entry, templateSource stri
 
 	if templateType == TemplateTypeChangelog {
 		// Multi-entry context for changelog (array of entries)
-		context = entries
+		// Sort by timestamp descending (newest first) for changelog display
+		sorted := make([]history.Entry, len(entries))
+		copy(sorted, entries)
+		slices.SortFunc(sorted, func(a, b history.Entry) int {
+			// Reverse order: newer entries first
+			return b.Timestamp.Compare(a.Timestamp)
+		})
+		context = sorted
 	} else {
 		// Single-entry context for release notes
 		context = entries[0]
