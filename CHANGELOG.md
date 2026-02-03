@@ -2,11 +2,96 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-02-03
+**Package**: shipyard
+
+### Features
+- Add self-upgrade command with automatic installation detection
+
+## Overview
+
+Implements `shipyard upgrade` command that automatically detects how shipyard was installed and uses the appropriate upgrade strategy to update to the latest version.
+
+## Features
+
+- **Automatic detection** of installation method (Homebrew, npm, Go install, script/manual, Docker)
+- **Interactive confirmation** with animated spinners for visual feedback
+- **Dry-run mode** (`--dry-run`) to preview upgrade without executing
+- **Force upgrade** (`--force`) to reinstall even if already on latest version
+- **Non-interactive mode** (`--yes`) to skip confirmation prompts
+- **GitHub API integration** with rate limit handling and optional authentication
+- **SHA256 checksum verification** for script installations
+- **Atomic binary replacement** to prevent corruption during upgrades
+
+## Implementation
+
+### New Components
+
+- `internal/upgrade/types.go` - Core types for upgrade system
+- `internal/upgrade/detector.go` - Installation method detection
+- `internal/upgrade/github.go` - GitHub API client for release fetching
+- `internal/upgrade/upgrader.go` - Upgrade strategies for each installation method
+- `internal/commands/upgrade.go` - Main upgrade command
+
+### Upgrade Strategies
+
+- **HomebrewUpgrader**: Uses `brew upgrade natonathan/tap/shipyard`
+- **NPMUpgrader**: Uses `npm update -g shipyard-cli`
+- **GoUpgrader**: Uses `go install github.com/NatoNathan/shipyard/cmd/shipyard@{version}`
+- **ScriptUpgrader**: Downloads binary, verifies checksum, performs atomic replacement
+- **Docker**: Detects but guides user to pull new image manually
+
+### Error Handling
+
+- Added `UpgradeError` and `NetworkError` types to `internal/errors/errors.go`
+- Clear error messages with actionable recovery suggestions
+- Graceful handling of rate limits, network failures, and permission issues
+
+### Testing
+
+- **56 test functions** across 4 test files
+- Unit tests for detector, GitHub client, and upgraders
+- Contract tests for CLI interface and flags
+- Mock HTTP servers for GitHub API testing
+- Comprehensive edge case coverage
+
+## Usage
+
+```bash
+# Upgrade with confirmation
+shipyard upgrade
+
+# Upgrade without confirmation
+shipyard upgrade --yes
+
+# Show what would change
+shipyard upgrade --dry-run
+
+# Force reinstall
+shipyard upgrade --force
+```
+
+## Documentation
+
+- Updated README.md with "Upgrading Shipyard" section
+- Command help text with examples
+- Installation method detection documented
+
+### Bug Fixes
+- Fix linting configuration and resolve all lint issues
+- Fix changelog version ordering to show newest first
+
+## [0.2.0] - 2026-02-03
+**Package**: shipyard
+
+### Features
+- Placeholder for accidentally published version to npm
+
 ## [0.1.0] - 2026-02-02
+**Package**: shipyard
 
-### Minor
-
-Added repository initialization with shipyard init command
+### Features
+- Added repository initialization with shipyard init command
 
 Implemented the init command to bootstrap Shipyard in any repository. Supports both single-repo and monorepo configurations with interactive prompts.
 
@@ -30,10 +115,7 @@ Implemented the init command to bootstrap Shipyard in any repository. Supports b
 - Creates shipyard.yaml configuration file
 - Sets up consignments and history directories
 - Validates configuration on creation
-
-### Minor
-
-Added consignment management with shipyard add command
+- Added consignment management with shipyard add command
 
 Implemented the add command for creating change notes (consignments) as markdown files with YAML frontmatter.
 
@@ -58,10 +140,7 @@ Implemented the add command for creating change notes (consignments) as markdown
 - Package name validation against config
 - Change type validation (patch, minor, major)
 - Summary required and non-empty
-
-### Minor
-
-Added status command for viewing pending changes
+- Added status command for viewing pending changes
 
 Implemented the status command to preview pending consignments and calculated version bumps before applying them.
 
@@ -88,10 +167,7 @@ Implemented the status command to preview pending consignments and calculated ve
 - Verify correct change types
 - Check version propagation effects
 - Generate status reports for CI/CD
-
-### Minor
-
-Added version command for applying semantic version bumps
+- Added version command for applying semantic version bumps
 
 Implemented the version command to calculate and apply version bumps based on pending consignments.
 
@@ -140,10 +216,7 @@ Implemented the version command to calculate and apply version bumps based on pe
 - Atomic operations with rollback on failure
 - Warns about uncommitted changes
 - No-commit and no-tag flags for incremental workflows
-
-### Minor
-
-Added release-notes command for changelog generation
+- Added release-notes command for changelog generation
 
 Implemented the release-notes command to generate formatted release notes from version history.
 
@@ -177,10 +250,7 @@ Implemented the release-notes command to generate formatted release notes from v
 - Markdown formatting for GitHub
 - Attachment support
 - Draft and prerelease options
-
-### Minor
-
-Added monorepo support with dependency graph management
+- Added monorepo support with dependency graph management
 
 Implemented comprehensive monorepo support with dependency tracking and topological ordering.
 
@@ -213,10 +283,7 @@ Implemented comprehensive monorepo support with dependency tracking and topologi
 - Prevents circular dependencies
 - Checks version strategy compatibility
 - Reports detailed error locations
-
-### Minor
-
-Added version propagation for dependency-aware versioning
+- Added version propagation for dependency-aware versioning
 
 Implemented automatic version propagation through dependency chains.
 
@@ -249,10 +316,7 @@ Implemented automatic version propagation through dependency chains.
 - Breaking changes cascade appropriately
 - Internal dependencies stay synchronized
 - Prevent version skew in monorepos
-
-### Minor
-
-Added template system for customizable output formats
+- Added template system for customizable output formats
 
 Implemented flexible template system for changelogs and release notes with built-in and custom template support.
 
@@ -293,10 +357,7 @@ Implemented flexible template system for changelogs and release notes with built
 - Date formatting
 - Collection operations (join, range, filter)
 - Markdown rendering
-
-### Minor
-
-Added multi-ecosystem support for Go, NPM, Python, Helm, and Cargo
+- Added multi-ecosystem support for Go, NPM, Python, Helm, and Cargo
 
 Implemented ecosystem-specific version file handling for multiple programming languages and platforms.
 
@@ -340,10 +401,7 @@ Implemented ecosystem-specific version file handling for multiple programming la
 - Idempotent updates
 - GetVersionFiles() returns relative paths for correct staging
 - Comprehensive test coverage for all ecosystems
-
-### Minor
-
-Added configuration system with local and remote config support
+- Added configuration system with local and remote config support
 
 Implemented flexible configuration system with local files and remote config loading.
 
@@ -392,4 +450,3 @@ Implemented flexible configuration system with local files and remote config loa
 - Dependency cycle detection
 - Template source validation
 - Path existence checks
-

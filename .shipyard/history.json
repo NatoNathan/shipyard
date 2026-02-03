@@ -7,7 +7,7 @@
     "consignments": [
       {
         "id": "20260131-012152-6u4dsb",
-        "summary": "Added repository initialization with shipyard init command\n\nImplemented the init command to bootstrap Shipyard in any repository. Supports both single-repo and monorepo configurations with interactive prompts.\n\n## Features\n\n- Interactive setup wizard with package detection\n- Automatic ecosystem detection (Go, NPM, Python, Docker)\n- Monorepo vs single-repo selection\n- Remote configuration support\n- Default template initialization\n- Creates .shipyard/ directory structure\n\n## Commands\n\n- shipyard init - Interactive initialization\n- shipyard init --remote <url> - Initialize from remote config\n\n## Details\n\n- Detects existing package.json, go.mod, pyproject.toml\n- Creates shipyard.yaml configuration file\n- Sets up consignments and history directories\n- Validates configuration on creation",
+        "summary": "Added repository initialization with shipyard init command\n\nImplemented the init command to bootstrap Shipyard in any repository. Supports both single-repo and monorepo configurations with interactive prompts.\n\n## Features\n\n- Interactive setup wizard with package detection\n- Automatic ecosystem detection (Go, NPM, Python, Docker)\n- Monorepo vs single-repo selection\n- Remote configuration support\n- Default template initialization\n- Creates .shipyard/ directory structure\n\n## Commands\n\n- shipyard init - Interactive initialization\n- shipyard init --remote \u003curl\u003e - Initialize from remote config\n\n## Details\n\n- Detects existing package.json, go.mod, pyproject.toml\n- Creates shipyard.yaml configuration file\n- Sets up consignments and history directories\n- Validates configuration on creation",
         "changeType": "minor"
       },
       {
@@ -67,6 +67,33 @@
         "id": "placeholder-0.2.0",
         "summary": "Placeholder for accidentally published version to npm",
         "changeType": "minor"
+      }
+    ]
+  },
+  {
+    "version": "0.3.0",
+    "package": "shipyard",
+    "tag": "v0.3.0",
+    "timestamp": "2026-02-03T16:23:47.132739Z",
+    "consignments": [
+      {
+        "id": "20260203-081833-azl3d7",
+        "summary": "Add self-upgrade command with automatic installation detection\n\n## Overview\n\nImplements `shipyard upgrade` command that automatically detects how shipyard was installed and uses the appropriate upgrade strategy to update to the latest version.\n\n## Features\n\n- **Automatic detection** of installation method (Homebrew, npm, Go install, script/manual, Docker)\n- **Interactive confirmation** with animated spinners for visual feedback\n- **Dry-run mode** (`--dry-run`) to preview upgrade without executing\n- **Force upgrade** (`--force`) to reinstall even if already on latest version\n- **Non-interactive mode** (`--yes`) to skip confirmation prompts\n- **GitHub API integration** with rate limit handling and optional authentication\n- **SHA256 checksum verification** for script installations\n- **Atomic binary replacement** to prevent corruption during upgrades\n\n## Implementation\n\n### New Components\n\n- `internal/upgrade/types.go` - Core types for upgrade system\n- `internal/upgrade/detector.go` - Installation method detection\n- `internal/upgrade/github.go` - GitHub API client for release fetching\n- `internal/upgrade/upgrader.go` - Upgrade strategies for each installation method\n- `internal/commands/upgrade.go` - Main upgrade command\n\n### Upgrade Strategies\n\n- **HomebrewUpgrader**: Uses `brew upgrade natonathan/tap/shipyard`\n- **NPMUpgrader**: Uses `npm update -g shipyard-cli`\n- **GoUpgrader**: Uses `go install github.com/NatoNathan/shipyard/cmd/shipyard@{version}`\n- **ScriptUpgrader**: Downloads binary, verifies checksum, performs atomic replacement\n- **Docker**: Detects but guides user to pull new image manually\n\n### Error Handling\n\n- Added `UpgradeError` and `NetworkError` types to `internal/errors/errors.go`\n- Clear error messages with actionable recovery suggestions\n- Graceful handling of rate limits, network failures, and permission issues\n\n### Testing\n\n- **56 test functions** across 4 test files\n- Unit tests for detector, GitHub client, and upgraders\n- Contract tests for CLI interface and flags\n- Mock HTTP servers for GitHub API testing\n- Comprehensive edge case coverage\n\n## Usage\n\n```bash\n# Upgrade with confirmation\nshipyard upgrade\n\n# Upgrade without confirmation\nshipyard upgrade --yes\n\n# Show what would change\nshipyard upgrade --dry-run\n\n# Force reinstall\nshipyard upgrade --force\n```\n\n## Documentation\n\n- Updated README.md with \"Upgrading Shipyard\" section\n- Command help text with examples\n- Installation method detection documented",
+        "changeType": "minor",
+        "metadata": {
+          "author": "claude",
+          "pr": "none"
+        }
+      },
+      {
+        "id": "20260203-150014-km74bh",
+        "summary": "Fix linting configuration and resolve all lint issues",
+        "changeType": "patch"
+      },
+      {
+        "id": "20260203-154841-yug5bc",
+        "summary": "Fix changelog version ordering to show newest first",
+        "changeType": "patch"
       }
     ]
   }
