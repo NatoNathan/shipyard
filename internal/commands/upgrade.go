@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -20,6 +21,8 @@ type UpgradeOptions struct {
 	Version string // Specific version (default: latest)
 	Force   bool   // Upgrade even if on latest
 	DryRun  bool   // Show plan without executing
+	JSON    bool   // Output in JSON format
+	Quiet   bool   // Suppress output
 }
 
 // VersionInfo contains build version information
@@ -54,6 +57,10 @@ Examples:
   # Force reinstall of current version
   shipyard upgrade --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Extract global flags
+			globalFlags := GetGlobalFlags(cmd)
+			opts.JSON = globalFlags.JSON
+			opts.Quiet = globalFlags.Quiet
 			return runUpgrade(cmd.Context(), opts, versionInfo)
 		},
 	}
@@ -204,9 +211,22 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 	}
 
 	// Step 8: Success message
-	fmt.Println()
-	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Successfully upgraded to %s", release.TagName)))
-	fmt.Println(ui.InfoMessage("Run 'shipyard --version' to verify the new version"))
+	if opts.JSON {
+		// JSON output
+		jsonData := map[string]interface{}{
+			"success":    true,
+			"oldVersion": versionInfo.Version,
+			"newVersion": release.TagName,
+			"method":     installInfo.Method.String(),
+		}
+		return PrintJSON(os.Stdout, jsonData)
+	}
+
+	if !opts.Quiet {
+		fmt.Println()
+		fmt.Println(ui.SuccessMessage(fmt.Sprintf("Successfully upgraded to %s", release.TagName)))
+		fmt.Println(ui.InfoMessage("Run 'shipyard --version' to verify the new version"))
+	}
 
 	return nil
 }
