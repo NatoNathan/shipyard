@@ -28,6 +28,8 @@ func (m *Shipyard) Release(
 	// Docker registry (e.g., "ghcr.io/natonathan/shipyard")
 	// +default="ghcr.io/natonathan/shipyard"
 	dockerRegistry string,
+	// Docker registry username (GitHub actor for GHCR)
+	dockerUsername string,
 	// Docker registry token (usually same as GitHub token for ghcr.io)
 	// +optional
 	dockerToken *dagger.Secret,
@@ -96,7 +98,7 @@ func (m *Shipyard) Release(
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := m.PublishDocker(ctx, buildArtifacts, version, dockerRegistry, dockerToken); err != nil {
+		if err := m.PublishDocker(ctx, buildArtifacts, version, dockerRegistry, dockerUsername, dockerToken); err != nil {
 			errors <- fmt.Errorf("Docker: %w", err)
 		}
 	}()

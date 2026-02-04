@@ -131,9 +131,8 @@ func (m *Shipyard) PublishHomebrew(
 		WithSecretVariable("GITHUB_TOKEN", githubToken).
 		WithWorkdir("/work").
 		WithExec([]string{
-			"git", "clone",
-			fmt.Sprintf("https://x-access-token:$(cat /run/secrets/GITHUB_TOKEN)@github.com/%s.git", repo),
-			".",
+			"sh", "-c",
+			"git clone https://x-access-token:${GITHUB_TOKEN}@github.com/" + repo + ".git .",
 		}).
 		WithNewFile("Formula/shipyard.rb", formula).
 		WithExec([]string{"git", "config", "user.name", "github-actions[bot]"}).
@@ -142,7 +141,7 @@ func (m *Shipyard) PublishHomebrew(
 		WithExec([]string{"git", "commit", "-m", fmt.Sprintf("Update shipyard to %s", version)}).
 		WithExec([]string{
 			"sh", "-c",
-			"git push https://x-access-token:$(cat /run/secrets/GITHUB_TOKEN)@github.com/" + repo + ".git main",
+			"git push https://x-access-token:${GITHUB_TOKEN}@github.com/" + repo + ".git main",
 		})
 
 	_, err = git.Sync(ctx)
@@ -453,6 +452,8 @@ func (m *Shipyard) PublishDocker(
 	version string,
 	// Docker registry (e.g., "ghcr.io/natonathan/shipyard")
 	dockerRegistry string,
+	// Docker registry username (GitHub actor for GHCR)
+	dockerUsername string,
 	// Docker registry token
 	dockerToken *dagger.Secret,
 ) error {
@@ -470,7 +471,6 @@ func (m *Shipyard) PublishDocker(
 
 	// Push all tags
 	registry := strings.Split(dockerRegistry, "/")[0]
-	username := strings.Split(dockerRegistry, "/")[1]
 
 	for _, tag := range tags {
 		imageRef := fmt.Sprintf("%s:%s", dockerRegistry, tag)
@@ -478,7 +478,7 @@ func (m *Shipyard) PublishDocker(
 
 		// Push AMD64 variant
 		_, err := amd64Image.
-			WithRegistryAuth(registry, username, dockerToken).
+			WithRegistryAuth(registry, dockerUsername, dockerToken).
 			Publish(ctx, imageRef+"-amd64")
 		if err != nil {
 			return fmt.Errorf("failed to push amd64 image: %w", err)
@@ -486,7 +486,7 @@ func (m *Shipyard) PublishDocker(
 
 		// Push ARM64 variant
 		_, err = arm64Image.
-			WithRegistryAuth(registry, username, dockerToken).
+			WithRegistryAuth(registry, dockerUsername, dockerToken).
 			Publish(ctx, imageRef+"-arm64")
 		if err != nil {
 			return fmt.Errorf("failed to push arm64 image: %w", err)
