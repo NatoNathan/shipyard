@@ -41,6 +41,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION_TAG: ${{ github.ref_name }}
+          DOCKER_USERNAME: ${{ github.actor }}
         run: |
           dagger call -m ./dagger release \
             --source=. \
@@ -48,5 +49,5 @@ jobs:
             --github-token=env:GITHUB_TOKEN \
             --npm-token=env:NPM_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
-            --docker-username=natonathan \
+            --docker-username=env:DOCKER_USERNAME \
             --docker-token=env:GITHUB_TOKEN
