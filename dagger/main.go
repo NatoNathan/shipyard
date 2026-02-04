@@ -71,7 +71,7 @@ func (m *Shipyard) Release(
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := m.PublishGitHub(ctx, packageArtifacts, version, commit, githubToken); err != nil {
+		if err := m.PublishGitHub(ctx, source, packageArtifacts, version, commit, githubToken); err != nil {
 			errors <- fmt.Errorf("GitHub: %w", err)
 		}
 	}()

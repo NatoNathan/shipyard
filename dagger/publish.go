@@ -10,6 +10,8 @@ import (
 // PublishGitHub creates and publishes a GitHub release
 func (m *Shipyard) PublishGitHub(
 	ctx context.Context,
+	// Source code directory
+	source *dagger.Directory,
 	// Package artifacts directory
 	artifacts *dagger.Directory,
 	// Version string (e.g., "v1.2.3")
@@ -52,7 +54,7 @@ func (m *Shipyard) PublishGitHub(
 	// Generate release notes using Shipyard
 	// TODO: In the future, import shipyard as Go module instead of building
 	fmt.Printf("Generating release notes...\n")
-	notes, err := m.generateReleaseNotes(ctx, artifacts, version, commit)
+	notes, err := m.generateReleaseNotes(ctx, source, artifacts, version, commit)
 	if err != nil {
 		fmt.Printf("Warning: failed to generate release notes: %v\n", err)
 		notes = fmt.Sprintf("Release %s\n\nSee commit %s for changes.", version, commit)
@@ -80,6 +82,7 @@ func (m *Shipyard) PublishGitHub(
 // generateReleaseNotes generates release notes using Shipyard's release-notes command
 func (m *Shipyard) generateReleaseNotes(
 	ctx context.Context,
+	source *dagger.Directory,
 	artifacts *dagger.Directory,
 	version string,
 	commit string,
@@ -90,6 +93,7 @@ func (m *Shipyard) generateReleaseNotes(
 	notes, err := dag.Container().
 		From("alpine:latest").
 		WithMountedDirectory("/artifacts", artifacts).
+		WithMountedDirectory("/work", source).
 		WithWorkdir("/work").
 		WithExec([]string{"tar", "-xzf", fmt.Sprintf("/artifacts/%s", tarball)}).
 		WithExec([]string{"./shipyard", "release-notes", "--version", version}).
