@@ -23,25 +23,22 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Set up Dagger
-        uses: dagger/dagger-for-github@v6
+        uses: dagger/dagger-for-github@v7
         with:
           version: "latest"
-
-      - name: Login to GHCR
-        run: echo "${{ steps.app-token.outputs.token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Run Dagger Release Pipeline
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION_TAG: ${{ github.ref_name }}
-          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           dagger call -m ./dagger release \
             --source=. \
@@ -49,5 +46,5 @@ jobs:
             --github-token=env:GITHUB_TOKEN \
             --npm-token=env:NPM_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
-            --docker-username=env:DOCKER_USERNAME \
-            --docker-token=env:GITHUB_TOKEN
+            --docker-username=NatoNathan \
+            --docker-token=env:DOCKER_TOKEN
