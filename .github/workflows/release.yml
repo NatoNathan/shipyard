@@ -49,6 +49,6 @@ jobs:
             --version="$VERSION_TAG" \
             --github-token=env:GITHUB_TOKEN \
             --npm-token=env:NPM_TOKEN \
-            --docker-registry=ghcr.io/NatoNathan/shipyard \
+            --docker-registry=ghcr.io/natonathan/shipyard \
             --docker-username=env:GITHUB_ACTOR \
             --docker-token=env:DOCKER_TOKEN
