@@ -447,7 +447,93 @@ MIT
 `, strings.TrimPrefix(version, "v"))
 }
 
-// PublishDocker builds and pushes multi-arch Docker images
+// generateDockerTags creates all version tags for a given version string
+// For stable versions (e.g., "v1.2.3"), generates:
+//   - latest, v1.2.3, 1.2.3, v1.2, 1.2, v1, 1
+//
+// For pre-releases (e.g., "v1.2.3-beta.1"), generates:
+//   - v1.2.3-beta.1, 1.2.3-beta.1
+func generateDockerTags(version string) []string {
+	versionNum := strings.TrimPrefix(version, "v")
+
+	// Check for pre-release suffix (contains hyphen)
+	// Examples: "1.2.3-beta.1", "1.2.3-rc.2", "1.2.3-alpha"
+	isPreRelease := strings.Contains(versionNum, "-")
+
+	if isPreRelease {
+		// Pre-release: only exact version tags
+		return []string{
+			version,    // "v1.2.3-beta.1"
+			versionNum, // "1.2.3-beta.1"
+		}
+	}
+
+	// Stable release: full tag set
+	parts := strings.Split(versionNum, ".")
+	if len(parts) < 2 {
+		// Invalid version, return basic tags
+		return []string{"latest", version, versionNum}
+	}
+
+	major := parts[0]
+	minor := parts[1]
+
+	return []string{
+		"latest",
+		version,                             // v1.2.3
+		versionNum,                          // 1.2.3
+		fmt.Sprintf("v%s.%s", major, minor), // v1.2
+		fmt.Sprintf("%s.%s", major, minor),  // 1.2
+		fmt.Sprintf("v%s", major),           // v1
+		major,                               // 1
+	}
+}
+
+// buildDockerImageWithPlatform creates a Docker image for a specific platform
+// with proper platform metadata for multi-arch manifest creation
+func (m *Shipyard) buildDockerImageWithPlatform(
+	buildArtifacts *dagger.Directory,
+	version string,
+	platform dagger.Platform, // "linux/amd64" or "linux/arm64"
+) *dagger.Container {
+	// Convert platform to os_arch format for binary path
+	// "linux/amd64" -> "linux_amd64"
+	dirname := strings.Replace(string(platform), "/", "_", 1)
+	binaryPath := fmt.Sprintf("%s/shipyard", dirname)
+
+	versionNum := strings.TrimPrefix(version, "v")
+
+	return dag.Container(dagger.ContainerOpts{Platform: platform}).
+		From("alpine:latest").
+		WithFile("/usr/local/bin/shipyard", buildArtifacts.File(binaryPath)).
+		WithExec([]string{"chmod", "+x", "/usr/local/bin/shipyard"}).
+		WithEntrypoint([]string{"shipyard"}).
+		WithLabel("org.opencontainers.image.title", "Shipyard").
+		WithLabel("org.opencontainers.image.description", "CLI tool for managing project workflows").
+		WithLabel("org.opencontainers.image.version", versionNum).
+		WithLabel("org.opencontainers.image.source", "https://github.com/NatoNathan/shipyard").
+		WithLabel("org.opencontainers.image.licenses", "MIT")
+}
+
+// buildPlatformVariants creates platform-specific container images for multi-arch publishing
+func (m *Shipyard) buildPlatformVariants(
+	buildArtifacts *dagger.Directory,
+	version string,
+) []*dagger.Container {
+	platforms := []dagger.Platform{
+		"linux/amd64",
+		"linux/arm64",
+	}
+
+	variants := make([]*dagger.Container, len(platforms))
+	for i, platform := range platforms {
+		variants[i] = m.buildDockerImageWithPlatform(buildArtifacts, version, platform)
+	}
+
+	return variants
+}
+
+// PublishDocker builds and pushes multi-arch Docker images to registry
 func (m *Shipyard) PublishDocker(
 	ctx context.Context,
 	// Build artifacts directory (not packaged)
@@ -461,70 +547,37 @@ func (m *Shipyard) PublishDocker(
 	// Docker registry token
 	dockerToken *dagger.Secret,
 ) error {
-	versionNum := strings.TrimPrefix(version, "v")
-	tags := []string{"latest", version, versionNum}
+	fmt.Printf("Building multi-arch Docker images...\n")
 
-	// Build multi-arch image
-	fmt.Printf("Building Docker images...\n")
+	// Build platform variants once (reused for all tags)
+	platformVariants := m.buildPlatformVariants(buildArtifacts, version)
 
-	// Build for linux/amd64
-	amd64Image := m.buildDockerImage(ctx, buildArtifacts, version, "linux", "amd64")
+	// Generate all version tags
+	tags := generateDockerTags(version)
 
-	// Build for linux/arm64
-	arm64Image := m.buildDockerImage(ctx, buildArtifacts, version, "linux", "arm64")
-
-	// Push all tags
+	// Extract registry domain for authentication
 	registry := strings.Split(dockerRegistry, "/")[0]
+
+	// Publish each tag with platform variants
+	fmt.Printf("Publishing %d tags to %s...\n", len(tags), dockerRegistry)
 
 	for _, tag := range tags {
 		imageRef := fmt.Sprintf("%s:%s", dockerRegistry, tag)
-		fmt.Printf("Pushing %s...\n", imageRef)
+		fmt.Printf("  → %s (linux/amd64, linux/arm64)\n", imageRef)
 
-		// Push AMD64 variant
-		_, err := amd64Image.
+		// Publish multi-arch manifest using platform variants
+		_, err := platformVariants[0].
 			WithRegistryAuth(registry, dockerUsername, dockerToken).
-			Publish(ctx, imageRef+"-amd64")
-		if err != nil {
-			return fmt.Errorf("failed to push amd64 image: %w", err)
-		}
+			Publish(ctx, imageRef, dagger.ContainerPublishOpts{
+				PlatformVariants: platformVariants,
+			})
 
-		// Push ARM64 variant
-		_, err = arm64Image.
-			WithRegistryAuth(registry, dockerUsername, dockerToken).
-			Publish(ctx, imageRef+"-arm64")
 		if err != nil {
-			return fmt.Errorf("failed to push arm64 image: %w", err)
+			return fmt.Errorf("failed to publish tag %s: %w", tag, err)
 		}
-
-		// Create and push manifest list
-		// Note: Dagger handles manifest creation automatically
 	}
 
 	fmt.Printf("✓ Docker images published to %s\n", dockerRegistry)
+	fmt.Printf("  Tags: %s\n", strings.Join(tags, ", "))
 	return nil
-}
-
-// buildDockerImage creates a Docker image for a specific platform
-func (m *Shipyard) buildDockerImage(
-	ctx context.Context,
-	buildArtifacts *dagger.Directory,
-	version string,
-	os string,
-	arch string,
-) *dagger.Container {
-	dirname := fmt.Sprintf("%s_%s", os, arch)
-	binaryPath := fmt.Sprintf("%s/shipyard", dirname)
-
-	versionNum := strings.TrimPrefix(version, "v")
-
-	return dag.Container().
-		From("alpine:latest").
-		WithFile("/usr/local/bin/shipyard", buildArtifacts.File(binaryPath)).
-		WithExec([]string{"chmod", "+x", "/usr/local/bin/shipyard"}).
-		WithEntrypoint([]string{"shipyard"}).
-		WithLabel("org.opencontainers.image.title", "Shipyard").
-		WithLabel("org.opencontainers.image.description", "CLI tool for managing project workflows").
-		WithLabel("org.opencontainers.image.version", versionNum).
-		WithLabel("org.opencontainers.image.source", "https://github.com/NatoNathan/shipyard").
-		WithLabel("org.opencontainers.image.licenses", "MIT")
 }
