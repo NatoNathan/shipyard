@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-02-07
+**Package**: shipyard
+
+### Features
+- Add Shipyard CLI skill for AI agents
+
+Created comprehensive skill to teach AI agents (Claude Code, Cursor, etc.) how to use Shipyard for semantic versioning and release management.
+
+## Structure
+
+- SKILL.md: Core workflow and concepts (~1,800 words)
+- references/: Detailed documentation loaded as needed
+  - commands.md: All 14 commands reference
+  - configuration.md: shipyard.yaml deep dive
+  - workflows.md: Patterns and CI/CD integration
+  - templates.md: Template system docs
+  - history-conversion.md: Changelog migration guidance
+
+## Philosophy
+
+Provides context and patterns rather than scripts. Agents use this knowledge to customize solutions for users' specific needs.
+
+## Features
+
+- Strong trigger phrases for automatic skill loading
+- Progressive disclosure (lean core, detailed references)
+- Comprehensive command coverage
+- Multi-ecosystem support documentation
+- Workflow patterns for monorepos and single packages
+- CI/CD integration examples
+- History conversion strategies
+
+Compatible with vercel-labs/skills protocol for installation across 35+ AI agents.
+
 ## [0.4.0] - 2026-02-07
 **Package**: shipyard
 
