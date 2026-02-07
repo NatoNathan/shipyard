@@ -50,26 +50,25 @@ func NewPrereleaseCommand() *cobra.Command {
 	opts := &PrereleaseCommandOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "prerelease",
-		Short: "Chart test waters before the main voyage",
+		Use:                   "prerelease [-p package]... [--preview] [--no-commit] [--no-tag]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"pre", "rc"},
+		Short:   "Chart test waters before the main voyage",
 		Long: `Create or increment a pre-release version at the current stage.
 Creates pre-release versions for testing changes before creating a stable release.
 
 The stage is determined from .shipyard/prerelease.yml state file:
   - First pre-release starts at the lowest-order stage
   - Subsequent runs increment the counter (e.g., alpha.1 → alpha.2)
-  - Use 'shipyard version promote' to advance stages
-
-Examples:
-  # Create pre-release at current stage
+  - Use 'shipyard version promote' to advance stages`,
+		Example: `  # Create pre-release at current stage
   shipyard version prerelease
 
   # Preview without changes
   shipyard version prerelease --preview
 
   # Pre-release specific packages
-  shipyard version prerelease --package core --package api
-`,
+  shipyard version prerelease --package core --package api`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalFlags := GetGlobalFlags(cmd)
 			opts.JSON = globalFlags.JSON
@@ -205,8 +204,8 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 			counter = 1
 		} else if pkgState.TargetVersion != targetVersion {
 			// Target changed: warn, reset counter
-			fmt.Printf("⚠ Warning: Target version changed from %s to %s for %s (consignments modified)\n",
-				pkgState.TargetVersion, targetVersion, pkgName)
+			fmt.Println(ui.WarningMessage(fmt.Sprintf("Target version changed from %s to %s for %s (consignments modified)",
+				pkgState.TargetVersion, targetVersion, pkgName)))
 			s, ok := cfg.PreRelease.GetStageByName(pkgState.Stage)
 			if !ok {
 				return fmt.Errorf("stage '%s' not found in configuration", pkgState.Stage)
@@ -271,11 +270,19 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 			return PrintJSON(os.Stdout, output)
 		}
 		if !opts.Quiet {
-			fmt.Println("📦 Preview: Pre-release version changes")
+			fmt.Println(ui.Header("\U0001F4E6", "Preview: Pre-release version changes"))
+			fmt.Println()
+			var previewRows [][]string
 			for _, r := range results {
-				fmt.Printf("  - %s: %s → %s (%s)\n", r.pkg, r.oldVersion, r.newVersion, r.stage.Name)
-				fmt.Printf("    Target version: %s\n", r.targetVersion)
+				previewRows = append(previewRows, []string{
+					r.pkg,
+					r.oldVersion.String(),
+					r.newVersion.String(),
+					r.stage.Name,
+					r.targetVersion,
+				})
 			}
+			fmt.Println(ui.Table([]string{"Package", "Current", "Pre-release", "Stage", "Target"}, previewRows))
 			fmt.Println()
 			fmt.Println(ui.InfoMessage("Preview mode: no changes made"))
 			fmt.Println()
@@ -284,9 +291,6 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 	}
 
 	// 6. Update ecosystem version files
-	if !opts.Quiet && !opts.JSON {
-		fmt.Println("📦 Creating pre-release versions...")
-	}
 	for _, r := range results {
 		pkg, ok := cfg.GetPackage(r.pkg)
 		if !ok {
@@ -300,14 +304,21 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 		if err := handler.UpdateVersion(r.newVersion); err != nil {
 			return fmt.Errorf("failed to update version for %s: %w", r.pkg, err)
 		}
-		if !opts.Quiet && !opts.JSON {
-			_, hasOldState := state.Packages[r.pkg]
-			if !hasOldState {
-				fmt.Printf("  - %s: %s → %s (%s, first pre-release)\n", r.pkg, r.oldVersion, r.newVersion, r.stage.Name)
-			} else {
-				fmt.Printf("  - %s: %s → %s (%s)\n", r.pkg, r.oldVersion, r.newVersion, r.stage.Name)
-			}
+	}
+
+	if !opts.Quiet && !opts.JSON {
+		fmt.Println(ui.Header("\U0001F4E6", "Creating pre-release versions"))
+		fmt.Println()
+		var execRows [][]string
+		for _, r := range results {
+			execRows = append(execRows, []string{
+				r.pkg,
+				r.oldVersion.String(),
+				r.newVersion.String(),
+				r.stage.Name,
+			})
 		}
+		fmt.Println(ui.Table([]string{"Package", "Current", "Pre-release", "Stage"}, execRows))
 	}
 
 	// 7. Update state
@@ -350,12 +361,12 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
 		if !opts.Quiet && !opts.JSON {
-			fmt.Printf("✓ Created commit: \"%s\"\n", commitMsg)
+			fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created commit: \"%s\"", commitMsg)))
 		}
 	} else {
 		if !opts.Quiet && !opts.JSON {
-			fmt.Println("✓ Updated version files")
-			fmt.Println("⊘ Skipped git commit (--no-commit)")
+			fmt.Println(ui.SuccessMessage("Updated version files"))
+			fmt.Println(ui.Dimmed("Skipped git commit (--no-commit)"))
 		}
 	}
 
@@ -366,12 +377,12 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 				return fmt.Errorf("failed to create tag %s: %w", r.tagName, err)
 			}
 			if !opts.Quiet && !opts.JSON {
-				fmt.Printf("✓ Created tag: %s\n", r.tagName)
+				fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created tag: %s", r.tagName)))
 			}
 		}
 	} else if opts.NoTag {
 		if !opts.Quiet && !opts.JSON {
-			fmt.Println("⊘ Skipped git tags (--no-tag)")
+			fmt.Println(ui.Dimmed("Skipped git tags (--no-tag)"))
 		}
 	}
 

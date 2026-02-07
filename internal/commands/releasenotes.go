@@ -29,11 +29,21 @@ func NewReleaseNotesCommand() *cobra.Command {
 	opts := &ReleaseNotesOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "release-notes",
-		Short: "Tell the tale of your voyage",
+		Use:                   "release-notes [-p package] [-o file] [--version version | --all-versions]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"notes", "changelog"},
+		Short:   "Tell the tale of your voyage",
 		Long: `Recount the journey from the captain's log. Transforms version history into
 tales of ports visited and cargo delivered. Filter by vessel or destination,
 write to parchment (file) or speak aloud (stdout).`,
+		Example: `  # Show release notes for latest version
+  shipyard release-notes --package core
+
+  # Write release notes to file
+  shipyard release-notes --output NOTES.md
+
+  # Show complete version history
+  shipyard release-notes --all-versions`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Extract global flags
 			globalFlags := GetGlobalFlags(cmd)

@@ -8,6 +8,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/commands"
 	shipyarderrors "github.com/NatoNathan/shipyard/internal/errors"
 	"github.com/NatoNathan/shipyard/internal/logger"
+	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -43,6 +44,8 @@ ship's logs of your journey.`,
 	}
 
 	rootCmd.SetVersionTemplate(fmt.Sprintf("shipyard version %s (commit: %s, built: %s)\n", version, commit, date))
+	rootCmd.SetHelpFunc(ui.HelpFunc)
+	rootCmd.SilenceUsage = true
 
 	// Global flags
 	rootCmd.PersistentFlags().BoolP("json", "j", false, "output in JSON format")
@@ -68,7 +71,7 @@ ship's logs of your journey.`,
 	rootCmd.AddCommand(commands.NewRemoveCommand())
 	rootCmd.AddCommand(commands.NewValidateCommand())
 
-	configCmd := &cobra.Command{Use: "config", Short: "Manage configuration"}
+	configCmd := &cobra.Command{Use: "config {show}", Aliases: []string{"cfg"}, Short: "Review the ship's standing orders"}
 	configCmd.AddCommand(commands.NewConfigShowCommand())
 	rootCmd.AddCommand(configCmd)
 

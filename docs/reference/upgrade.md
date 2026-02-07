@@ -1,10 +1,14 @@
-# upgrade - Upgrade shipyard to the latest version
+# upgrade - Refit the shipyard with latest provisions
 
 ## Synopsis
 
 ```bash
 shipyard upgrade [OPTIONS]
+shipyard update [OPTIONS]
+shipyard self-update [OPTIONS]
 ```
+
+**Aliases:** `update`, `self-update`
 
 ## Description
 

@@ -3,7 +3,6 @@ package contract
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -46,7 +45,8 @@ func TestStatusCommand_ExitCodes(t *testing.T) {
 		// Verify: Exit code 0
 		require.NoError(t, err, "status should exit 0 with consignments")
 		assert.Contains(t, string(output), "core")
-		assert.Contains(t, string(output), "1.0.0 → 1.0.1")
+		assert.Contains(t, string(output), "1.0.0")
+		assert.Contains(t, string(output), "1.0.1")
 	})
 
 	t.Run("exit 1 when not initialized", func(t *testing.T) {
@@ -80,11 +80,12 @@ func TestStatusCommand_OutputFormat(t *testing.T) {
 		cmd.Dir = tempDir
 		output, err := cmd.CombinedOutput()
 
-		// Verify: Table format with version range
+		// Verify: Table format with column headers and data
 		require.NoError(t, err, "command failed with output: %s", string(output))
-		assert.Contains(t, string(output), "📦 Pending consignments")
+		assert.Contains(t, string(output), "Pending consignments")
 		assert.Contains(t, string(output), "core")
-		assert.Contains(t, string(output), "→")
+		assert.Contains(t, string(output), "Package")
+		assert.Contains(t, string(output), "Current")
 	})
 
 	t.Run("json format with --output json", func(t *testing.T) {
@@ -231,93 +232,4 @@ func TestStatusCommand_PackageFiltering(t *testing.T) {
 	})
 }
 
-// Helper functions
-
-func initializeTestRepo(t *testing.T, shipyardBin, dir string) {
-	t.Helper()
-
-	// Initialize git repo using existing helper
-	initGitRepo(t, dir)
-
-	// Create a "core" package directory
-	coreDir := filepath.Join(dir, "core")
-	require.NoError(t, os.MkdirAll(coreDir, 0755))
-
-	// Create go.mod for package detection
-	goModContent := `module example.com/core
-go 1.21
-`
-	require.NoError(t, os.WriteFile(filepath.Join(coreDir, "go.mod"), []byte(goModContent), 0644))
-
-	// Create version file
-	versionContent := `package core
-
-const Version = "1.0.0"
-`
-	require.NoError(t, os.WriteFile(filepath.Join(coreDir, "version.go"), []byte(versionContent), 0644))
-
-	// Run shipyard init
-	cmd := exec.Command(shipyardBin, "init", "--yes")
-	cmd.Dir = dir
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "failed to init shipyard: %s", string(output))
-}
-
-func initializeTestRepoMultiPackage(t *testing.T, shipyardBin, dir string) {
-	t.Helper()
-
-	// Initialize git repo using existing helper
-	initGitRepo(t, dir)
-
-	// Create packages
-	packages := []struct {
-		name string
-		path string
-	}{
-		{"core", "core"},
-		{"api", "api"},
-		{"web", "web"},
-	}
-
-	for _, pkg := range packages {
-		pkgDir := filepath.Join(dir, pkg.path)
-		require.NoError(t, os.MkdirAll(pkgDir, 0755))
-
-		versionContent := `package ` + pkg.name + `
-
-const Version = "1.0.0"
-`
-		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "version.go"), []byte(versionContent), 0644))
-
-		goModContent := `module example.com/` + pkg.name + `
-go 1.21
-`
-		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "go.mod"), []byte(goModContent), 0644))
-	}
-
-	// Run shipyard init
-	cmd := exec.Command(shipyardBin, "init", "--yes")
-	cmd.Dir = dir
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "failed to init shipyard: %s", string(output))
-}
-
-func createTestConsignment(t *testing.T, dir, id, packageName, changeType, summary string) {
-	t.Helper()
-
-	content := `---
-id: ` + id + `
-packages:
-  - ` + packageName + `
-changeType: ` + changeType + `
-summary: ` + summary + `
-timestamp: 2026-01-30T00:00:00Z
----
-# Change
-
-` + summary + `
-`
-
-	consignmentPath := filepath.Join(dir, ".shipyard", "consignments", id+".md")
-	require.NoError(t, os.WriteFile(consignmentPath, []byte(content), 0644))
-}
+// Helper functions are in helpers_test.go

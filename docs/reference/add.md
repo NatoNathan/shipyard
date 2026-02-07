@@ -4,7 +4,11 @@
 
 ```bash
 shipyard add [OPTIONS]
+shipyard consign [OPTIONS]
+shipyard log [OPTIONS]
 ```
+
+**Aliases:** `consign`, `log`
 
 ## Description
 

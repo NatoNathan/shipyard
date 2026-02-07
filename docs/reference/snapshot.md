@@ -6,7 +6,10 @@ Create a timestamped snapshot pre-release version.
 
 ```bash
 shipyard version snapshot [OPTIONS]
+shipyard version snap [OPTIONS]
 ```
+
+**Aliases:** `snap`
 
 Creates a snapshot pre-release version with a timestamp identifier, independent of the stage-based pre-release system.
 

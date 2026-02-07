@@ -1,10 +1,13 @@
-# release - Publish release to GitHub
+# release - Signal arrival at port
 
 ## Synopsis
 
 ```bash
 shipyard release [OPTIONS]
+shipyard publish [OPTIONS]
 ```
+
+**Aliases:** `publish`
 
 ## Description
 

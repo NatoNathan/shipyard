@@ -10,6 +10,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/github"
 	"github.com/NatoNathan/shipyard/internal/history"
 	"github.com/NatoNathan/shipyard/internal/template"
+	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 	"github.com/spf13/cobra"
 )
@@ -29,12 +30,22 @@ func NewReleaseCommand() *cobra.Command {
 	opts := &ReleaseOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "release",
-		Short: "Publish release to GitHub",
+		Use:                   "release [-p package] [--tag tag] [--draft] [--prerelease]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"publish"},
+		Short:   "Signal arrival at port",
 		Long: `Publish a version release to GitHub. Creates a GitHub release using an existing
 git tag. The tag must already exist locally and be pushed to the remote.
 
 Run 'shipyard version' first to create version tags, then push them with 'git push --tags'.`,
+		Example: `  # Release a package
+  shipyard release --package core
+
+  # Create a draft release
+  shipyard release --draft
+
+  # Release a specific tag
+  shipyard release --tag v1.0.0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Extract global flags
 			globalFlags := GetGlobalFlags(cmd)
@@ -160,11 +171,11 @@ func runRelease(opts *ReleaseOptions) error {
 	}
 
 	if !opts.Quiet {
-		fmt.Printf("✓ Release published successfully\n")
-		fmt.Printf("  Package: %s\n", opts.Package)
-		fmt.Printf("  Version: %s\n", version)
-		fmt.Printf("  Tag: %s\n", selectedEntry.Tag)
-		fmt.Printf("  URL: %s\n", releaseURL)
+		fmt.Println(ui.SuccessMessage("Release published successfully"))
+		fmt.Println(ui.KeyValue("Package", opts.Package))
+		fmt.Println(ui.KeyValue("Version", version.String()))
+		fmt.Println(ui.KeyValue("Tag", selectedEntry.Tag))
+		fmt.Println(ui.KeyValue("URL", releaseURL))
 	}
 
 	return nil

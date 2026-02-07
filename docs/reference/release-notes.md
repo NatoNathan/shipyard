@@ -4,7 +4,11 @@
 
 ```bash
 shipyard release-notes [OPTIONS]
+shipyard notes [OPTIONS]
+shipyard changelog [OPTIONS]
 ```
+
+**Aliases:** `notes`, `changelog`
 
 ## Description
 

@@ -7,30 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	gogit "github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// initGitRepo initializes a git repository for testing
-func initGitRepo(t *testing.T, dir string) {
-	t.Helper()
-	_, err := gogit.PlainInit(dir, false)
-	require.NoError(t, err, "Failed to initialize git repository")
-}
-
-// buildShipyard builds the shipyard binary and returns its path
-func buildShipyard(t *testing.T) string {
-	t.Helper()
-
-	// Build the binary in a temp directory
-	tempBin := filepath.Join(t.TempDir(), "shipyard")
-	cmd := exec.Command("go", "build", "-o", tempBin, "../../cmd/shipyard")
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "Failed to build shipyard: %s", string(output))
-
-	return tempBin
-}
 
 // TestInitContract_SuccessfulInit tests the contract for successful initialization
 func TestInitContract_SuccessfulInit(t *testing.T) {
@@ -148,7 +127,7 @@ func TestInitContract_HelpFlag(t *testing.T) {
 	// Verify output contains help information
 	outputStr := string(output)
 	assert.Contains(t, outputStr, "Prepare your repository", "Output should contain command description")
-	assert.Contains(t, outputStr, "Usage:", "Output should contain usage section")
+	assert.Contains(t, outputStr, "USAGE", "Output should contain usage section")
 	assert.Contains(t, outputStr, "--force", "Output should mention --force flag")
 	assert.Contains(t, outputStr, "--remote", "Output should mention --remote flag")
 }

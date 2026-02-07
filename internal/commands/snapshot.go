@@ -49,24 +49,23 @@ func NewSnapshotCommand() *cobra.Command {
 	opts := &SnapshotCommandOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "snapshot",
-		Short: "Take a navigational reading of the current state",
+		Use:                   "snapshot [-p package]... [--preview] [--no-commit] [--no-tag]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"snap"},
+		Short:   "Take a navigational reading of the current state",
 		Long: `Create a timestamped snapshot pre-release version.
 Snapshots are independent of the stage-based pre-release system.
 
 Uses timestamps (YYYYMMDD-HHMMSS) for unique, chronologically ordered builds.
-Does not affect .shipyard/prerelease.yml or stage tracking.
-
-Examples:
-  # Create snapshot
+Does not affect .shipyard/prerelease.yml or stage tracking.`,
+		Example: `  # Create snapshot
   shipyard version snapshot
 
   # Preview snapshot
   shipyard version snapshot --preview
 
   # Snapshot without git operations (for CI builds)
-  shipyard version snapshot --no-commit --no-tag
-`,
+  shipyard version snapshot --no-commit --no-tag`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalFlags := GetGlobalFlags(cmd)
 			opts.JSON = globalFlags.JSON
@@ -220,11 +219,18 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 			return PrintJSON(os.Stdout, output)
 		}
 		if !opts.Quiet {
-			fmt.Println("📦 Preview: Snapshot version")
+			fmt.Println(ui.Header("\U0001F4E6", "Preview: Snapshot version"))
+			fmt.Println()
+			var previewRows [][]string
 			for _, r := range results {
-				fmt.Printf("  - %s: %s → %s\n", r.pkg, r.oldVersion, r.newVersion)
-				fmt.Printf("    Target version: %s\n", r.targetVersion)
+				previewRows = append(previewRows, []string{
+					r.pkg,
+					r.oldVersion.String(),
+					r.newVersion.String(),
+					r.targetVersion,
+				})
 			}
+			fmt.Println(ui.Table([]string{"Package", "Current", "Snapshot", "Target"}, previewRows))
 			fmt.Println()
 			fmt.Println(ui.InfoMessage("Preview mode: no changes made"))
 			fmt.Println()
@@ -233,9 +239,6 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 	}
 
 	// 6. Update ecosystem version files
-	if !opts.Quiet && !opts.JSON {
-		fmt.Println("📦 Creating snapshot version...")
-	}
 	for _, r := range results {
 		pkg, ok := cfg.GetPackage(r.pkg)
 		if !ok {
@@ -249,9 +252,20 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 		if err := handler.UpdateVersion(r.newVersion); err != nil {
 			return fmt.Errorf("failed to update version for %s: %w", r.pkg, err)
 		}
-		if !opts.Quiet && !opts.JSON {
-			fmt.Printf("  - %s: %s → %s\n", r.pkg, r.oldVersion, r.newVersion)
+	}
+
+	if !opts.Quiet && !opts.JSON {
+		fmt.Println(ui.Header("\U0001F4E6", "Creating snapshot version"))
+		fmt.Println()
+		var execRows [][]string
+		for _, r := range results {
+			execRows = append(execRows, []string{
+				r.pkg,
+				r.oldVersion.String(),
+				r.newVersion.String(),
+			})
 		}
+		fmt.Println(ui.Table([]string{"Package", "Current", "Snapshot"}, execRows))
 	}
 
 	// 7. Git operations — NO state file changes for snapshots
@@ -278,12 +292,12 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
 		if !opts.Quiet && !opts.JSON {
-			fmt.Printf("✓ Created commit: \"%s\"\n", commitMsg)
+			fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created commit: \"%s\"", commitMsg)))
 		}
 	} else {
 		if !opts.Quiet && !opts.JSON {
-			fmt.Println("✓ Updated version files")
-			fmt.Println("⊘ Skipped git commit (--no-commit)")
+			fmt.Println(ui.SuccessMessage("Updated version files"))
+			fmt.Println(ui.Dimmed("Skipped git commit (--no-commit)"))
 		}
 	}
 
@@ -294,12 +308,12 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 				return fmt.Errorf("failed to create tag %s: %w", r.tagName, err)
 			}
 			if !opts.Quiet && !opts.JSON {
-				fmt.Printf("✓ Created tag: %s\n", r.tagName)
+				fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created tag: %s", r.tagName)))
 			}
 		}
 	} else if opts.NoTag {
 		if !opts.Quiet && !opts.JSON {
-			fmt.Println("⊘ Skipped git tags (--no-tag)")
+			fmt.Println(ui.Dimmed("Skipped git tags (--no-tag)"))
 		}
 	}
 

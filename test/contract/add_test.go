@@ -190,7 +190,7 @@ func TestAddContract_HelpFlag(t *testing.T) {
 	// Verify output contains help information
 	outputStr := string(output)
 	assert.Contains(t, outputStr, "Record new cargo", "Output should contain command description")
-	assert.Contains(t, outputStr, "Usage:", "Output should contain usage section")
+	assert.Contains(t, outputStr, "USAGE", "Output should contain usage section")
 	assert.Contains(t, outputStr, "--package", "Output should mention --package flag")
 	assert.Contains(t, outputStr, "--type", "Output should mention --type flag")
 	assert.Contains(t, outputStr, "--summary", "Output should mention --summary flag")
@@ -247,6 +247,74 @@ func TestAddContract_NotGitRepository(t *testing.T) {
 	// Verify output contains error message
 	outputStr := string(output)
 	assert.Contains(t, outputStr, "git repository", "Output should mention git repository requirement")
+}
+
+// TestAddContract_AutoSelectSinglePackage tests that --package is optional for single-package repos
+func TestAddContract_AutoSelectSinglePackage(t *testing.T) {
+	shipyardBin := buildShipyard(t)
+	tempDir := t.TempDir()
+	initGitRepo(t, tempDir)
+
+	// Initialize shipyard (creates a single "default" package)
+	initCmd := exec.Command(shipyardBin, "init", "--yes")
+	initCmd.Dir = tempDir
+	_, err := initCmd.CombinedOutput()
+	require.NoError(t, err, "Init should succeed")
+
+	// Run shipyard add WITHOUT --package flag
+	cmd := exec.Command(shipyardBin, "add",
+		"--type", "patch",
+		"--summary", "Fix without explicit package")
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	// Verify exit code (should succeed)
+	require.NoError(t, err, "Add without --package should succeed for single-package repos")
+
+	// Verify output shows the auto-selected package
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "Created consignment", "Output should contain success message")
+
+	// Verify consignment file was created
+	consignmentsDir := filepath.Join(tempDir, ".shipyard", "consignments")
+	entries, err := os.ReadDir(consignmentsDir)
+	require.NoError(t, err, "Should be able to read consignments directory")
+	assert.Equal(t, 1, len(entries), "Should have created one consignment file")
+}
+
+// TestAddContract_RequiresPackageForMultiPackage tests that --package is required for multi-package repos
+func TestAddContract_RequiresPackageForMultiPackage(t *testing.T) {
+	shipyardBin := buildShipyard(t)
+	tempDir := t.TempDir()
+	initGitRepo(t, tempDir)
+
+	// Initialize shipyard
+	initCmd := exec.Command(shipyardBin, "init", "--yes")
+	initCmd.Dir = tempDir
+	_, err := initCmd.CombinedOutput()
+	require.NoError(t, err, "Init should succeed")
+
+	// Manually create a multi-package config
+	configContent := `packages:
+  - name: core
+    path: ./core
+    ecosystem: go
+  - name: api
+    path: ./api
+    ecosystem: go
+`
+	configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
+
+	// Run shipyard add WITHOUT --package flag in multi-package repo
+	cmd := exec.Command(shipyardBin, "add",
+		"--type", "patch",
+		"--summary", "Fix without explicit package")
+	cmd.Dir = tempDir
+	_, err = cmd.CombinedOutput()
+
+	// Verify exit code (should fail — needs interactive prompt or --package flag)
+	assert.Error(t, err, "Add without --package should fail for multi-package repos in non-interactive mode")
 }
 
 // TestAddContract_QuietFlag tests the contract for --quiet flag

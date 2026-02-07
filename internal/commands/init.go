@@ -32,14 +32,24 @@ func NewInitCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Set sail - prepare your repository",
+		Use:                   "init [-f] [-y] [-r url]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"setup"},
+		Short:   "Set sail - prepare your repository",
 		Long: `Prepare your repository for the versioning voyage ahead. Sets up the shipyard
 with cargo manifests, navigation charts, and the captain's log.
 
 In interactive mode, you'll configure your fleet (packages) and choose between
 sailing solo or commanding a flotilla (monorepo). Use --yes to set sail with
 default configurations.`,
+		Example: `  # Interactive setup
+  shipyard init
+
+  # Accept all defaults
+  shipyard init --yes
+
+  # Force re-initialization
+  shipyard init --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get current working directory
 			cwd, err := os.Getwd()

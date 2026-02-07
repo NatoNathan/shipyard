@@ -30,19 +30,18 @@ func NewRemoveCommand() *cobra.Command {
 	opts := &RemoveCommandOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "remove",
-		Short: "Remove pending consignments",
+		Use:                   "remove {--id id... | --all}",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"rm", "delete"},
+		Short:   "Jettison cargo from the manifest",
 		Long: `Remove one or more pending consignments from the manifest.
 
-Use --id to remove specific consignments by ID, or --all to remove all pending consignments.
-
-Examples:
-  # Remove specific consignment(s)
+Use --id to remove specific consignments by ID, or --all to remove all pending consignments.`,
+		Example: `  # Remove specific consignment(s)
   shipyard remove --id 20240101-120000-abc123
 
   # Remove all pending consignments
-  shipyard remove --all
-`,
+  shipyard remove --all`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalFlags := GetGlobalFlags(cmd)
 			opts.JSON = globalFlags.JSON

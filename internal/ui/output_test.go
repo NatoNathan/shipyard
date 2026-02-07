@@ -81,6 +81,54 @@ func TestList(t *testing.T) {
 	assert.Contains(t, msg, "•", "List should have bullet points")
 }
 
+// TestHeader tests rendering header with icon
+func TestHeader(t *testing.T) {
+	msg := Header("\U0001F4E6", "Pending Changes")
+
+	assert.Contains(t, msg, "\U0001F4E6", "Header should contain icon")
+	assert.Contains(t, msg, "Pending Changes", "Header should contain title")
+}
+
+// TestDimmed tests rendering dimmed text
+func TestDimmed(t *testing.T) {
+	msg := Dimmed("Skipped git commit")
+
+	assert.Contains(t, msg, "Skipped git commit", "Dimmed should contain text")
+}
+
+// TestChangeTypeBadge tests rendering change type badges
+func TestChangeTypeBadge(t *testing.T) {
+	tests := []struct {
+		changeType string
+	}{
+		{"major"},
+		{"minor"},
+		{"patch"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.changeType, func(t *testing.T) {
+			badge := ChangeTypeBadge(tt.changeType)
+			assert.Contains(t, badge, tt.changeType, "Badge should contain change type")
+		})
+	}
+}
+
+// TestChangeTypeBadge_Unknown tests that unknown change types are returned unstyled
+func TestChangeTypeBadge_Unknown(t *testing.T) {
+	badge := ChangeTypeBadge("custom")
+	assert.Equal(t, "custom", badge, "Unknown change types should be returned as-is")
+}
+
+// TestVersionArrow tests rendering version arrows
+func TestVersionArrow(t *testing.T) {
+	msg := VersionArrow("1.0.0", "1.1.0")
+
+	assert.Contains(t, msg, "1.0.0", "Should contain old version")
+	assert.Contains(t, msg, "1.1.0", "Should contain new version")
+	assert.Contains(t, msg, "\u2192", "Should contain arrow")
+}
+
 // TestProgressSpinner tests creating a progress spinner
 func TestProgressSpinner(t *testing.T) {
 	// Test that we can create a spinner without errors

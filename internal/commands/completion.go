@@ -10,8 +10,13 @@ import (
 // NewCompletionCommand creates the completion command for shell completions.
 func NewCompletionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "completion [bash|zsh|fish|powershell]",
+		Use:   "completion {bash|zsh|fish|powershell}",
 		Short: "Teach your shell to speak Shipyard",
+		Example: `  # Generate bash completions
+  shipyard completion bash
+
+  # Generate zsh completions
+  shipyard completion zsh`,
 		Long: `Train your shell to understand the shipyard's language. Enables your navigator
 (shell) to suggest commands, flags, and arguments as you chart your course.
 

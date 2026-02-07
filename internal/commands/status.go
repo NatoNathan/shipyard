@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/consignment"
 	"github.com/NatoNathan/shipyard/internal/errors"
 	"github.com/NatoNathan/shipyard/internal/graph"
+	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/NatoNathan/shipyard/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -28,10 +30,20 @@ func NewStatusCommand() *cobra.Command {
 	opts := &StatusOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "status",
-		Short: "Check cargo and chart your course",
+		Use:                   "status [-p package]... [-o {table|json}]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"ls", "list"},
+		Short:   "Check cargo and chart your course",
 		Long: `Review pending cargo and see which ports of call (versions) await. Shows all
 loaded consignments grouped by vessel with calculated destination coordinates.`,
+		Example: `  # Show pending changes
+  shipyard status
+
+  # Filter by package
+  shipyard status --package core
+
+  # Output as JSON
+  shipyard status --output json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Check for global --json flag if local --output flag wasn't explicitly set
 			if !cmd.Flags().Changed("output") {
@@ -89,7 +101,7 @@ func runStatus(opts *StatusOptions) error {
 
 	// Check if there are any consignments
 	if len(consignments) == 0 {
-		fmt.Println("No pending consignments")
+		fmt.Println(ui.InfoMessage("No pending consignments"))
 		return nil
 	}
 
@@ -259,26 +271,46 @@ func outputTableWithBumps(grouped map[string][]*consignment.Consignment, version
 		return nil
 	}
 
-	// Normal/verbose mode with emoji header
-	fmt.Println("📦 Pending consignments")
+	// Normal mode: render table
+	fmt.Println(ui.Header("\U0001F4E6", "Pending consignments"))
 	fmt.Println()
 
-	// Show all packages with version bumps (direct or propagated)
+	var rows [][]string
 	for _, pkg := range tableKeys {
 		bump := versionBumps[pkg]
 		consignments := grouped[pkg]
+		rows = append(rows, []string{
+			pkg,
+			bump.OldVersion.String(),
+			bump.NewVersion.String(),
+			ui.ChangeTypeBadge(string(bump.ChangeType)),
+			string(bump.Source),
+			strconv.Itoa(len(consignments)),
+		})
+	}
 
-		// Package name with version range using arrow
-		fmt.Printf("%s (%s → %s)\n", pkg, bump.OldVersion, bump.NewVersion)
+	fmt.Println(ui.Table(
+		[]string{"Package", "Current", "Next", "Bump", "Source", "Changes"},
+		rows,
+	))
 
-		if opts.Verbose && len(consignments) > 0 {
-			// List consignments with ID, summary, and type
+	// Verbose mode: show consignment details per package
+	if opts.Verbose {
+		for _, pkg := range tableKeys {
+			consignments := grouped[pkg]
+			if len(consignments) == 0 {
+				continue
+			}
+			fmt.Println()
+			fmt.Println(ui.Section(pkg))
 			for _, c := range consignments {
-				fmt.Printf("  - %s: %s (%s)\n", c.ID, c.Summary, c.ChangeType)
+				fmt.Println(ui.KeyValue("ID", c.ID))
+				fmt.Println(ui.KeyValue("Type", string(c.ChangeType)))
+				fmt.Println(ui.KeyValue("Summary", c.Summary))
 			}
 		}
-		fmt.Println()
 	}
+	fmt.Println()
 
 	return nil
 }

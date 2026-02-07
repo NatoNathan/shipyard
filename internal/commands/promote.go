@@ -51,23 +51,22 @@ func NewPromoteCommand() *cobra.Command {
 	opts := &PromoteCommandOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "promote",
-		Short: "Advance to the next pre-release stage",
+		Use:                   "promote [-p package]... [--preview] [--no-commit] [--no-tag]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"advance"},
+		Short:   "Advance through the harbor channel",
 		Long: `Promote a pre-release to the next stage in order.
 Advances pre-releases through configured stages (e.g., alpha → beta → rc).
 
-At the highest stage, returns an error—use 'shipyard version' to promote to stable.
-
-Examples:
-  # Promote to next stage
+At the highest stage, returns an error—use 'shipyard version' to promote to stable.`,
+		Example: `  # Promote to next stage
   shipyard version promote
 
   # Preview promotion
   shipyard version promote --preview
 
   # Promote specific packages
-  shipyard version promote --package core
-`,
+  shipyard version promote --package core`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalFlags := GetGlobalFlags(cmd)
 			opts.JSON = globalFlags.JSON
@@ -219,8 +218,8 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 		if bump, hasBump := versionBumps[pkgName]; hasBump {
 			newTarget := bump.NewVersion.String()
 			if newTarget != pkgState.TargetVersion {
-				fmt.Printf("⚠ Warning: Target version changed from %s to %s for %s (consignments modified)\n",
-					pkgState.TargetVersion, newTarget, pkgName)
+				fmt.Println(ui.WarningMessage(fmt.Sprintf("Target version changed from %s to %s for %s (consignments modified)",
+					pkgState.TargetVersion, newTarget, pkgName)))
 				targetVersion = newTarget
 			}
 		}
@@ -281,11 +280,20 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 			return PrintJSON(os.Stdout, output)
 		}
 		if !opts.Quiet {
-			fmt.Println("📦 Preview: Promote to next stage")
+			fmt.Println(ui.Header("\U0001F4E6", "Preview: Promote to next stage"))
+			fmt.Println()
+			var previewRows [][]string
 			for _, r := range results {
-				fmt.Printf("  - %s: %s → %s (%s → %s)\n", r.pkg, r.oldVersion, r.newVersion, r.oldStage, r.newStage.Name)
-				fmt.Printf("    Target version: %s\n", r.targetVersion)
+				previewRows = append(previewRows, []string{
+					r.pkg,
+					r.oldVersion.String(),
+					r.newVersion.String(),
+					r.oldStage,
+					r.newStage.Name,
+					r.targetVersion,
+				})
 			}
+			fmt.Println(ui.Table([]string{"Package", "Current", "Promoted", "From", "To", "Target"}, previewRows))
 			fmt.Println()
 			fmt.Println(ui.InfoMessage("Preview mode: no changes made"))
 			fmt.Println()
@@ -294,9 +302,6 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 	}
 
 	// 5. Update ecosystem version files
-	if !opts.Quiet && !opts.JSON {
-		fmt.Println("📦 Promoting to next stage...")
-	}
 	for _, r := range results {
 		pkg, ok := cfg.GetPackage(r.pkg)
 		if !ok {
@@ -310,9 +315,22 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 		if err := handler.UpdateVersion(r.newVersion); err != nil {
 			return fmt.Errorf("failed to update version for %s: %w", r.pkg, err)
 		}
-		if !opts.Quiet && !opts.JSON {
-			fmt.Printf("  - %s: %s → %s (%s → %s)\n", r.pkg, r.oldVersion, r.newVersion, r.oldStage, r.newStage.Name)
+	}
+
+	if !opts.Quiet && !opts.JSON {
+		fmt.Println(ui.Header("\U0001F4E6", "Promoting to next stage"))
+		fmt.Println()
+		var execRows [][]string
+		for _, r := range results {
+			execRows = append(execRows, []string{
+				r.pkg,
+				r.oldVersion.String(),
+				r.newVersion.String(),
+				r.oldStage,
+				r.newStage.Name,
+			})
 		}
+		fmt.Println(ui.Table([]string{"Package", "Current", "Promoted", "From", "To"}, execRows))
 	}
 
 	// 6. Update state
@@ -327,7 +345,7 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 		return fmt.Errorf("failed to write prerelease state: %w", err)
 	}
 	if !opts.Quiet && !opts.JSON {
-		fmt.Println("✓ Updated .shipyard/prerelease.yml")
+		fmt.Println(ui.SuccessMessage("Updated .shipyard/prerelease.yml"))
 	}
 
 	// 7. Git operations
@@ -355,12 +373,12 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
 		if !opts.Quiet && !opts.JSON {
-			fmt.Printf("✓ Created commit: \"%s\"\n", commitMsg)
+			fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created commit: \"%s\"", commitMsg)))
 		}
 	} else {
 		if !opts.Quiet && !opts.JSON {
-			fmt.Println("✓ Updated version files")
-			fmt.Println("⊘ Skipped git commit (--no-commit)")
+			fmt.Println(ui.SuccessMessage("Updated version files"))
+			fmt.Println(ui.Dimmed("Skipped git commit (--no-commit)"))
 		}
 	}
 
@@ -371,12 +389,12 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 				return fmt.Errorf("failed to create tag %s: %w", r.tagName, err)
 			}
 			if !opts.Quiet && !opts.JSON {
-				fmt.Printf("✓ Created tag: %s\n", r.tagName)
+				fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created tag: %s", r.tagName)))
 			}
 		}
 	} else if opts.NoTag {
 		if !opts.Quiet && !opts.JSON {
-			fmt.Println("⊘ Skipped git tags (--no-tag)")
+			fmt.Println(ui.Dimmed("Skipped git tags (--no-tag)"))
 		}
 	}
 

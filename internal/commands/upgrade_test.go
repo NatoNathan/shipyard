@@ -25,7 +25,7 @@ func TestUpgradeCommand_Contract(t *testing.T) {
 
 	t.Run("has correct short description", func(t *testing.T) {
 		cmd := NewUpgradeCommand(versionInfo)
-		assert.Equal(t, "Upgrade shipyard to the latest version", cmd.Short)
+		assert.Equal(t, "Refit the shipyard with latest provisions", cmd.Short)
 	})
 
 	t.Run("has long description", func(t *testing.T) {

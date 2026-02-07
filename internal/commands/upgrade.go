@@ -36,15 +36,15 @@ func NewUpgradeCommand(versionInfo VersionInfo) *cobra.Command {
 	opts := &UpgradeOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "upgrade",
-		Short: "Upgrade shipyard to the latest version",
+		Use:                   "upgrade [-y] [--version version] [--force] [--dry-run]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"update", "self-update"},
+		Short:   "Refit the shipyard with latest provisions",
 		Long: `Upgrade shipyard to the latest version.
 
 This command automatically detects how shipyard was installed (Homebrew, npm, Go install,
-or script install) and uses the appropriate upgrade method.
-
-Examples:
-  # Upgrade with confirmation prompt
+or script install) and uses the appropriate upgrade method.`,
+		Example: `  # Upgrade with confirmation prompt
   shipyard upgrade
 
   # Upgrade without confirmation

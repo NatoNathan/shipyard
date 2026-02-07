@@ -428,8 +428,10 @@ func NewAddCommand() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "add",
-		Short: "Log cargo in the ship's manifest",
+		Use:                   "add [-p package]... [-t {patch|minor|major}] [-s summary] [-m key=value]...",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"consign", "log"},
+		Short:   "Log cargo in the ship's manifest",
 		Long: `Record new cargo in your ship's manifest. Each consignment documents what's
 being shipped (changes), which vessels carry it (packages), and how it affects
 the voyage (patch/minor/major). Interactive mode guides you through manifest
@@ -463,6 +465,14 @@ creation, or use flags to log cargo directly.`,
 					return errors.NewValidationError("metadata", fmt.Sprintf("invalid metadata format: %s (expected key=value)", m))
 				}
 				metadataMap[parts[0]] = parts[1]
+			}
+
+			// Auto-select package for single-package repos
+			if len(packages) == 0 {
+				cfg, loadErr := config.LoadFromDir(projectPath)
+				if loadErr == nil && len(cfg.Packages) == 1 {
+					packages = []string{cfg.Packages[0].Name}
+				}
 			}
 
 			// Check if we have all required flags for non-interactive mode
@@ -508,11 +518,15 @@ func runInteractiveAdd(projectPath string, packages []string, typeName, summary 
 		availablePackages = append(availablePackages, pkg.Name)
 	}
 
-	// Prompt for packages if not provided
+	// Auto-select for single-package repos, or prompt if not provided
 	if len(packages) == 0 {
-		packages, err = prompt.PromptForPackages(availablePackages)
-		if err != nil {
-			return fmt.Errorf("failed to select packages: %w", err)
+		if len(availablePackages) == 1 {
+			packages = availablePackages
+		} else {
+			packages, err = prompt.PromptForPackages(availablePackages)
+			if err != nil {
+				return fmt.Errorf("failed to select packages: %w", err)
+			}
 		}
 	}
 

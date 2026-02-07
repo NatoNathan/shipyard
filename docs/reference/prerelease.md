@@ -6,7 +6,11 @@ Create or increment a pre-release version at the current stage.
 
 ```bash
 shipyard version prerelease [OPTIONS]
+shipyard version pre [OPTIONS]
+shipyard version rc [OPTIONS]
 ```
+
+**Aliases:** `pre`, `rc`
 
 Creates or increments a pre-release version at the current stage based on pending consignments.
 

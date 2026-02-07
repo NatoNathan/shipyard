@@ -12,19 +12,17 @@ import (
 // NewConfigShowCommand creates the config show command
 func NewConfigShowCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "show",
-		Short: "Display the resolved configuration",
+		Use:     "show",
+		Aliases: []string{"view"},
+		Short:   "Read the ship's charter",
 		Long: `Display the current shipyard configuration with all defaults applied.
 
-Outputs as YAML by default, or JSON with the --json flag.
-
-Examples:
-  # Show config as YAML
+Outputs as YAML by default, or JSON with the --json flag.`,
+		Example: `  # Show config as YAML
   shipyard config show
 
   # Show config as JSON
-  shipyard config show --json
-`,
+  shipyard config show --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalFlags := GetGlobalFlags(cmd)
 			return runConfigShow(globalFlags)

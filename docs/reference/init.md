@@ -4,7 +4,10 @@
 
 ```bash
 shipyard init [OPTIONS]
+shipyard setup [OPTIONS]
 ```
+
+**Aliases:** `setup`
 
 ## Description
 

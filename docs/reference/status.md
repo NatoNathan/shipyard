@@ -4,7 +4,11 @@
 
 ```bash
 shipyard status [OPTIONS]
+shipyard ls [OPTIONS]
+shipyard list [OPTIONS]
 ```
+
+**Aliases:** `ls`, `list`
 
 ## Description
 

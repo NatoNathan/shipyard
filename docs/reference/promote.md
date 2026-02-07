@@ -1,4 +1,4 @@
-# promote
+# promote - Advance through the harbor channel
 
 Promote a pre-release to the next stage or stable release.
 
@@ -6,7 +6,10 @@ Promote a pre-release to the next stage or stable release.
 
 ```bash
 shipyard version promote [OPTIONS]
+shipyard version advance [OPTIONS]
 ```
+
+**Aliases:** `advance`
 
 Advances a pre-release to the next stage in order, or promotes to stable release.
 

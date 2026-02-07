@@ -36,18 +36,18 @@ func NewVersionCommand() *cobra.Command {
 	opts := &VersionCommandOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Sail to the next port",
+		Use:                   "version [command] [-p package]... [--preview] [--no-commit] [--no-tag]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"bump", "sail"},
+		Short:   "Sail to the next port",
 		Long: `Set sail with your cargo and reach the next version port. Navigates the fleet
 through calculated routes, updates ship's logs, plants harbor markers (tags),
 and archives the voyage in history.
 
 The voyage: Load pending cargo → Chart course with dependency-aware navigation →
 Update fleet coordinates → Record in ship's logs → Mark harbors with buoys →
-Archive journey in captain's log.
-
-Examples:
-  # Set sail for all vessels
+Archive journey in captain's log.`,
+		Example: `  # Set sail for all vessels
   shipyard version
 
   # Preview the route without sailing
@@ -60,8 +60,7 @@ Examples:
   shipyard version --no-commit
 
   # Sail and record, but don't plant harbor markers
-  shipyard version --no-tag
-`,
+  shipyard version --no-tag`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runVersion(opts)
 		},
@@ -177,7 +176,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		if opts.Verbose {
-			fmt.Printf("Updated %s: %s -> %s\n", pkg.Name, bump.OldVersion, bump.NewVersion)
+			fmt.Println(ui.Dimmed(fmt.Sprintf("Updated %s: %s -> %s", pkg.Name, bump.OldVersion, bump.NewVersion)))
 		}
 	}
 
@@ -245,7 +244,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	if opts.Verbose {
-		fmt.Printf("Archived %d history entry/entries to history\n", len(historyEntries))
+		fmt.Println(ui.Dimmed(fmt.Sprintf("Archived %d history entry/entries to history", len(historyEntries))))
 	}
 
 	// 9. Generate changelogs (must happen AFTER archiving so current version is in history)
@@ -281,7 +280,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		if opts.Verbose {
-			fmt.Printf("Generated changelog for %s\n", pkg.Name)
+			fmt.Println(ui.Dimmed(fmt.Sprintf("Generated changelog for %s", pkg.Name)))
 		}
 	}
 
@@ -294,7 +293,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	if opts.Verbose {
-		fmt.Printf("Deleted %d consignment file(s)\n", len(consignments))
+		fmt.Println(ui.Dimmed(fmt.Sprintf("Deleted %d consignment file(s)", len(consignments))))
 	}
 
 	// 11. Git operations (commit and tag)
@@ -323,7 +322,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 		filesToStage = append(filesToStage, prereleaseStatePath)
 		if opts.Verbose {
-			fmt.Println("Deleted .shipyard/prerelease.yml")
+			fmt.Println(ui.Dimmed("Deleted .shipyard/prerelease.yml"))
 		}
 	}
 
@@ -357,7 +356,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		if opts.Verbose {
-			fmt.Printf("Created commit with %d file(s)\n", len(filesToStage))
+			fmt.Println(ui.Dimmed(fmt.Sprintf("Created commit with %d file(s)", len(filesToStage))))
 		}
 	}
 
@@ -373,9 +372,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 
 			if opts.Verbose {
 				if tag.Message != "" {
-					fmt.Printf("Creating annotated tag for %s: %s\n", pkgName, tag.Name)
+					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating annotated tag for %s: %s", pkgName, tag.Name)))
 				} else {
-					fmt.Printf("Creating lightweight tag for %s: %s\n", pkgName, tag.Name)
+					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating lightweight tag for %s: %s", pkgName, tag.Name)))
 				}
 			}
 		}
@@ -393,18 +392,24 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		if opts.Verbose {
-			fmt.Printf("Created %d tag(s)\n", len(packageTags))
+			fmt.Println(ui.Dimmed(fmt.Sprintf("Created %d tag(s)", len(packageTags))))
 		}
 	}
 
 	// Success summary
 	fmt.Println()
 	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Versioned %d package(s)", len(versionBumps))))
+	var summaryRows [][]string
 	for _, pkg := range cfg.Packages {
 		if bump, ok := versionBumps[pkg.Name]; ok {
-			fmt.Printf("  %s: %s → %s\n", pkg.Name, bump.OldVersion, bump.NewVersion)
+			summaryRows = append(summaryRows, []string{
+				pkg.Name,
+				bump.OldVersion.String(),
+				bump.NewVersion.String(),
+			})
 		}
 	}
+	fmt.Println(ui.Table([]string{"Package", "Old Version", "New Version"}, summaryRows))
 
 	return nil
 }

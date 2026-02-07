@@ -4,7 +4,11 @@
 
 ```bash
 shipyard version [OPTIONS]
+shipyard bump [OPTIONS]
+shipyard sail [OPTIONS]
 ```
+
+**Aliases:** `bump`, `sail`
 
 ## Description
 

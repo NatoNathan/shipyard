@@ -23,19 +23,17 @@ type ValidateOutput struct {
 // NewValidateCommand creates the validate command
 func NewValidateCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "validate",
-		Short: "Validate configuration and consignments",
+		Use:     "validate",
+		Aliases: []string{"check", "lint"},
+		Short:   "Inspect the hull before departure",
 		Long: `Validate shipyard configuration, consignment files, and the dependency graph.
 
-Reports any errors or warnings found during validation.
-
-Examples:
-  # Validate everything
+Reports any errors or warnings found during validation.`,
+		Example: `  # Validate everything
   shipyard validate
 
   # Validate with JSON output
-  shipyard validate --json
-`,
+  shipyard validate --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalFlags := GetGlobalFlags(cmd)
 			return runValidate(globalFlags)
