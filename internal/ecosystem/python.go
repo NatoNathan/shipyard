@@ -5,10 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
+
+var _ Handler = (*PythonEcosystem)(nil)
 
 // PythonEcosystem handles version management for Python projects
 type PythonEcosystem struct {
@@ -144,8 +147,8 @@ func (p *PythonEcosystem) readVersionFromVersionPy(path string) (semver.Version,
 		return semver.Version{}, fmt.Errorf("failed to read __version__.py: %w", err)
 	}
 
-	// Match: __version__ = "1.2.3" or __version__ = '1.2.3'
-	re := regexp.MustCompile(`(?m)^__version__\s*=\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
+	// Match: __version__ = "1.2.3" or __version__ = '1.2.3' (with optional pre-release suffix)
+	re := regexp.MustCompile(`(?m)^__version__\s*=\s*["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
 	matches := re.FindSubmatch(content)
 
 	if len(matches) < 2 {
@@ -162,8 +165,8 @@ func (p *PythonEcosystem) readVersionFromSetupPy(path string) (semver.Version, e
 		return semver.Version{}, fmt.Errorf("failed to read setup.py: %w", err)
 	}
 
-	// Match: version="1.2.3" or version='1.2.3'
-	re := regexp.MustCompile(`version\s*=\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
+	// Match: version="1.2.3" or version='1.2.3' (with optional pre-release suffix)
+	re := regexp.MustCompile(`version\s*=\s*["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
 	matches := re.FindSubmatch(content)
 
 	if len(matches) < 2 {
@@ -173,22 +176,54 @@ func (p *PythonEcosystem) readVersionFromSetupPy(path string) (semver.Version, e
 	return semver.Parse(string(matches[1]))
 }
 
-// updatePyproject updates version in pyproject.toml
+// updatePyproject updates version in pyproject.toml, only matching version
+// fields under [project] or [tool.poetry] sections (not dependency versions).
 func (p *PythonEcosystem) updatePyproject(path string, version semver.Version) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read pyproject.toml: %w", err)
 	}
 
-	// Try both [tool.poetry] and [project] formats
-	re := regexp.MustCompile(`(version\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
-	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}"%s"`, version.String())))
+	contentStr := string(content)
+	updated := false
+	versionRe := regexp.MustCompile(`(version\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
+	sectionHeaderRe := regexp.MustCompile(`(?m)^\[`)
 
-	if string(newContent) == string(content) {
+	// Target sections where a top-level "version" field is the package version
+	targetSections := []string{"[project]", "[tool.poetry]"}
+
+	for _, section := range targetSections {
+		sectionIdx := strings.Index(contentStr, section)
+		if sectionIdx == -1 {
+			continue
+		}
+
+		// Find the end of this section (next [header] or EOF)
+		afterHeader := sectionIdx + len(section)
+		rest := contentStr[afterHeader:]
+		nextSectionLoc := sectionHeaderRe.FindStringIndex(rest)
+
+		var sectionEnd int
+		if nextSectionLoc != nil {
+			sectionEnd = afterHeader + nextSectionLoc[0]
+		} else {
+			sectionEnd = len(contentStr)
+		}
+
+		sectionContent := contentStr[sectionIdx:sectionEnd]
+		newSection := versionRe.ReplaceAllString(sectionContent, fmt.Sprintf(`${1}"%s"`, version.String()))
+
+		if newSection != sectionContent {
+			contentStr = contentStr[:sectionIdx] + newSection + contentStr[sectionEnd:]
+			updated = true
+		}
+	}
+
+	if !updated {
 		return fmt.Errorf("no version field found in pyproject.toml")
 	}
 
-	return os.WriteFile(path, newContent, 0644)
+	return os.WriteFile(path, []byte(contentStr), 0644)
 }
 
 // updateVersionPy updates version in __version__.py
@@ -198,7 +233,7 @@ func (p *PythonEcosystem) updateVersionPy(path string, version semver.Version) e
 		return fmt.Errorf("failed to read __version__.py: %w", err)
 	}
 
-	re := regexp.MustCompile(`(__version__\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
+	re := regexp.MustCompile(`(__version__\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
 	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}"%s"`, version.String())))
 
 	if string(newContent) == string(content) {
@@ -215,7 +250,7 @@ func (p *PythonEcosystem) updateSetupPy(path string, version semver.Version) err
 		return fmt.Errorf("failed to read setup.py: %w", err)
 	}
 
-	re := regexp.MustCompile(`(version\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
+	re := regexp.MustCompile(`(version\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
 	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}"%s"`, version.String())))
 
 	if string(newContent) == string(content) {

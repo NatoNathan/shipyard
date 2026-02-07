@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/NatoNathan/shipyard/internal/commands"
+	shipyarderrors "github.com/NatoNathan/shipyard/internal/errors"
 	"github.com/NatoNathan/shipyard/internal/logger"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +45,6 @@ ship's logs of your journey.`,
 	rootCmd.SetVersionTemplate(fmt.Sprintf("shipyard version %s (commit: %s, built: %s)\n", version, commit, date))
 
 	// Global flags
-	rootCmd.PersistentFlags().StringP("config", "c", "", "config file (default is .shipyard/shipyard.yaml)")
 	rootCmd.PersistentFlags().BoolP("json", "j", false, "output in JSON format")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress non-error output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
@@ -56,16 +57,26 @@ ship's logs of your journey.`,
 	}
 
 	// Add subcommands
-	rootCmd.AddCommand(commands.InitCmd())
-	rootCmd.AddCommand(commands.AddCmd())
+	rootCmd.AddCommand(commands.NewInitCommand())
+	rootCmd.AddCommand(commands.NewAddCommand())
 	rootCmd.AddCommand(commands.NewVersionCommand())
 	rootCmd.AddCommand(commands.NewStatusCommand())
 	rootCmd.AddCommand(commands.NewReleaseNotesCommand())
 	rootCmd.AddCommand(commands.NewReleaseCommand())
 	rootCmd.AddCommand(commands.NewCompletionCommand())
 	rootCmd.AddCommand(commands.NewUpgradeCommand(versionInfo))
+	rootCmd.AddCommand(commands.NewRemoveCommand())
+	rootCmd.AddCommand(commands.NewValidateCommand())
+
+	configCmd := &cobra.Command{Use: "config", Short: "Manage configuration"}
+	configCmd.AddCommand(commands.NewConfigShowCommand())
+	rootCmd.AddCommand(configCmd)
 
 	if err := rootCmd.Execute(); err != nil {
+		var exitErr *shipyarderrors.ExitCodeError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.Code)
+		}
 		os.Exit(1)
 	}
 }

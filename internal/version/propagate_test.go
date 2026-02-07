@@ -327,4 +327,107 @@ func TestPropagateLinked(t *testing.T) {
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "api")
 	})
+
+	t.Run("diamond dependency - higher priority wins from multiple paths", func(t *testing.T) {
+		// d depends on b and c
+		// b depends on a (patch bump) -> propagates patch to b -> patch to d
+		// c has direct minor bump -> propagates minor to d
+		// d should get minor (higher priority)
+		cfg := &config.Config{
+			Packages: []config.Package{
+				{Name: "a", Path: "./a", Ecosystem: config.EcosystemGo},
+				{Name: "b", Path: "./b", Ecosystem: config.EcosystemGo,
+					Dependencies: []config.Dependency{
+						{Package: "a", Strategy: "linked"},
+					},
+				},
+				{Name: "c", Path: "./c", Ecosystem: config.EcosystemGo},
+				{Name: "d", Path: "./d", Ecosystem: config.EcosystemGo,
+					Dependencies: []config.Dependency{
+						{Package: "b", Strategy: "linked"},
+						{Package: "c", Strategy: "linked"},
+					},
+				},
+			},
+		}
+
+		g, err := graph.BuildGraph(cfg)
+		require.NoError(t, err)
+
+		currentVersions := map[string]semver.Version{
+			"a": {Major: 1, Minor: 0, Patch: 0},
+			"b": {Major: 1, Minor: 0, Patch: 0},
+			"c": {Major: 1, Minor: 0, Patch: 0},
+			"d": {Major: 1, Minor: 0, Patch: 0},
+		}
+
+		directBumps := map[string]string{
+			"a": "patch",
+			"c": "minor",
+		}
+
+		result, err := PropagateLinked(g, currentVersions, directBumps)
+		require.NoError(t, err)
+
+		// d should get minor (higher priority from c path)
+		assert.Equal(t, "minor", result["d"].ChangeType)
+		assert.Equal(t, semver.Version{Major: 1, Minor: 1, Patch: 0}, result["d"].NewVersion)
+	})
+
+	t.Run("deterministic propagation - same result on repeated runs", func(t *testing.T) {
+		// Multiple packages that all propagate to the same target
+		cfg := &config.Config{
+			Packages: []config.Package{
+				{Name: "a", Path: "./a", Ecosystem: config.EcosystemGo},
+				{Name: "b", Path: "./b", Ecosystem: config.EcosystemGo},
+				{Name: "c", Path: "./c", Ecosystem: config.EcosystemGo},
+				{Name: "target", Path: "./target", Ecosystem: config.EcosystemGo,
+					Dependencies: []config.Dependency{
+						{Package: "a", Strategy: "linked"},
+						{Package: "b", Strategy: "linked"},
+						{Package: "c", Strategy: "linked"},
+					},
+				},
+			},
+		}
+
+		g, err := graph.BuildGraph(cfg)
+		require.NoError(t, err)
+
+		currentVersions := map[string]semver.Version{
+			"a":      {Major: 1, Minor: 0, Patch: 0},
+			"b":      {Major: 1, Minor: 0, Patch: 0},
+			"c":      {Major: 1, Minor: 0, Patch: 0},
+			"target": {Major: 1, Minor: 0, Patch: 0},
+		}
+
+		directBumps := map[string]string{
+			"a": "patch",
+			"b": "minor",
+			"c": "major",
+		}
+
+		// Run multiple times to verify deterministic result
+		var firstResult map[string]VersionBump
+		for i := 0; i < 10; i++ {
+			result, err := PropagateLinked(g, currentVersions, directBumps)
+			require.NoError(t, err)
+
+			if firstResult == nil {
+				firstResult = result
+			} else {
+				for pkg, bump := range result {
+					assert.Equal(t, firstResult[pkg].ChangeType, bump.ChangeType,
+						"Run %d: Package %s has inconsistent change type", i, pkg)
+					assert.Equal(t, firstResult[pkg].NewVersion, bump.NewVersion,
+						"Run %d: Package %s has inconsistent new version", i, pkg)
+				}
+			}
+		}
+
+		// target should get major (highest priority from c)
+		assert.Equal(t, "major", firstResult["target"].ChangeType)
+		assert.Equal(t, semver.Version{Major: 2, Minor: 0, Patch: 0}, firstResult["target"].NewVersion)
+	})
 }
+

@@ -2,10 +2,8 @@ package git
 
 import (
 	"fmt"
-	"time"
 
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // CreateAnnotatedTag creates an annotated git tag at HEAD
@@ -24,11 +22,7 @@ func CreateAnnotatedTag(repoPath, tagName, message string) error {
 
 	// Create annotated tag
 	_, err = repo.CreateTag(tagName, head.Hash(), &gogit.CreateTagOptions{
-		Tagger: &object.Signature{
-			Name:  "Shipyard",
-			Email: "shipyard@local",
-			When:  time.Now(),
-		},
+		Tagger:  getCommitAuthor(repo),
 		Message: message,
 	})
 	if err != nil {

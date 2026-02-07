@@ -92,13 +92,58 @@ func TestConsignmentError(t *testing.T) {
 
 func TestDependencyError(t *testing.T) {
 	err := NewDependencyError("circular dependency detected", []string{"pkg-a", "pkg-b", "pkg-a"})
-	
+
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "circular dependency")
 	assert.Contains(t, err.Error(), "pkg-a")
 	assert.Contains(t, err.Error(), "pkg-b")
-	
+
 	var depErr *DependencyError
 	assert.True(t, errors.As(err, &depErr))
 	assert.Equal(t, []string{"pkg-a", "pkg-b", "pkg-a"}, depErr.Cycle)
+}
+
+func TestExitCodeError(t *testing.T) {
+	err := NewExitCodeError(1, "command failed")
+
+	assert.Error(t, err)
+	assert.Equal(t, "command failed", err.Error())
+
+	var exitErr *ExitCodeError
+	assert.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, 1, exitErr.Code)
+	assert.Equal(t, "command failed", exitErr.Message)
+	assert.Nil(t, exitErr.Cause)
+	assert.Nil(t, exitErr.Unwrap())
+}
+
+func TestExitCodeErrorWithCause(t *testing.T) {
+	cause := errors.New("underlying failure")
+	err := NewExitCodeErrorWithCause(2, "command failed", cause)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "command failed")
+	assert.Contains(t, err.Error(), "underlying failure")
+
+	var exitErr *ExitCodeError
+	assert.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, 2, exitErr.Code)
+	assert.Equal(t, cause, exitErr.Cause)
+
+	// Test Unwrap
+	assert.Equal(t, cause, errors.Unwrap(err))
+
+	// Test errors.Is through Unwrap chain
+	assert.True(t, errors.Is(err, cause))
+}
+
+func TestExitCodeErrorWithNilCause(t *testing.T) {
+	err := NewExitCodeErrorWithCause(1, "no cause", nil)
+
+	assert.Error(t, err)
+	assert.Equal(t, "no cause", err.Error())
+
+	var exitErr *ExitCodeError
+	assert.True(t, errors.As(err, &exitErr))
+	assert.Nil(t, exitErr.Unwrap())
 }

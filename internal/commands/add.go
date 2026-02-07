@@ -418,8 +418,8 @@ func promptForString(field config.MetadataField) (string, error) {
 	return value, nil
 }
 
-// AddCmd returns the add command
-func AddCmd() *cobra.Command {
+// NewAddCommand returns the add command
+func NewAddCommand() *cobra.Command {
 	var (
 		packages []string
 		typeName string

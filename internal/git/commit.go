@@ -6,8 +6,30 @@ import (
 	"time"
 
 	gogit "github.com/go-git/go-git/v5"
+	gogitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
+
+// getCommitAuthor reads git config for user.name and user.email,
+// falling back to defaults if not configured
+func getCommitAuthor(repo *gogit.Repository) *object.Signature {
+	sig := &object.Signature{
+		Name:  "Shipyard",
+		Email: "shipyard@local",
+		When:  time.Now(),
+	}
+
+	cfg, err := repo.ConfigScoped(gogitconfig.GlobalScope)
+	if err != nil || cfg.User.Name == "" {
+		return sig
+	}
+
+	sig.Name = cfg.User.Name
+	if cfg.User.Email != "" {
+		sig.Email = cfg.User.Email
+	}
+	return sig
+}
 
 // CreateCommit creates a git commit with the given message
 // Returns error if repository is invalid or no changes are staged
@@ -50,11 +72,7 @@ func CreateCommit(repoPath, message string) error {
 
 	// Create commit
 	_, err = worktree.Commit(message, &gogit.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Shipyard",
-			Email: "shipyard@local",
-			When:  time.Now(),
-		},
+		Author: getCommitAuthor(repo),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)

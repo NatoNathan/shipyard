@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/consignment"
-	"github.com/NatoNathan/shipyard/internal/ecosystem"
 	"github.com/NatoNathan/shipyard/internal/errors"
 	"github.com/NatoNathan/shipyard/internal/graph"
 	"github.com/NatoNathan/shipyard/internal/version"
-	"github.com/NatoNathan/shipyard/pkg/semver"
 	"github.com/spf13/cobra"
 )
 
@@ -121,40 +120,9 @@ func calculateVersionBumpsForStatus(cfg *config.Config, projectPath string, cons
 	}
 
 	// Read current versions
-	currentVersions := make(map[string]semver.Version)
-	for _, pkg := range cfg.Packages {
-		pkgPath := filepath.Join(projectPath, pkg.Path)
-		var handler interface {
-			ReadVersion() (semver.Version, error)
-		}
-
-		switch pkg.Ecosystem {
-		case config.EcosystemGo:
-			// Check for tag-only mode via versionFiles
-			if pkg.IsTagOnly() {
-				handler = ecosystem.NewGoEcosystemWithOptions(pkgPath, &ecosystem.GoEcosystemOptions{TagOnly: true})
-			} else {
-				handler = ecosystem.NewGoEcosystem(pkgPath)
-			}
-		case config.EcosystemNPM:
-			handler = ecosystem.NewNPMEcosystem(pkgPath)
-		case config.EcosystemPython:
-			handler = ecosystem.NewPythonEcosystem(pkgPath)
-		case config.EcosystemHelm:
-			handler = ecosystem.NewHelmEcosystem(pkgPath)
-		case config.EcosystemCargo:
-			handler = ecosystem.NewCargoEcosystem(pkgPath)
-		case config.EcosystemDeno:
-			handler = ecosystem.NewDenoEcosystem(pkgPath)
-		default:
-			return nil, fmt.Errorf("unsupported ecosystem: %s", pkg.Ecosystem)
-		}
-
-		currentVer, err := handler.ReadVersion()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read version for %s: %w", pkg.Name, err)
-		}
-		currentVersions[pkg.Name] = currentVer
+	currentVersions, err := ReadAllCurrentVersions(projectPath, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	// Calculate bumps with propagation
@@ -231,7 +199,13 @@ func outputJSONWithBumps(grouped map[string][]*consignment.Consignment, versionB
 	output := make(map[string]interface{})
 
 	// Include all packages that have bumps (direct or propagated)
-	for pkg, bump := range versionBumps {
+	jsonKeys := make([]string, 0, len(versionBumps))
+	for k := range versionBumps {
+		jsonKeys = append(jsonKeys, k)
+	}
+	sort.Strings(jsonKeys)
+	for _, pkg := range jsonKeys {
+		bump := versionBumps[pkg]
 		pkgData := make(map[string]interface{})
 
 		// Get consignments for this package (may be empty for propagated bumps)
@@ -270,9 +244,16 @@ func outputJSONWithBumps(grouped map[string][]*consignment.Consignment, versionB
 
 // outputTableWithBumps outputs status in table format with calculated version bumps
 func outputTableWithBumps(grouped map[string][]*consignment.Consignment, versionBumps map[string]version.VersionBump, opts *StatusOptions) error {
+	tableKeys := make([]string, 0, len(versionBumps))
+	for k := range versionBumps {
+		tableKeys = append(tableKeys, k)
+	}
+	sort.Strings(tableKeys)
+
 	if opts.Quiet {
 		// Quiet mode: just package names and bump types
-		for pkg, bump := range versionBumps {
+		for _, pkg := range tableKeys {
+			bump := versionBumps[pkg]
 			fmt.Printf("%s: %s\n", pkg, bump.ChangeType)
 		}
 		return nil
@@ -283,7 +264,8 @@ func outputTableWithBumps(grouped map[string][]*consignment.Consignment, version
 	fmt.Println()
 
 	// Show all packages with version bumps (direct or propagated)
-	for pkg, bump := range versionBumps {
+	for _, pkg := range tableKeys {
+		bump := versionBumps[pkg]
 		consignments := grouped[pkg]
 
 		// Package name with version range using arrow

@@ -25,8 +25,8 @@ type InitOptions struct {
 	Quiet  bool  // Suppress output
 }
 
-// InitCmd creates the init command
-func InitCmd() *cobra.Command {
+// NewInitCommand creates the init command
+func NewInitCommand() *cobra.Command {
 	var force bool
 	var remote string
 	var yes bool
@@ -206,7 +206,7 @@ func generateConfiguration(projectPath string, options InitOptions) (*config.Con
 
 	// Non-interactive mode (--yes flag) - use auto-detection
 	if len(detectedPackages) > 0 {
-		log.Infof("Detected %d package(s)", len(detectedPackages))
+		log.Info("Detected %d package(s)", len(detectedPackages))
 		cfg.Packages = detectedPackages
 	} else {
 		// No packages detected, create a default one
@@ -240,13 +240,13 @@ func generateInteractiveConfig(cfg *config.Config, detectedPackages []config.Pac
 	case prompt.RepoTypeMonorepo:
 		// Monorepo: Review detected packages
 		if len(detectedPackages) > 0 {
-			log.Infof("Detected %d package(s)", len(detectedPackages))
+			log.Info("Detected %d package(s)", len(detectedPackages))
 			selectedPackages, err := prompt.PromptReviewPackages(detectedPackages)
 			if err != nil {
 				return nil, fmt.Errorf("package review failed: %w", err)
 			}
 			cfg.Packages = selectedPackages
-			log.Infof("Selected %d package(s)", len(selectedPackages))
+			log.Info("Selected %d package(s)", len(selectedPackages))
 		} else {
 			log.Warn("No packages detected in monorepo")
 			// Prompt to add manually
@@ -268,7 +268,7 @@ func generateInteractiveConfig(cfg *config.Config, detectedPackages []config.Pac
 		var pkg config.Package
 		if len(detectedPackages) == 1 {
 			// Use detected package as default
-			log.Infof("Detected package: %s (%s)", detectedPackages[0].Name, detectedPackages[0].Ecosystem)
+			log.Info("Detected package: %s (%s)", detectedPackages[0].Name, detectedPackages[0].Ecosystem)
 			confirm, err := prompt.PromptConfirm("Use detected package configuration?", true)
 			if err != nil {
 				return nil, err
@@ -289,7 +289,7 @@ func generateInteractiveConfig(cfg *config.Config, detectedPackages []config.Pac
 			}
 		}
 		cfg.Packages = []config.Package{pkg}
-		log.Infof("Configured package: %s", pkg.Name)
+		log.Info("Configured package: %s", pkg.Name)
 	}
 
 	return cfg, nil

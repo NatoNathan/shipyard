@@ -116,9 +116,5 @@ func extractTitleFromNotes(releaseNotes string, packageName string, version semv
 		return fmt.Sprintf("%s v%s", packageName, version)
 	}
 
-	// Strip markdown heading syntax if present
-	title = strings.TrimPrefix(title, "# ")
-	title = strings.TrimSpace(title)
-
 	return title
 }

@@ -109,13 +109,12 @@ appVersion: "1.0.0"
 		require.NoError(t, err)
 		assert.Equal(t, "2.0.0", updatedVersion.String())
 
-		// Verify other fields preserved
+		// Verify other fields preserved and appVersion updated
 		content, _ := os.ReadFile(chartPath)
 		contentStr := string(content)
 		assert.Contains(t, contentStr, "apiVersion: v2")
 		assert.Contains(t, contentStr, "name: my-chart")
-		assert.Contains(t, contentStr, "appVersion")
-		assert.Contains(t, contentStr, "1.0.0")
+		assert.Contains(t, contentStr, `appVersion: "2.0.0"`)
 	})
 
 	t.Run("returns error for missing Chart.yaml", func(t *testing.T) {

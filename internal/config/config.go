@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -24,6 +25,97 @@ type Config struct {
 	Consignments ConsignmentConfig `yaml:"consignments,omitempty"`
 	History      HistoryConfig     `yaml:"history,omitempty"`
 	GitHub       GitHubConfig      `yaml:"github,omitempty"`
+	PreRelease   PreReleaseConfig  `yaml:"prerelease,omitempty"`
+}
+
+// PreReleaseConfig holds pre-release stage definitions and snapshot template
+type PreReleaseConfig struct {
+	Stages              []StageConfig `yaml:"stages,omitempty"`
+	SnapshotTagTemplate string        `yaml:"snapshotTagTemplate,omitempty"`
+}
+
+// StageConfig defines a pre-release stage
+type StageConfig struct {
+	Name        string `yaml:"name"`
+	Order       int    `yaml:"order"`
+	TagTemplate string `yaml:"tagTemplate,omitempty"`
+}
+
+// GetLowestOrderStage returns the stage with the lowest order value
+func (c *PreReleaseConfig) GetLowestOrderStage() (StageConfig, bool) {
+	if len(c.Stages) == 0 {
+		return StageConfig{}, false
+	}
+	sorted := c.sortedStages()
+	return sorted[0], true
+}
+
+// GetStageByName returns the stage with the given name
+func (c *PreReleaseConfig) GetStageByName(name string) (StageConfig, bool) {
+	for _, s := range c.Stages {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return StageConfig{}, false
+}
+
+// GetNextStage returns the stage with the next-highest order after the given stage name
+func (c *PreReleaseConfig) GetNextStage(currentName string) (StageConfig, bool) {
+	current, ok := c.GetStageByName(currentName)
+	if !ok {
+		return StageConfig{}, false
+	}
+	sorted := c.sortedStages()
+	for _, s := range sorted {
+		if s.Order > current.Order {
+			return s, true
+		}
+	}
+	return StageConfig{}, false
+}
+
+// IsHighestStage returns true if the given stage name is the highest-order stage
+func (c *PreReleaseConfig) IsHighestStage(name string) bool {
+	current, ok := c.GetStageByName(name)
+	if !ok {
+		return false
+	}
+	sorted := c.sortedStages()
+	return sorted[len(sorted)-1].Order == current.Order
+}
+
+// Validate checks if the pre-release configuration is valid (only when stages are defined)
+func (c *PreReleaseConfig) Validate() error {
+	if len(c.Stages) == 0 {
+		return nil // No stages defined is valid (pre-release not configured)
+	}
+	names := make(map[string]bool)
+	orders := make(map[int]bool)
+	for _, s := range c.Stages {
+		if s.Name == "" {
+			return fmt.Errorf("stage name is required")
+		}
+		if names[s.Name] {
+			return fmt.Errorf("duplicate stage name: %s", s.Name)
+		}
+		names[s.Name] = true
+		if orders[s.Order] {
+			return fmt.Errorf("duplicate stage order: %d", s.Order)
+		}
+		orders[s.Order] = true
+	}
+	return nil
+}
+
+// sortedStages returns stages sorted by order (ascending)
+func (c *PreReleaseConfig) sortedStages() []StageConfig {
+	sorted := make([]StageConfig, len(c.Stages))
+	copy(sorted, c.Stages)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Order < sorted[j].Order
+	})
+	return sorted
 }
 
 // RemoteConfig represents a remote configuration source
@@ -182,6 +274,7 @@ func (c *Config) Merge(overlay *Config) *Config {
 		Consignments: c.Consignments,
 		History:      c.History,
 		GitHub:       c.GitHub,
+		PreRelease:   c.PreRelease,
 	}
 	
 	// Append overlay packages
@@ -206,23 +299,67 @@ func (c *Config) Merge(overlay *Config) *Config {
 	if overlay.GitHub.Owner != "" || overlay.GitHub.Repo != "" {
 		merged.GitHub = overlay.GitHub
 	}
-	
+	if len(overlay.PreRelease.Stages) > 0 || overlay.PreRelease.SnapshotTagTemplate != "" {
+		merged.PreRelease = overlay.PreRelease
+	}
+
 	return merged
 }
 
-// WithDefaults returns a config with default values applied
+// WithDefaults returns a config with default values applied.
+// Performs a deep copy so the original config is not modified.
 func (c *Config) WithDefaults() *Config {
-	result := *c
-	
+	result := Config{
+		Templates:    c.Templates,
+		Consignments: c.Consignments,
+		History:      c.History,
+		GitHub:       c.GitHub,
+	}
+
+	// Deep copy Extends
+	if len(c.Extends) > 0 {
+		result.Extends = make([]RemoteConfig, len(c.Extends))
+		copy(result.Extends, c.Extends)
+	}
+
+	// Deep copy Packages (and nested Dependencies/BumpMapping)
+	result.Packages = make([]Package, len(c.Packages))
+	for i, pkg := range c.Packages {
+		result.Packages[i] = pkg
+		if len(pkg.Dependencies) > 0 {
+			result.Packages[i].Dependencies = make([]Dependency, len(pkg.Dependencies))
+			for j, dep := range pkg.Dependencies {
+				result.Packages[i].Dependencies[j] = dep
+				if dep.BumpMapping != nil {
+					result.Packages[i].Dependencies[j].BumpMapping = make(map[string]string)
+					for k, v := range dep.BumpMapping {
+						result.Packages[i].Dependencies[j].BumpMapping[k] = v
+					}
+				}
+			}
+		}
+	}
+
+	// Deep copy Metadata.Fields
+	if len(c.Metadata.Fields) > 0 {
+		result.Metadata.Fields = make([]MetadataField, len(c.Metadata.Fields))
+		copy(result.Metadata.Fields, c.Metadata.Fields)
+	}
+
+	// Deep copy PreRelease.Stages
+	result.PreRelease = c.PreRelease
+	if len(c.PreRelease.Stages) > 0 {
+		result.PreRelease.Stages = make([]StageConfig, len(c.PreRelease.Stages))
+		copy(result.PreRelease.Stages, c.PreRelease.Stages)
+	}
+
+	// Apply defaults
 	if result.Consignments.Path == "" {
 		result.Consignments.Path = ".shipyard/consignments"
 	}
-	
 	if result.History.Path == "" {
 		result.History.Path = ".shipyard/history.json"
 	}
-	
-	// Apply default strategy to dependencies
 	for i := range result.Packages {
 		for j := range result.Packages[i].Dependencies {
 			if result.Packages[i].Dependencies[j].Strategy == "" {
@@ -230,7 +367,7 @@ func (c *Config) WithDefaults() *Config {
 			}
 		}
 	}
-	
+
 	return &result
 }
 

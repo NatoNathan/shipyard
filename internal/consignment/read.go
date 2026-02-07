@@ -95,27 +95,73 @@ func ReadConsignment(path string) (*Consignment, error) {
 	return &c, nil
 }
 
+// ParseError represents a failure to parse a single consignment file
+type ParseError struct {
+	File    string
+	Message string
+	Err     error
+}
+
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("failed to parse %s: %s", e.File, e.Message)
+}
+
+func (e *ParseError) Unwrap() error {
+	return e.Err
+}
+
 // ReadAllConsignments reads all consignment files from a directory
 // Returns a slice of Consignment structs sorted by timestamp (oldest first)
+// Parse errors are logged to stderr but do not cause the function to fail
 func ReadAllConsignments(consignmentDir string) ([]*Consignment, error) {
-	return ReadAllConsignmentsFiltered(consignmentDir, nil)
+	consignments, parseErrors, err := ReadAllConsignmentsWithErrors(consignmentDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pe := range parseErrors {
+		fmt.Fprintf(os.Stderr, "Warning: skipping invalid consignment %s: %v\n", pe.File, pe.Err)
+	}
+
+	return consignments, nil
+}
+
+// ReadAllConsignmentsWithErrors reads all consignments and returns both successful
+// parses and any parse errors (instead of failing on first error)
+func ReadAllConsignmentsWithErrors(dir string) ([]*Consignment, []ParseError, error) {
+	return readAllConsignmentsInternal(dir, nil)
 }
 
 // ReadAllConsignmentsFiltered reads consignments and filters by package names
 // If packageFilter is nil or empty, returns all consignments
 func ReadAllConsignmentsFiltered(consignmentDir string, packageFilter []string) ([]*Consignment, error) {
+	consignments, parseErrors, err := readAllConsignmentsInternal(consignmentDir, packageFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pe := range parseErrors {
+		fmt.Fprintf(os.Stderr, "Warning: skipping invalid consignment %s: %v\n", pe.File, pe.Err)
+	}
+
+	return consignments, nil
+}
+
+// readAllConsignmentsInternal is the shared implementation for reading consignments
+func readAllConsignmentsInternal(consignmentDir string, packageFilter []string) ([]*Consignment, []ParseError, error) {
 	// Check if directory exists
 	if _, err := os.Stat(consignmentDir); os.IsNotExist(err) {
-		return []*Consignment{}, nil // Return empty slice if no consignments exist yet
+		return []*Consignment{}, nil, nil
 	}
 
 	// Read directory entries
 	entries, err := os.ReadDir(consignmentDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read consignment directory: %w", err)
+		return nil, nil, fmt.Errorf("failed to read consignment directory: %w", err)
 	}
 
 	var consignments []*Consignment
+	var parseErrors []ParseError
 
 	// Process each markdown file
 	for _, entry := range entries {
@@ -133,8 +179,11 @@ func ReadAllConsignmentsFiltered(consignmentDir string, packageFilter []string) 
 		// Read and parse consignment
 		c, err := ReadConsignment(filePath)
 		if err != nil {
-			// Log error but continue processing other files
-			fmt.Fprintf(os.Stderr, "Warning: skipping invalid consignment %s: %v\n", entry.Name(), err)
+			parseErrors = append(parseErrors, ParseError{
+				File:    entry.Name(),
+				Message: err.Error(),
+				Err:     err,
+			})
 			continue
 		}
 
@@ -153,7 +202,7 @@ func ReadAllConsignmentsFiltered(consignmentDir string, packageFilter []string) 
 		return consignments[i].Timestamp.Before(consignments[j].Timestamp)
 	})
 
-	return consignments, nil
+	return consignments, parseErrors, nil
 }
 
 // extractMarkdownBody extracts the markdown content after the YAML frontmatter

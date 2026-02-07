@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/NatoNathan/shipyard/pkg/semver"
 	"gopkg.in/yaml.v3"
 )
+
+var _ Handler = (*HelmEcosystem)(nil)
 
 // HelmEcosystem handles version management for Helm charts
 type HelmEcosystem struct {
@@ -50,7 +53,8 @@ func (h *HelmEcosystem) ReadVersion() (semver.Version, error) {
 	return semver.Parse(chart.Version)
 }
 
-// UpdateVersion updates the version in Chart.yaml
+// UpdateVersion updates the version and appVersion in Chart.yaml using regex
+// replacement to preserve YAML comments and formatting.
 func (h *HelmEcosystem) UpdateVersion(version semver.Version) error {
 	chartPath := filepath.Join(h.path, "Chart.yaml")
 
@@ -60,19 +64,18 @@ func (h *HelmEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("failed to read Chart.yaml: %w", err)
 	}
 
-	// Parse as generic map to preserve structure and comments
-	var chartData map[string]interface{}
-	if err := yaml.Unmarshal(content, &chartData); err != nil {
-		return fmt.Errorf("failed to parse Chart.yaml: %w", err)
-	}
+	versionStr := version.String()
 
-	// Update version
-	chartData["version"] = version.String()
+	// Replace version field using regex to preserve formatting/comments
+	versionRe := regexp.MustCompile(`(?m)^(version:\s*)(.+)$`)
+	newContent := versionRe.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s`, versionStr)))
 
-	// Write back
-	newContent, err := yaml.Marshal(chartData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal Chart.yaml: %w", err)
+	// Also update appVersion if it exists
+	appVersionRe := regexp.MustCompile(`(?m)^(appVersion:\s*)(.+)$`)
+	newContent = appVersionRe.ReplaceAll(newContent, []byte(fmt.Sprintf(`${1}"%s"`, versionStr)))
+
+	if string(newContent) == string(content) {
+		return fmt.Errorf("no version field found in Chart.yaml")
 	}
 
 	return os.WriteFile(chartPath, newContent, 0644)

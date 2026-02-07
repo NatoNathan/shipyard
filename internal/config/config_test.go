@@ -143,6 +143,48 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.NotEmpty(t, config.History.Path)
 }
 
+func TestWithDefaultsDeepCopy(t *testing.T) {
+	original := &Config{
+		Packages: []Package{{
+			Name: "pkg1",
+			Path: ".",
+			Dependencies: []Dependency{{
+				Package:     "pkg2",
+				BumpMapping: map[string]string{"major": "minor"},
+			}},
+		}},
+		Metadata: MetadataConfig{
+			Fields: []MetadataField{
+				{Name: "author", Required: true},
+			},
+		},
+		PreRelease: PreReleaseConfig{
+			Stages: []StageConfig{
+				{Name: "alpha", Order: 1},
+			},
+		},
+	}
+
+	result := original.WithDefaults()
+
+	// Modify result
+	result.Packages[0].Name = "modified"
+	result.Packages[0].Dependencies[0].BumpMapping["major"] = "patch"
+	result.Metadata.Fields[0].Name = "changed"
+	result.PreRelease.Stages[0].Name = "beta"
+
+	// Original should be unchanged
+	assert.Equal(t, "pkg1", original.Packages[0].Name)
+	assert.Equal(t, "minor", original.Packages[0].Dependencies[0].BumpMapping["major"])
+	assert.Equal(t, "author", original.Metadata.Fields[0].Name)
+	assert.Equal(t, "alpha", original.PreRelease.Stages[0].Name)
+
+	// Verify defaults were applied
+	assert.Equal(t, ".shipyard/consignments", result.Consignments.Path)
+	assert.Equal(t, ".shipyard/history.json", result.History.Path)
+	assert.Equal(t, "linked", result.Packages[0].Dependencies[0].Strategy)
+}
+
 // TestPackage_IsTagOnly tests the IsTagOnly method
 func TestPackage_IsTagOnly(t *testing.T) {
 	tests := []struct {

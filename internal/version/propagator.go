@@ -38,8 +38,8 @@ func NewPropagator(g *graph.DependencyGraph) (*Propagator, error) {
 //
 // Algorithm:
 //  1. Calculate direct bumps from consignments
-//  2. Run SCC detection and compress graph
-//  3. Topologically sort compressed graph
+//  2. Run SCC detection to identify cycles
+//  3. Resolve cycle bumps (unify bump types within each SCC)
 //  4. Propagate bumps through dependencies (respecting strategies)
 //  5. Resolve conflicts (multiple sources requesting different bumps)
 func (p *Propagator) Propagate(
@@ -49,18 +49,51 @@ func (p *Propagator) Propagate(
 	// Calculate direct bumps from consignments
 	directBumps := CalculateDirectBumps(consignments)
 
+	if len(directBumps) == 0 {
+		return make(map[string]VersionBump), nil
+	}
+
+	// Run SCC detection to identify cycles in the graph
+	graph.FindStronglyConnectedComponents(p.graph)
+
+	// Resolve cycle bumps: unify bump types within each SCC
+	cycleResolved, err := ResolveCycleBumps(p.graph, currentVersions, directBumps)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve cycle bumps: %w", err)
+	}
+
+	// Build the effective direct bumps map from cycle resolution
+	// This includes cycle-unified bumps and unchanged direct bumps
+	effectiveBumps := make(map[string]string)
+	for pkg, bump := range cycleResolved {
+		effectiveBumps[pkg] = bump.ChangeType
+	}
+	// Also include any direct bumps not processed by cycle resolution
+	// (packages not in any SCC with bumps)
+	for pkg, changeType := range directBumps {
+		if _, exists := effectiveBumps[pkg]; !exists {
+			effectiveBumps[pkg] = changeType
+		}
+	}
+
 	// Propagate through linked dependencies (includes direct bumps)
-	result, err := PropagateLinked(p.graph, currentVersions, directBumps)
+	result, err := PropagateLinked(p.graph, currentVersions, effectiveBumps)
 	if err != nil {
 		return nil, err
 	}
 
-	// Note: Advanced dependency resolution available but not currently integrated:
-	// - ResolveCycleBumps() in cycle.go handles circular dependencies
-	// - ResolveConflicts() in conflict.go handles diamond dependency conflicts
-	// Current implementation works correctly for acyclic graphs and simple propagation.
-	// The graph's FindStronglyConnectedComponents() would need to be called before
-	// integrating cycle resolution. See tasks.md T099-T102 for full design.
+	// Preserve cycle source markers from ResolveCycleBumps
+	for pkg, bump := range cycleResolved {
+		if bump.Source == "cycle" {
+			if r, ok := result[pkg]; ok {
+				r.Source = "cycle"
+				result[pkg] = r
+			}
+		}
+	}
+
+	// Resolve any remaining conflicts
+	result = ResolveConflicts(result)
 
 	return result, nil
 }

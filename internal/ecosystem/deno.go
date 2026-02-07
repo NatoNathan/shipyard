@@ -10,6 +10,8 @@ import (
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
 
+var _ Handler = (*DenoEcosystem)(nil)
+
 // DenoEcosystem handles version management for Deno projects
 type DenoEcosystem struct {
 	path string
@@ -59,7 +61,8 @@ func (d *DenoEcosystem) ReadVersion() (semver.Version, error) {
 	return semver.Parse(config.Version)
 }
 
-// UpdateVersion updates the version in deno.json or deno.jsonc
+// UpdateVersion updates the version in deno.json or deno.jsonc using regex
+// replacement to preserve original formatting and comments.
 func (d *DenoEcosystem) UpdateVersion(version semver.Version) error {
 	// Determine which config file exists
 	denoPath := filepath.Join(d.path, "deno.json")
@@ -76,22 +79,12 @@ func (d *DenoEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("failed to read %s: %w", filepath.Base(denoPath), err)
 	}
 
-	// Strip comments for parsing
-	cleanContent := stripJSONComments(content)
+	// Use regex to replace only the version value, preserving all formatting and comments
+	re := regexp.MustCompile(`("version"\s*:\s*")([^"]+)(")`)
+	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s${3}`, version.String())))
 
-	// Parse as generic map to preserve structure
-	var data map[string]interface{}
-	if err := json.Unmarshal(cleanContent, &data); err != nil {
-		return fmt.Errorf("failed to parse %s: %w", filepath.Base(denoPath), err)
-	}
-
-	// Update version
-	data["version"] = version.String()
-
-	// Write back with pretty formatting
-	newContent, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to encode %s: %w", filepath.Base(denoPath), err)
+	if string(newContent) == string(content) {
+		return fmt.Errorf("no version field found in %s", filepath.Base(denoPath))
 	}
 
 	return os.WriteFile(denoPath, newContent, 0644)
@@ -134,16 +127,73 @@ func DetectDenoEcosystem(path string) bool {
 	return false
 }
 
-// stripJSONComments removes single-line and multi-line comments from JSON content
-// to support JSONC (JSON with Comments) format used by Deno
+// stripJSONComments removes single-line (//) and multi-line (/* */) comments
+// from JSONC content using a state-machine parser. This correctly handles
+// comments inside strings (e.g., URLs containing "//") by tracking whether
+// we are inside a JSON string literal.
 func stripJSONComments(content []byte) []byte {
-	// Remove single-line comments (// ...)
-	re := regexp.MustCompile(`//[^\n]*`)
-	content = re.ReplaceAll(content, []byte{})
+	result := make([]byte, 0, len(content))
+	i := 0
+	n := len(content)
 
-	// Remove multi-line comments (/* ... */)
-	re = regexp.MustCompile(`/\*[\s\S]*?\*/`)
-	content = re.ReplaceAll(content, []byte{})
+	for i < n {
+		ch := content[i]
 
-	return content
+		// Handle string literals - pass through unchanged
+		if ch == '"' {
+			result = append(result, ch)
+			i++
+			for i < n {
+				sch := content[i]
+				result = append(result, sch)
+				if sch == '\\' {
+					// Skip escaped character
+					i++
+					if i < n {
+						result = append(result, content[i])
+						i++
+					}
+					continue
+				}
+				if sch == '"' {
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+
+		// Check for comments (only outside strings)
+		if ch == '/' && i+1 < n {
+			next := content[i+1]
+
+			// Single-line comment: skip until end of line
+			if next == '/' {
+				i += 2
+				for i < n && content[i] != '\n' {
+					i++
+				}
+				continue
+			}
+
+			// Multi-line comment: skip until */
+			if next == '*' {
+				i += 2
+				for i+1 < n {
+					if content[i] == '*' && content[i+1] == '/' {
+						i += 2
+						break
+					}
+					i++
+				}
+				continue
+			}
+		}
+
+		result = append(result, ch)
+		i++
+	}
+
+	return result
 }

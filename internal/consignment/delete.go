@@ -1,6 +1,7 @@
 package consignment
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,21 +28,20 @@ func DeleteConsignment(path string) error {
 }
 
 // DeleteConsignments deletes multiple consignment files
-// Returns error if any deletion fails
+// Collects all errors instead of failing on first error
 func DeleteConsignments(paths []string) error {
-	// Early return for empty list
 	if len(paths) == 0 {
 		return nil
 	}
 
-	// Delete each file
+	var errs []error
 	for _, path := range paths {
 		if err := DeleteConsignment(path); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 // DeleteConsignmentByID deletes a consignment file by its ID
@@ -52,18 +52,19 @@ func DeleteConsignmentByID(consignmentsDir, id string) error {
 }
 
 // DeleteConsignmentsByIDs deletes multiple consignment files by their IDs
-// Returns error if any deletion fails
+// Collects all errors instead of failing on first error
 func DeleteConsignmentsByIDs(consignmentsDir string, ids []string) error {
-	// Early return for empty list
 	if len(ids) == 0 {
 		return nil
 	}
 
-	// Build paths and delete
-	paths := make([]string, len(ids))
-	for i, id := range ids {
-		paths[i] = filepath.Join(consignmentsDir, id+".md")
+	var errs []error
+	for _, id := range ids {
+		path := filepath.Join(consignmentsDir, id+".md")
+		if err := os.Remove(path); err != nil {
+			errs = append(errs, fmt.Errorf("failed to delete %s: %w", id, err))
+		}
 	}
 
-	return DeleteConsignments(paths)
+	return errors.Join(errs...)
 }

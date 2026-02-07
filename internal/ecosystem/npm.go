@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
+
+var _ Handler = (*NPMEcosystem)(nil)
 
 // NPMEcosystem handles version management for NPM/Node.js projects
 type NPMEcosystem struct {
@@ -41,7 +44,8 @@ func (n *NPMEcosystem) ReadVersion() (semver.Version, error) {
 	return semver.Parse(versionStr)
 }
 
-// UpdateVersion updates the version in package.json
+// UpdateVersion updates the version in package.json using regex replacement
+// to preserve original file formatting, indentation, and key order.
 func (n *NPMEcosystem) UpdateVersion(version semver.Version) error {
 	packageJSONPath := filepath.Join(n.path, "package.json")
 
@@ -51,30 +55,15 @@ func (n *NPMEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("failed to read package.json: %w", err)
 	}
 
-	// Parse JSON
-	var packageJSON map[string]interface{}
-	if err := json.Unmarshal(content, &packageJSON); err != nil {
-		return fmt.Errorf("failed to parse package.json: %w", err)
+	// Use regex to replace only the version value, preserving all formatting
+	re := regexp.MustCompile(`("version"\s*:\s*")([^"]+)(")`)
+	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s${3}`, version.String())))
+
+	if string(newContent) == string(content) {
+		return fmt.Errorf("no version field found in package.json")
 	}
 
-	// Update version field
-	packageJSON["version"] = version.String()
-
-	// Marshal back to JSON with indentation
-	newContent, err := json.MarshalIndent(packageJSON, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal package.json: %w", err)
-	}
-
-	// Add newline at end of file (standard for package.json)
-	newContent = append(newContent, '\n')
-
-	// Write updated content
-	if err := os.WriteFile(packageJSONPath, newContent, 0644); err != nil {
-		return fmt.Errorf("failed to write package.json: %w", err)
-	}
-
-	return nil
+	return os.WriteFile(packageJSONPath, newContent, 0644)
 }
 
 // GetVersionFiles returns paths to all version-containing files

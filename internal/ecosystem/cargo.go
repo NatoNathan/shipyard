@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
+
+var _ Handler = (*CargoEcosystem)(nil)
 
 // CargoEcosystem handles version management for Rust/Cargo projects
 type CargoEcosystem struct {
@@ -53,7 +56,8 @@ func (c *CargoEcosystem) ReadVersion() (semver.Version, error) {
 	return semver.Parse(manifest.Package.Version)
 }
 
-// UpdateVersion updates the version in Cargo.toml
+// UpdateVersion updates the version in Cargo.toml using regex replacement
+// within the [package] section only, preserving TOML comments and formatting.
 func (c *CargoEcosystem) UpdateVersion(version semver.Version) error {
 	cargoPath := filepath.Join(c.path, "Cargo.toml")
 
@@ -63,27 +67,38 @@ func (c *CargoEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("failed to read Cargo.toml: %w", err)
 	}
 
-	// Parse as generic map to preserve structure
-	var data map[string]interface{}
-	if err := toml.Unmarshal(content, &data); err != nil {
-		return fmt.Errorf("failed to parse Cargo.toml: %w", err)
-	}
+	contentStr := string(content)
 
-	// Update version in [package] section
-	if pkg, ok := data["package"].(map[string]interface{}); ok {
-		pkg["version"] = version.String()
-	} else {
+	// Find the [package] section
+	packageIdx := strings.Index(contentStr, "[package]")
+	if packageIdx == -1 {
 		return fmt.Errorf("no [package] section found in Cargo.toml")
 	}
 
-	// Write back - using string builder for proper TOML formatting
-	var builder strings.Builder
-	encoder := toml.NewEncoder(&builder)
-	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("failed to encode Cargo.toml: %w", err)
+	// Find the end of the [package] section (next [section] header or EOF)
+	packageContent := contentStr[packageIdx:]
+	nextSectionRe := regexp.MustCompile(`\n\[`)
+	nextSectionLoc := nextSectionRe.FindStringIndex(packageContent[len("[package]"):])
+
+	var packageEnd int
+	if nextSectionLoc != nil {
+		packageEnd = packageIdx + len("[package]") + nextSectionLoc[0]
+	} else {
+		packageEnd = len(contentStr)
 	}
 
-	return os.WriteFile(cargoPath, []byte(builder.String()), 0644)
+	// Replace version within the [package] section only
+	packageSection := contentStr[packageIdx:packageEnd]
+	versionRe := regexp.MustCompile(`(version\s*=\s*")([^"]+)(")`)
+	newPackageSection := versionRe.ReplaceAllString(packageSection, fmt.Sprintf(`${1}%s${3}`, version.String()))
+
+	if newPackageSection == packageSection {
+		return fmt.Errorf("no version field found in [package] section of Cargo.toml")
+	}
+
+	newContent := contentStr[:packageIdx] + newPackageSection + contentStr[packageEnd:]
+
+	return os.WriteFile(cargoPath, []byte(newContent), 0644)
 }
 
 // GetVersionFiles returns paths to all version-containing files

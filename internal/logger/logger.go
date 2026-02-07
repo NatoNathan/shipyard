@@ -130,25 +130,6 @@ func SetGlobal(l *Logger) {
 	globalLogger = l
 }
 
-// Infof is a convenience method for logging info messages
-func (l *Logger) Infof(format string, args ...interface{}) {
-	l.Info(format, args...)
-}
-
-// Debugf is a convenience method for logging debug messages
-func (l *Logger) Debugf(format string, args ...interface{}) {
-	l.Debug(format, args...)
-}
-
-// Warnf is a convenience method for logging warning messages
-func (l *Logger) Warnf(format string, args ...interface{}) {
-	l.Warn(format, args...)
-}
-
-// Errorf is a convenience method for logging error messages
-func (l *Logger) Errorf(format string, args ...interface{}) {
-	l.Error(format, args...)
-}
 
 // Writer returns the underlying writer
 func (l *Logger) Writer() io.Writer {

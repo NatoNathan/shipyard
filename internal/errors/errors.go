@@ -157,6 +157,41 @@ func NewUpgradeError(message string, cause error) error {
 	}
 }
 
+// ExitCodeError indicates a command should exit with a specific exit code
+type ExitCodeError struct {
+	Code    int
+	Message string
+	Cause   error
+}
+
+func (e *ExitCodeError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
+	}
+	return e.Message
+}
+
+func (e *ExitCodeError) Unwrap() error {
+	return e.Cause
+}
+
+// NewExitCodeError creates a new ExitCodeError
+func NewExitCodeError(code int, message string) error {
+	return &ExitCodeError{
+		Code:    code,
+		Message: message,
+	}
+}
+
+// NewExitCodeErrorWithCause creates a new ExitCodeError with an underlying cause
+func NewExitCodeErrorWithCause(code int, message string, cause error) error {
+	return &ExitCodeError{
+		Code:    code,
+		Message: message,
+		Cause:   cause,
+	}
+}
+
 // NetworkError indicates a network-related error
 type NetworkError struct {
 	Message string

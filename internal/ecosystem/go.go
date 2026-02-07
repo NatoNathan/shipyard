@@ -10,6 +10,8 @@ import (
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
 
+var _ Handler = (*GoEcosystem)(nil)
+
 // GoEcosystem handles version management for Go projects
 type GoEcosystem struct {
 	path    string
@@ -122,8 +124,8 @@ func (g *GoEcosystem) readVersionFromVersionGo(path string) (semver.Version, err
 		return semver.Version{}, fmt.Errorf("failed to read version.go: %w", err)
 	}
 
-	// Match: const Version = "1.2.3" or var Version = "1.2.3"
-	re := regexp.MustCompile(`(?m)^\s*(?:const|var)\s+Version\s*=\s*["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
+	// Match: const Version = "1.2.3" or var Version = "1.2.3" (with optional pre-release suffix)
+	re := regexp.MustCompile(`(?m)^\s*(?:const|var)\s+Version\s*=\s*["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
 	matches := re.FindSubmatch(content)
 
 	if len(matches) < 2 {
@@ -141,8 +143,8 @@ func (g *GoEcosystem) readVersionFromGoMod(path string) (semver.Version, error) 
 		return semver.Version{}, fmt.Errorf("failed to read go.mod: %w", err)
 	}
 
-	// Match: // version: 1.2.3
-	re := regexp.MustCompile(`(?m)^//\s*version:\s*([0-9]+\.[0-9]+\.[0-9]+)`)
+	// Match: // version: 1.2.3 (with optional pre-release suffix)
+	re := regexp.MustCompile(`(?m)^//\s*version:\s*([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)`)
 	matches := re.FindSubmatch(content)
 
 	if len(matches) < 2 {
@@ -159,8 +161,8 @@ func (g *GoEcosystem) updateVersionGo(path string, version semver.Version) error
 		return fmt.Errorf("failed to read version.go: %w", err)
 	}
 
-	// Replace: const/var Version = "old" with const/var Version = "new"
-	re := regexp.MustCompile(`((?:const|var)\s+Version\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+)["']`)
+	// Replace: const/var Version = "old" with const/var Version = "new" (with optional pre-release suffix)
+	re := regexp.MustCompile(`((?:const|var)\s+Version\s*=\s*)["']([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)["']`)
 	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}"%s"`, version.String())))
 
 	if string(newContent) == string(content) {
@@ -177,8 +179,8 @@ func (g *GoEcosystem) updateGoMod(path string, version semver.Version) error {
 		return fmt.Errorf("failed to read go.mod: %w", err)
 	}
 
-	// Replace: // version: old with // version: new
-	re := regexp.MustCompile(`(//\s*version:\s*)([0-9]+\.[0-9]+\.[0-9]+)`)
+	// Replace: // version: old with // version: new (with optional pre-release suffix)
+	re := regexp.MustCompile(`(//\s*version:\s*)([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)`)
 
 	if !re.Match(content) {
 		// Version comment doesn't exist, don't add it

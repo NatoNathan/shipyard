@@ -113,12 +113,30 @@ func TestResolveConflicts(t *testing.T) {
 	})
 }
 
+func TestResolveConflictsWithInfo(t *testing.T) {
+	t.Run("returns conflicts info", func(t *testing.T) {
+		bumps := map[string]VersionBump{
+			"a": {
+				Package:    "a",
+				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
+				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
+				ChangeType: "minor",
+				Source:     "direct",
+			},
+		}
+
+		result, conflicts := ResolveConflictsWithInfo(bumps)
+		assert.Equal(t, bumps, result)
+		assert.Empty(t, conflicts)
+	})
+}
+
 func TestIntegrationWithPropagation(t *testing.T) {
-	t.Run("full propagation pipeline with conflicts", func(t *testing.T) {
+	t.Run("full propagation pipeline with conflicts - higher priority wins", func(t *testing.T) {
 		// Complex scenario:
 		// a (patch bump) -> b (linked) -> d (linked)
 		// c (minor bump) -> d (linked)
-		// d receives both patch (from a) and minor (from c)
+		// d receives both patch (from b/a) and minor (from c)
 		// Should get minor (higher priority)
 		cfg := &config.Config{
 			Packages: []config.Package{
@@ -171,9 +189,9 @@ func TestIntegrationWithPropagation(t *testing.T) {
 		assert.Equal(t, "minor", resolved["c"].ChangeType)
 		assert.Equal(t, semver.Version{Major: 1, Minor: 1, Patch: 0}, resolved["c"].NewVersion)
 
-		// d: gets first propagation it sees (current implementation processes sequentially)
-		// This test documents current behavior
-		assert.Contains(t, resolved, "d")
+		// d: minor (higher priority wins from c path)
+		assert.Equal(t, "minor", resolved["d"].ChangeType)
+		assert.Equal(t, semver.Version{Major: 1, Minor: 1, Patch: 0}, resolved["d"].NewVersion)
 	})
 
 	t.Run("cycle resolution then conflict resolution", func(t *testing.T) {
