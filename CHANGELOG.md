@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-02-07
+**Package**: shipyard
+
+### Features
+- Address 30 review findings across correctness, UX, and code quality
+- Add color and table rendering to CLI output
+- Auto-select package for single-package repos in add command
+- Add custom styled help output with lipgloss and descriptive usage syntax for all commands
+
 ## [0.3.0] - 2026-02-03
 **Package**: shipyard
 

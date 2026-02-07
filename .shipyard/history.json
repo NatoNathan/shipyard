@@ -96,5 +96,33 @@
         "changeType": "patch"
       }
     ]
+  },
+  {
+    "version": "0.4.0",
+    "package": "shipyard",
+    "tag": "v0.4.0",
+    "timestamp": "2026-02-07T02:26:59.437705239Z",
+    "consignments": [
+      {
+        "id": "20260207-004307-0khig2",
+        "summary": "Address 30 review findings across correctness, UX, and code quality",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260207-010356-wmx6tc",
+        "summary": "Add color and table rendering to CLI output",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260207-010552-2c7dzd",
+        "summary": "Auto-select package for single-package repos in add command",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260207-022509-juykw2",
+        "summary": "Add custom styled help output with lipgloss and descriptive usage syntax for all commands",
+        "changeType": "minor"
+      }
+    ]
   }
 ]
