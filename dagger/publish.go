@@ -90,13 +90,20 @@ func (m *Shipyard) generateReleaseNotes(
 	// Extract Linux AMD64 binary to run release-notes command
 	tarball := fmt.Sprintf("shipyard_%s_linux_amd64.tar.gz", version)
 
+	// Strip 'v' prefix from version for history lookup
+	// History stores versions without 'v' prefix (e.g., "0.4.0" not "v0.4.0")
+	versionWithoutPrefix := version
+	if len(version) > 0 && version[0] == 'v' {
+		versionWithoutPrefix = version[1:]
+	}
+
 	notes, err := dag.Container().
 		From("alpine:latest").
 		WithMountedDirectory("/artifacts", artifacts).
 		WithMountedDirectory("/work", source).
 		WithWorkdir("/work").
 		WithExec([]string{"tar", "-xzf", fmt.Sprintf("/artifacts/%s", tarball)}).
-		WithExec([]string{"./shipyard", "release-notes", "--version", version}).
+		WithExec([]string{"./shipyard", "release-notes", "--version", versionWithoutPrefix}).
 		Stdout(ctx)
 
 	if err != nil {
