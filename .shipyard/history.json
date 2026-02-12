@@ -137,5 +137,23 @@
         "changeType": "minor"
       }
     ]
+  },
+  {
+    "version": "0.6.0",
+    "package": "shipyard",
+    "tag": "v0.6.0",
+    "timestamp": "2026-02-12T16:53:49.392167745Z",
+    "consignments": [
+      {
+        "id": "20260212-164800-wcgnnx",
+        "summary": "Add Helm appDependency support for syncing appVersion to dependency package versions",
+        "changeType": "minor"
+      },
+      {
+        "id": "20260212-165210-mrk632",
+        "summary": "Update shipyard-cli skill documentation with Helm appDependency feature",
+        "changeType": "patch"
+      }
+    ]
   }
 ]

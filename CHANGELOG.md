@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-02-12
+**Package**: shipyard
+
+### Features
+- Add Helm appDependency support for syncing appVersion to dependency package versions
+
+### Bug Fixes
+- Update shipyard-cli skill documentation with Helm appDependency feature
+
 ## [0.5.0] - 2026-02-07
 **Package**: shipyard
 
