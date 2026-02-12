@@ -191,12 +191,13 @@ type GitHubConfig struct {
 
 // Package represents a versionable package
 type Package struct {
-	Name         string          `yaml:"name"`
-	Path         string          `yaml:"path"`
-	Ecosystem    string          `yaml:"ecosystem,omitempty"`
-	VersionFiles []string        `yaml:"versionFiles,omitempty"` // Use ["tag-only"] for tag-only mode
-	Dependencies []Dependency    `yaml:"dependencies,omitempty"`
-	Templates    *TemplateConfig `yaml:"templates,omitempty"`
+	Name         string                 `yaml:"name"`
+	Path         string                 `yaml:"path"`
+	Ecosystem    string                 `yaml:"ecosystem,omitempty"`
+	VersionFiles []string               `yaml:"versionFiles,omitempty"` // Use ["tag-only"] for tag-only mode
+	Dependencies []Dependency           `yaml:"dependencies,omitempty"`
+	Templates    *TemplateConfig        `yaml:"templates,omitempty"`
+	Options      map[string]interface{} `yaml:"options,omitempty"`
 }
 
 // IsTagOnly returns true if this package uses tag-only versioning (no file updates)
@@ -213,6 +214,24 @@ func (p *Package) IsTagOnly() bool {
 	return false
 }
 
+// HelmOptions contains Helm-specific package options
+type HelmOptions struct {
+	AppDependency string // Package name to use for appVersion
+}
+
+// GetHelmOptions extracts Helm-specific options from package options
+func (p *Package) GetHelmOptions() *HelmOptions {
+	if p.Options == nil {
+		return &HelmOptions{}
+	}
+
+	opts := &HelmOptions{}
+	if appDep, ok := p.Options["appDependency"].(string); ok {
+		opts.AppDependency = appDep
+	}
+	return opts
+}
+
 // Dependency represents a package dependency
 type Dependency struct {
 	Package     string            `yaml:"package"`
@@ -225,7 +244,7 @@ func (c *Config) Validate() error {
 	if len(c.Packages) == 0 {
 		return fmt.Errorf("at least one package must be defined")
 	}
-	
+
 	// Check for duplicate package names
 	names := make(map[string]bool)
 	for _, pkg := range c.Packages {
@@ -233,13 +252,20 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("duplicate package name: %s", pkg.Name)
 		}
 		names[pkg.Name] = true
-		
+
 		// Validate each package
 		if err := pkg.Validate(); err != nil {
 			return fmt.Errorf("invalid package %s: %w", pkg.Name, err)
 		}
 	}
-	
+
+	// Validate package options (requires all packages to be known)
+	for _, pkg := range c.Packages {
+		if err := pkg.ValidateOptions(c.Packages); err != nil {
+			return fmt.Errorf("invalid options for package %s: %w", pkg.Name, err)
+		}
+	}
+
 	return nil
 }
 
@@ -250,6 +276,29 @@ func (p *Package) Validate() error {
 	}
 	if p.Path == "" {
 		return fmt.Errorf("package path is required")
+	}
+	return nil
+}
+
+// ValidateOptions validates package options against the configuration
+// This is called by Config.Validate after all packages are known
+func (p *Package) ValidateOptions(allPackages []Package) error {
+	if p.Ecosystem == EcosystemHelm {
+		helmOpts := p.GetHelmOptions()
+		if helmOpts.AppDependency != "" {
+			// Check that appDependency references a valid package
+			found := false
+			for _, pkg := range allPackages {
+				if pkg.Name == helmOpts.AppDependency {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("helm package %q has appDependency %q but no such package exists",
+					p.Name, helmOpts.AppDependency)
+			}
+		}
 	}
 	return nil
 }

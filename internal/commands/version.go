@@ -11,6 +11,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/changelog"
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/consignment"
+	"github.com/NatoNathan/shipyard/internal/ecosystem"
 	"github.com/NatoNathan/shipyard/internal/git"
 	"github.com/NatoNathan/shipyard/internal/graph"
 	"github.com/NatoNathan/shipyard/internal/history"
@@ -159,6 +160,12 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 6. Apply version bumps to files
+	// Build version map with new versions for context
+	allNewVersions := make(map[string]semver.Version)
+	for pkgName, pkgBump := range versionBumps {
+		allNewVersions[pkgName] = pkgBump.NewVersion
+	}
+
 	for _, pkg := range cfg.Packages {
 		bump, hasBump := versionBumps[pkg.Name]
 		if !hasBump {
@@ -166,7 +173,14 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		pkgPath := filepath.Join(projectPath, pkg.Path)
-		handler, err := GetEcosystemHandler(pkg, pkgPath)
+
+		// Create handler context
+		handlerCtx := &ecosystem.HandlerContext{
+			AllVersions:   allNewVersions,
+			PackageConfig: &pkg,
+		}
+
+		handler, err := GetEcosystemHandlerWithContext(pkg, pkgPath, handlerCtx)
 		if err != nil {
 			return err
 		}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -199,4 +200,155 @@ func TestDetectHelmEcosystem(t *testing.T) {
 		// Verify: Not detected
 		assert.False(t, detected)
 	})
+}
+
+// TestHelmEcosystem_UpdateVersionWithAppDependency tests the appDependency feature
+func TestHelmEcosystem_UpdateVersionWithAppDependency(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialChart  string
+		chartVersion  string
+		appDependency string
+		depVersion    string
+		expectedChart string
+		description   string
+	}{
+		{
+			name: "appVersion syncs to dependency",
+			initialChart: `apiVersion: v2
+name: my-chart
+version: 1.0.0
+appVersion: "0.5.0"
+`,
+			chartVersion:  "1.1.0",
+			appDependency: "my-app",
+			depVersion:    "2.3.4",
+			expectedChart: `apiVersion: v2
+name: my-chart
+version: 1.1.0
+appVersion: "2.3.4"
+`,
+			description: "When appDependency is set, appVersion should sync to the dependency's version",
+		},
+		{
+			name: "BACKWARD COMPATIBLE: no context provided",
+			initialChart: `apiVersion: v2
+name: my-chart
+version: 1.0.0
+appVersion: "1.0.0"
+`,
+			chartVersion: "2.0.0",
+			expectedChart: `apiVersion: v2
+name: my-chart
+version: 2.0.0
+appVersion: "2.0.0"
+`,
+			description: "Without context, appVersion should match chart version (backward compatible)",
+		},
+		{
+			name: "BACKWARD COMPATIBLE: no options in config",
+			initialChart: `apiVersion: v2
+name: my-chart
+version: 1.0.0
+appVersion: "1.0.0"
+`,
+			chartVersion:  "2.0.0",
+			appDependency: "", // Empty = no appDependency option
+			expectedChart: `apiVersion: v2
+name: my-chart
+version: 2.0.0
+appVersion: "2.0.0"
+`,
+			description: "Without appDependency option, appVersion should match chart version",
+		},
+		{
+			name: "appVersion fallback when dependency not in version map",
+			initialChart: `apiVersion: v2
+name: my-chart
+version: 1.0.0
+appVersion: "1.0.0"
+`,
+			chartVersion:  "1.1.0",
+			appDependency: "non-existent",
+			depVersion:    "", // Not in version map
+			expectedChart: `apiVersion: v2
+name: my-chart
+version: 1.1.0
+appVersion: "1.1.0"
+`,
+			description: "When dependency not in version map, fallback to chart version",
+		},
+		{
+			name: "preserves YAML formatting and structure",
+			initialChart: `# My Chart
+apiVersion: v2
+name: my-chart  # Chart name
+version: 1.0.0
+appVersion: "0.5.0"
+description: A chart
+`,
+			chartVersion:  "1.1.0",
+			appDependency: "my-app",
+			depVersion:    "2.0.0",
+			expectedChart: `# My Chart
+apiVersion: v2
+name: my-chart  # Chart name
+version: 1.1.0
+appVersion: "2.0.0"
+description: A chart
+`,
+			description: "Should preserve YAML structure and comments on separate lines",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create temp directory with Chart.yaml
+			tmpDir := t.TempDir()
+			chartPath := filepath.Join(tmpDir, "Chart.yaml")
+			err := os.WriteFile(chartPath, []byte(tt.initialChart), 0644)
+			require.NoError(t, err)
+
+			// Create ecosystem handler
+			h := NewHelmEcosystem(tmpDir)
+
+			// Set context if appDependency specified or if we're testing with context
+			if tt.appDependency != "" || tt.name == "BACKWARD COMPATIBLE: no options in config" {
+				pkg := &config.Package{
+					Name:      "my-chart",
+					Ecosystem: "helm",
+				}
+
+				// Only set options if appDependency is not empty
+				if tt.appDependency != "" {
+					pkg.Options = map[string]interface{}{
+						"appDependency": tt.appDependency,
+					}
+				}
+
+				allVersions := make(map[string]semver.Version)
+				if tt.depVersion != "" {
+					allVersions[tt.appDependency] = semver.MustParse(tt.depVersion)
+				}
+
+				ctx := &HandlerContext{
+					AllVersions:   allVersions,
+					PackageConfig: pkg,
+				}
+				h.SetContext(ctx)
+			}
+			// else: no context set (testing backward compatibility without context)
+
+			// Update version
+			ver := semver.MustParse(tt.chartVersion)
+			err = h.UpdateVersion(ver)
+			require.NoError(t, err, tt.description)
+
+			// Read result
+			result, err := os.ReadFile(chartPath)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedChart, string(result), tt.description)
+		})
+	}
 }

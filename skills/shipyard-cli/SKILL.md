@@ -134,8 +134,17 @@ packages:
     path: packages/api
     ecosystem: npm
     dependencies:
-      - name: shared-types
-        type: linked
+      - package: shared-types
+        strategy: linked
+
+  - name: my-api-chart
+    path: charts/my-api
+    ecosystem: helm
+    options:
+      appDependency: my-api  # Sync appVersion to my-api's version
+    dependencies:
+      - package: my-api
+        strategy: linked
 
 templates:
   changelog:
@@ -143,6 +152,13 @@ templates:
   tagName:
     source: builtin:npm
 ```
+
+### Package Options
+
+Some ecosystems support additional configuration through the `options` field:
+
+**Helm Options:**
+- `appDependency`: Package name whose version should be used for the chart's `appVersion` field
 
 For detailed configuration options, consult **`references/configuration.md`**.
 
@@ -227,11 +243,41 @@ Shipyard supports multiple package ecosystems:
 | Go | `version.go` or `go.mod` | `const Version = "X.Y.Z"` |
 | NPM | `package.json` | `"version": "X.Y.Z"` |
 | Python | `pyproject.toml`, `setup.py`, `__version__.py` | Various |
-| Helm | `Chart.yaml` | `version: X.Y.Z` |
+| Helm | `Chart.yaml` | `version: X.Y.Z`, `appVersion: "X.Y.Z"` |
 | Cargo | `Cargo.toml` | `version = "X.Y.Z"` |
 | Deno | `deno.json` | `"version": "X.Y.Z"` |
 
 Each ecosystem has its own version file format and update logic. Shipyard detects the ecosystem automatically based on files present in the package directory.
+
+### Helm-Specific Features
+
+Helm charts support a special `appDependency` option that allows the chart's `appVersion` field to track a different package's version, while the chart's own `version` field tracks the chart's semantic version:
+
+```yaml
+packages:
+  - name: myapp
+    path: ./
+    ecosystem: go
+
+  - name: myapp-chart
+    path: ./charts/myapp
+    ecosystem: helm
+    options:
+      appDependency: myapp  # Chart's appVersion tracks myapp's version
+    dependencies:
+      - package: myapp
+        strategy: linked    # Chart version bumps when myapp bumps
+```
+
+**How it works:**
+- Chart's `version` field: Tracks the chart's own semantic version (bumps when chart changes or due to propagation)
+- Chart's `appVersion` field: Syncs to the dependency package's version (e.g., the application being deployed)
+
+**Example scenario:**
+1. `myapp` is bumped to 1.2.0 → Chart.yaml gets `version: 0.2.0` (propagated) and `appVersion: "1.2.0"` (synced to myapp)
+2. Chart-only change (e.g., update labels) → Chart.yaml gets `version: 0.2.1` (patch bump), `appVersion: "1.2.0"` (unchanged)
+
+This pattern is ideal for Helm charts that deploy applications, allowing the chart version and application version to evolve independently.
 
 ## Template System
 

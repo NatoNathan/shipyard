@@ -50,6 +50,50 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "valid helm appDependency",
+			config: &Config{
+				Packages: []Package{
+					{Name: "myapp", Path: ".", Ecosystem: EcosystemGo},
+					{
+						Name:      "myapp-chart",
+						Path:      "./charts",
+						Ecosystem: EcosystemHelm,
+						Options: map[string]interface{}{
+							"appDependency": "myapp",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid helm appDependency - package not found",
+			config: &Config{
+				Packages: []Package{
+					{
+						Name:      "myapp-chart",
+						Path:      "./charts",
+						Ecosystem: EcosystemHelm,
+						Options: map[string]interface{}{
+							"appDependency": "nonexistent",
+						},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "no such package exists",
+		},
+		{
+			name: "helm without appDependency is valid",
+			config: &Config{
+				Packages: []Package{
+					{Name: "myapp", Path: ".", Ecosystem: EcosystemGo},
+					{Name: "myapp-chart", Path: "./charts", Ecosystem: EcosystemHelm},
+				},
+			},
+			wantErr: false,
+		},
 	}
 	
 	for _, tt := range tests {

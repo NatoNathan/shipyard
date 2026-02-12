@@ -12,25 +12,42 @@ import (
 
 // GetEcosystemHandler returns the appropriate ecosystem handler for a package
 func GetEcosystemHandler(pkg config.Package, pkgPath string) (ecosystem.Handler, error) {
+	return GetEcosystemHandlerWithContext(pkg, pkgPath, nil)
+}
+
+// GetEcosystemHandlerWithContext returns the appropriate ecosystem handler with optional context
+func GetEcosystemHandlerWithContext(pkg config.Package, pkgPath string, ctx *ecosystem.HandlerContext) (ecosystem.Handler, error) {
+	var handler ecosystem.Handler
+
 	switch pkg.Ecosystem {
 	case config.EcosystemGo:
 		if pkg.IsTagOnly() {
-			return ecosystem.NewGoEcosystemWithOptions(pkgPath, &ecosystem.GoEcosystemOptions{TagOnly: true}), nil
+			handler = ecosystem.NewGoEcosystemWithOptions(pkgPath, &ecosystem.GoEcosystemOptions{TagOnly: true})
+		} else {
+			handler = ecosystem.NewGoEcosystem(pkgPath)
 		}
-		return ecosystem.NewGoEcosystem(pkgPath), nil
 	case config.EcosystemNPM:
-		return ecosystem.NewNPMEcosystem(pkgPath), nil
+		handler = ecosystem.NewNPMEcosystem(pkgPath)
 	case config.EcosystemPython:
-		return ecosystem.NewPythonEcosystem(pkgPath), nil
+		handler = ecosystem.NewPythonEcosystem(pkgPath)
 	case config.EcosystemHelm:
-		return ecosystem.NewHelmEcosystem(pkgPath), nil
+		handler = ecosystem.NewHelmEcosystem(pkgPath)
 	case config.EcosystemCargo:
-		return ecosystem.NewCargoEcosystem(pkgPath), nil
+		handler = ecosystem.NewCargoEcosystem(pkgPath)
 	case config.EcosystemDeno:
-		return ecosystem.NewDenoEcosystem(pkgPath), nil
+		handler = ecosystem.NewDenoEcosystem(pkgPath)
 	default:
 		return nil, fmt.Errorf("unsupported ecosystem: %s", pkg.Ecosystem)
 	}
+
+	// Set context if handler supports it and context is provided
+	if ctx != nil {
+		if hwc, ok := handler.(ecosystem.HandlerWithContext); ok {
+			hwc.SetContext(ctx)
+		}
+	}
+
+	return handler, nil
 }
 
 // ReadAllCurrentVersions reads current versions for all configured packages

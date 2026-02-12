@@ -11,15 +11,22 @@ import (
 )
 
 var _ Handler = (*HelmEcosystem)(nil)
+var _ HandlerWithContext = (*HelmEcosystem)(nil)
 
 // HelmEcosystem handles version management for Helm charts
 type HelmEcosystem struct {
-	path string
+	path    string
+	context *HandlerContext // Optional context for advanced features
 }
 
 // NewHelmEcosystem creates a new Helm ecosystem handler
 func NewHelmEcosystem(path string) *HelmEcosystem {
 	return &HelmEcosystem{path: path}
+}
+
+// SetContext implements HandlerWithContext
+func (h *HelmEcosystem) SetContext(ctx *HandlerContext) {
+	h.context = ctx
 }
 
 // HelmChart represents the structure of Chart.yaml
@@ -70,9 +77,25 @@ func (h *HelmEcosystem) UpdateVersion(version semver.Version) error {
 	versionRe := regexp.MustCompile(`(?m)^(version:\s*)(.+)$`)
 	newContent := versionRe.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s`, versionStr)))
 
-	// Also update appVersion if it exists
+	// Determine appVersion value
+	appVersionStr := versionStr // Default: use chart's own version
+
+	if h.context != nil && h.context.PackageConfig != nil {
+		helmOpts := h.context.PackageConfig.GetHelmOptions()
+		if helmOpts.AppDependency != "" {
+			// Use dependency's version for appVersion
+			if depVersion, ok := h.context.AllVersions[helmOpts.AppDependency]; ok {
+				appVersionStr = depVersion.String()
+			}
+		}
+	}
+
+	// Update appVersion field (if it exists)
 	appVersionRe := regexp.MustCompile(`(?m)^(appVersion:\s*)(.+)$`)
-	newContent = appVersionRe.ReplaceAll(newContent, []byte(fmt.Sprintf(`${1}"%s"`, versionStr)))
+	if appVersionRe.Match(newContent) {
+		newContent = appVersionRe.ReplaceAll(newContent,
+			[]byte(fmt.Sprintf(`${1}"%s"`, appVersionStr)))
+	}
 
 	if string(newContent) == string(content) {
 		return fmt.Errorf("no version field found in Chart.yaml")

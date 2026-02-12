@@ -15,10 +15,12 @@ packages:
   - name: string              # Required: Package identifier
     path: string              # Required: Path to package directory
     ecosystem: string         # Required: go, npm, python, helm, cargo, deno
-    versionFile: string       # Optional: Custom version file path
+    versionFiles: []string    # Optional: Custom version file paths (or ["tag-only"] for git tags only)
+    options:                  # Optional: Ecosystem-specific options (map[string]interface{})
+      appDependency: string   # Helm only: Package name for appVersion sync
     dependencies:             # Optional: Package dependencies
-      - name: string          # Required: Dependency package name
-        type: string          # Required: linked, fixed
+      - package: string       # Required: Dependency package name
+        strategy: string      # Required: linked, fixed
     templates:                # Optional: Package-specific templates
       changelog:
         source: string
@@ -222,6 +224,74 @@ packages:
 1. Package-specific templates (highest)
 2. Global templates
 3. Built-in defaults (lowest)
+
+#### options
+
+Ecosystem-specific configuration options.
+
+```yaml
+packages:
+  - name: myapp
+    path: ./
+    ecosystem: go
+
+  - name: myapp-chart
+    path: ./charts/myapp
+    ecosystem: helm
+    options:
+      appDependency: myapp  # Helm-specific option
+    dependencies:
+      - package: myapp
+        strategy: linked
+```
+
+**Helm Options:**
+
+##### appDependency
+
+Synchronizes the chart's `appVersion` field to a dependency package's version.
+
+```yaml
+options:
+  appDependency: myapp  # Package name to track for appVersion
+```
+
+**How It Works:**
+- Chart's `version` field: Tracks the chart's own semantic version
+- Chart's `appVersion` field: Syncs to the specified package's version
+
+**Example Workflow:**
+
+Initial state:
+```yaml
+# Chart.yaml
+version: 0.1.0
+appVersion: "1.0.0"
+```
+
+After `myapp` bumps to 1.2.0:
+```yaml
+# Chart.yaml
+version: 0.2.0      # Propagated minor bump (linked dependency)
+appVersion: "1.2.0"  # Synced from myapp
+```
+
+After chart-only change (update labels):
+```yaml
+# Chart.yaml
+version: 0.2.1      # Chart's patch bump
+appVersion: "1.2.0"  # Unchanged (still tracking myapp)
+```
+
+**Use Cases:**
+- Helm charts that deploy applications
+- Separating chart version from application version
+- Tracking deployed application version in chart metadata
+- Independent evolution of chart and application versions
+
+**Validation:**
+- appDependency package must exist in configuration
+- Configuration validation enforces this at `shipyard validate`
 
 ## Template Configuration
 
@@ -619,11 +689,17 @@ packages:
   - name: python-worker
     path: services/worker
     ecosystem: python
-    versionFile: worker/__version__.py
+    versionFiles:
+      - worker/__version__.py
 
-  - name: helm-charts
-    path: deploy/charts
+  - name: go-api-chart
+    path: deploy/charts/api
     ecosystem: helm
+    options:
+      appDependency: go-api  # Chart appVersion tracks go-api version
+    dependencies:
+      - package: go-api
+        strategy: linked      # Chart version bumps when go-api bumps
 
   - name: rust-cli
     path: cli
