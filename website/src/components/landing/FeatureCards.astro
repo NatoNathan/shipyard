@@ -1,0 +1,61 @@
+---
+const features = [
+  {
+    icon: '📦',
+    title: 'Consignments, not conventions',
+    description:
+      'Change files committed in PRs. Reviewable, deletable, auditable. No commit message parsing.',
+  },
+  {
+    icon: '🔗',
+    title: 'Dependency propagation',
+    description:
+      'Linked or fixed strategies. When core bumps minor, dependent packages bump automatically — configurable per-dep.',
+  },
+  {
+    icon: '📋',
+    title: 'Custom templates',
+    description:
+      'Go templates with Sprig functions for changelogs, tag names, and release notes. Or use built-ins.',
+  },
+  {
+    icon: '🚢',
+    title: 'Pre-release workflows',
+    description:
+      'Stage-based alpha → beta → rc promotion. Snapshot versions for CI artifacts. Consignments preserved through stages.',
+  },
+  {
+    icon: '🌐',
+    title: 'Remote config',
+    description:
+      'Extend a shared base config from a URL. Org-wide release standards enforced without duplication.',
+  },
+  {
+    icon: '🔒',
+    title: 'Single static binary',
+    description:
+      'No runtime. No Node. No Python. Install once, works everywhere — CI containers, developer machines, Docker.',
+  },
+]
+---
+
+<section class="py-20 px-4 sm:px-6 lg:px-8 border-t border-[#072038]">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-bold text-[#f0f9ff] mb-3">Everything you need</h2>
+      <p class="text-[#94a3b8] max-w-xl mx-auto text-sm">
+        Built for teams that care about release quality, not just automation.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {features.map((f) => (
+        <div class="p-5 rounded-xl border border-[#072038] bg-[#041424]/40 hover:bg-[#041424]/80 hover:border-[#1a5080] transition-all">
+          <div class="text-2xl mb-3">{f.icon}</div>
+          <h3 class="font-semibold text-[#f0f9ff] mb-2 text-sm">{f.title}</h3>
+          <p class="text-[#94a3b8] text-xs leading-relaxed">{f.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

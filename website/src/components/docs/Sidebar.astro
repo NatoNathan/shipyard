@@ -1,0 +1,42 @@
+---
+import { sidebarNav } from '@/config/nav'
+
+interface Props {
+  currentSlug: string
+}
+
+const { currentSlug } = Astro.props
+---
+
+<nav aria-label="Documentation navigation">
+  <ul class="space-y-6">
+    {sidebarNav.map((section) => (
+      <li>
+        <h4 class="text-xs font-semibold uppercase tracking-wider text-[#4fa3e0] mb-2 px-2">
+          {section.title}
+        </h4>
+        <ul class="space-y-0.5">
+          {section.items.map((item) => {
+            const isActive = currentSlug === item.slug
+            return (
+              <li>
+                <a
+                  href={`/docs/${item.slug}`}
+                  class:list={[
+                    'block px-2 py-1.5 text-sm rounded-md transition-colors',
+                    isActive
+                      ? 'bg-[#0d3558] text-[#38bdf8] font-medium'
+                      : 'text-[#94a3b8] hover:text-[#f0f9ff] hover:bg-[#072038]',
+                  ]}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {item.title}
+                </a>
+              </li>
+            )
+          })}
+        </ul>
+      </li>
+    ))}
+  </ul>
+</nav>

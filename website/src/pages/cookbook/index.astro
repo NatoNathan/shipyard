@@ -1,0 +1,37 @@
+---
+import LandingLayout from '@/layouts/LandingLayout.astro'
+import CookbookGrid from '@/components/cookbook/CookbookGrid'
+import { cookbookCategories } from '@/data/cookbook'
+---
+
+<LandingLayout
+  title="Cookbook"
+  description="Copy-paste Shipyard configurations for common setups — single repos, monorepos, CI/CD, and custom templates."
+>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <!-- Header -->
+    <div class="mb-12">
+      <h1 class="text-3xl sm:text-4xl font-bold text-[#f0f9ff] mb-3">Cookbook</h1>
+      <p class="text-[#94a3b8] max-w-xl">
+        Copy-paste configurations for common setups. Every recipe is a complete, working
+        <code class="text-[#93c5fd] text-sm bg-[#041424] border border-[#0d3558] rounded px-1.5 py-0.5">.shipyard/shipyard.yaml</code>
+        or workflow file.
+      </p>
+    </div>
+
+    <!-- Jump links -->
+    <nav class="flex flex-wrap gap-2 mb-10" aria-label="Cookbook categories">
+      {cookbookCategories.map((cat) => (
+        <a
+          href={`#${cat.id}`}
+          class="px-3 py-1.5 rounded-lg border border-[#0d3558] bg-[#041424] text-sm text-[#94a3b8] hover:text-[#38bdf8] hover:border-[#38bdf8] transition-colors"
+        >
+          {cat.title}
+        </a>
+      ))}
+    </nav>
+
+    <!-- Recipes -->
+    <CookbookGrid categories={cookbookCategories} client:load />
+  </div>
+</LandingLayout>

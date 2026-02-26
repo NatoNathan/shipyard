@@ -148,6 +148,19 @@ dagger-build:
 dagger-package:
     dagger call package-only --source=. --version=v0.0.0-dev export --path=./dist
 
+# Build the website via Dagger (copies docs in, runs bun build)
+build-website:
+    dagger call build-website --source=. export --path=./website/dist
+
+# Run the website dev server locally
+dev-website:
+    cd website && bun run dev
+
+# Build the website locally (without Dagger, requires docs to be copied in)
+build-website-local:
+    cp -r docs/* website/src/content/docs/
+    cd website && bun run build
+
 # Test full Dagger release pipeline (requires tokens)
 dagger-test-release:
     dagger call release \

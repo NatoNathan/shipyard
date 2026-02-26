@@ -1,0 +1,69 @@
+---
+const features = [
+  { label: 'Polyglot', shipyard: true, changesets: false, semrel: false },
+  { label: 'Explicit change files (PR-reviewable)', shipyard: true, changesets: true, semrel: false },
+  { label: 'Monorepo dependency propagation', shipyard: true, changesets: 'partial', semrel: false },
+  { label: 'No commit message convention required', shipyard: true, changesets: true, semrel: false },
+  { label: 'Go support', shipyard: true, changesets: false, semrel: false },
+  { label: 'Cargo / Python / Deno support', shipyard: true, changesets: false, semrel: false },
+  { label: 'Pre-release stages (alpha/beta/rc)', shipyard: true, changesets: 'partial', semrel: true },
+  { label: 'Snapshot versions for CI', shipyard: true, changesets: false, semrel: false },
+  { label: 'Custom templates (changelog, tags)', shipyard: true, changesets: 'partial', semrel: 'partial' },
+  { label: 'Remote config inheritance', shipyard: true, changesets: false, semrel: false },
+  { label: 'Zero runtime dependencies', shipyard: true, changesets: false, semrel: false },
+]
+
+function Icon({ value }: { value: boolean | 'partial' }) {
+  if (value === true) return '✓'
+  if (value === 'partial') return '~'
+  return '—'
+}
+
+function cellClass(value: boolean | 'partial') {
+  if (value === true) return 'text-[#38bdf8]'
+  if (value === 'partial') return 'text-[#94a3b8]'
+  return 'text-[#4a5568]'
+}
+---
+
+<section class="py-20 px-4 sm:px-6 lg:px-8 border-t border-[#072038]">
+  <div class="max-w-4xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-bold text-[#f0f9ff] mb-3">Why Shipyard?</h2>
+      <p class="text-[#94a3b8] max-w-xl mx-auto text-sm">
+        Changesets is NPM-only. semantic-release infers intent from commit messages.
+        Shipyard is explicit, polyglot, and works in any CI.
+      </p>
+    </div>
+
+    <div class="overflow-x-auto rounded-xl border border-[#072038]">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[#072038] bg-[#041424]">
+            <th class="text-left px-5 py-3 font-medium text-[#94a3b8]">Feature</th>
+            <th class="text-center px-4 py-3 font-semibold text-[#38bdf8]">Shipyard</th>
+            <th class="text-center px-4 py-3 font-medium text-[#94a3b8]">Changesets</th>
+            <th class="text-center px-4 py-3 font-medium text-[#94a3b8]">semantic-release</th>
+          </tr>
+        </thead>
+        <tbody>
+          {features.map((f, i) => (
+            <tr class={`border-b border-[#072038]/50 ${i % 2 === 0 ? '' : 'bg-[#041424]/30'}`}>
+              <td class="px-5 py-3 text-[#cbd5e1]">{f.label}</td>
+              <td class={`text-center px-4 py-3 font-bold ${cellClass(f.shipyard)}`}>
+                {Icon({ value: f.shipyard })}
+              </td>
+              <td class={`text-center px-4 py-3 ${cellClass(f.changesets)}`}>
+                {Icon({ value: f.changesets })}
+              </td>
+              <td class={`text-center px-4 py-3 ${cellClass(f.semrel)}`}>
+                {Icon({ value: f.semrel })}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-[#4a5568] text-center mt-3">~ = partial or limited support</p>
+  </div>
+</section>

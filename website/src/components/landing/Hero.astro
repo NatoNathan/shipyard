@@ -1,0 +1,72 @@
+---
+import InstallTabs from './InstallTabs'
+import { SITE } from '@/config/site'
+---
+
+<section class="relative overflow-hidden pt-20 pb-24 px-4 sm:px-6 lg:px-8">
+  <!-- Background glow -->
+  <div
+    class="absolute inset-0 pointer-events-none"
+    aria-hidden="true"
+  >
+    <div
+      class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full opacity-10"
+      style="background: radial-gradient(ellipse at center, #38bdf8 0%, #1a5080 50%, transparent 70%)"
+    ></div>
+  </div>
+
+  <div class="relative max-w-4xl mx-auto text-center">
+    <!-- Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#0d3558] bg-[#041424] text-sm text-[#38bdf8] mb-6">
+      <span class="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></span>
+      {SITE.version} — Polyglot release management
+    </div>
+
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#f0f9ff] leading-tight mb-6">
+      Ship releases without<br />
+      <span style="background: linear-gradient(135deg, #38bdf8, #7aa2f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        the ceremony
+      </span>
+    </h1>
+
+    <p class="text-lg sm:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-4 leading-relaxed">
+      Shipyard automates semantic versioning, changelog generation, and release tagging for
+      monorepos and single-package repos.
+      Create <strong class="text-[#f0f9ff]">consignments</strong> — reviewable change manifests committed alongside your code.
+      Shipyard does the rest.
+    </p>
+
+    <p class="text-sm text-[#4fa3e0] mb-10">
+      Works with Go · NPM · Python · Cargo · Helm · Deno
+    </p>
+
+    <!-- CTAs -->
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-14">
+      <a
+        href="/docs/configuration"
+        class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#38bdf8] text-[#020d18] font-semibold text-sm hover:bg-[#7dd3fc] transition-colors shadow-lg"
+      >
+        Get started
+        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
+          <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd"/>
+        </svg>
+      </a>
+      <a
+        href={SITE.github}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-[#0d3558] text-[#f0f9ff] font-semibold text-sm hover:bg-[#072038] hover:border-[#38bdf8] transition-colors"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <!-- Install tabs -->
+    <div class="max-w-2xl mx-auto">
+      <InstallTabs client:load />
+    </div>
+  </div>
+</section>
