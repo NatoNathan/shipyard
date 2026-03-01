@@ -1,0 +1,4 @@
+# Cloudflare Pages _redirects
+# https://developers.cloudflare.com/pages/platform/redirects/
+
+/docs  /docs/configuration  301

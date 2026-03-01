@@ -1,0 +1,70 @@
+---
+const { class: className, ...rest } = Astro.props
+
+// Extract language from class like "language-bash" → "bash"
+const langMatch = (className as string | undefined)?.match(/language-(\w+)/)
+const lang = langMatch?.[1]
+
+const langColors: Record<string, string> = {
+  bash: '#4ade80',
+  sh: '#4ade80',
+  shell: '#4ade80',
+  yaml: '#60a5fa',
+  yml: '#60a5fa',
+  go: '#67e8f9',
+  json: '#f9a8d4',
+  toml: '#fbbf24',
+  typescript: '#a78bfa',
+  ts: '#a78bfa',
+  javascript: '#fde68a',
+  js: '#fde68a',
+  powershell: '#c4b5fd',
+}
+
+const borderColor = lang ? (langColors[lang] ?? '#1a5080') : '#1a5080'
+const paddingTop = lang ? '2.25rem' : '1rem'
+---
+
+<div class="code-block-wrapper" style="position: relative; margin: 1.5em 0;">
+  {lang && (
+    <span
+      class="code-lang-label"
+      style={`position: absolute; top: 0.5rem; left: 0.75rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: ${borderColor}; font-family: ui-monospace, monospace; opacity: 0.8; z-index: 1; pointer-events: none;`}
+    >
+      {lang}
+    </span>
+  )}
+  <pre
+    class={className}
+    {...rest}
+    style={`border-left: 3px solid ${borderColor}; padding-top: ${paddingTop}; margin: 0;`}
+  ><slot /></pre>
+  <button
+    class="copy-btn"
+    aria-label="Copy to clipboard"
+    style="position: absolute; top: 0.4rem; right: 0.5rem; padding: 0.2rem 0.55rem; font-size: 0.7rem; line-height: 1.5; color: #94a3b8; background: transparent; border: 1px solid #0d3558; border-radius: 4px; cursor: pointer; transition: color 0.15s, border-color 0.15s; font-family: ui-sans-serif, system-ui, sans-serif;"
+  >
+    Copy
+  </button>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.code-block-wrapper').forEach((wrapper) => {
+    const pre = wrapper.querySelector('pre')
+    const btn = wrapper.querySelector<HTMLButtonElement>('.copy-btn')
+    if (!pre || !btn) return
+
+    btn.addEventListener('click', async () => {
+      const text = pre.textContent ?? ''
+      await navigator.clipboard.writeText(text)
+      btn.textContent = 'Copied!'
+      btn.style.color = '#38bdf8'
+      btn.style.borderColor = '#38bdf8'
+      setTimeout(() => {
+        btn.textContent = 'Copy'
+        btn.style.color = '#94a3b8'
+        btn.style.borderColor = '#0d3558'
+      }, 2000)
+    })
+  })
+</script>

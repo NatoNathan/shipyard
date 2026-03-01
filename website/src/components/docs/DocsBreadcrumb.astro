@@ -1,0 +1,30 @@
+---
+interface Props {
+  slug: string
+}
+
+const { slug } = Astro.props
+const parts = slug.split('/')
+---
+
+<nav aria-label="Breadcrumb" class="mb-6 flex items-center gap-1.5 text-xs text-[#94a3b8]">
+  <a href="/" class="hover:text-[#38bdf8] transition-colors">Home</a>
+  <span aria-hidden="true">›</span>
+  <a href="/docs/configuration" class="hover:text-[#38bdf8] transition-colors">Docs</a>
+  {parts.length > 1 && parts.map((part, i) => (
+    <>
+      <span aria-hidden="true">›</span>
+      <span class={i === parts.length - 1 ? 'text-[#f0f9ff]' : ''}>
+        {part.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+      </span>
+    </>
+  ))}
+  {parts.length === 1 && (
+    <>
+      <span aria-hidden="true">›</span>
+      <span class="text-[#f0f9ff]">
+        {slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+      </span>
+    </>
+  )}
+</nav>

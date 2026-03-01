@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+
+# Docs are populated by Dagger at build time — not committed
+src/content/docs/**
+!src/content/docs/.gitkeep

@@ -1,0 +1,109 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-ocean-950: #020d18;
+  --color-ocean-900: #041424;
+  --color-ocean-800: #072038;
+  --color-ocean-700: #0d3558;
+  --color-ocean-600: #1a5080;
+  --color-ocean-500: #2a6fa8;
+  --color-ocean-400: #4fa3e0;
+  --color-ocean-300: #93c5fd;
+  --color-accent: #38bdf8;
+  --color-text-primary: #f0f9ff;
+  --color-text-secondary: #94a3b8;
+}
+
+:root {
+  --accent: #38bdf8;
+  --border: #072038;
+  --text-primary: #f0f9ff;
+  --text-secondary: #94a3b8;
+}
+
+html {
+  background: #020d18;
+  color: #f0f9ff;
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prose styles for docs */
+.prose {
+  --tw-prose-body: #cbd5e1;
+  --tw-prose-headings: #f0f9ff;
+  --tw-prose-links: #38bdf8;
+  --tw-prose-bold: #f0f9ff;
+  --tw-prose-counters: #94a3b8;
+  --tw-prose-bullets: #94a3b8;
+  --tw-prose-hr: #072038;
+  --tw-prose-quotes: #94a3b8;
+  --tw-prose-quote-borders: #1a5080;
+  --tw-prose-code: #93c5fd;
+  --tw-prose-pre-code: #f0f9ff;
+  --tw-prose-pre-bg: #041424;
+  --tw-prose-th-borders: #0d3558;
+  --tw-prose-td-borders: #072038;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: #f0f9ff;
+  scroll-margin-top: 4rem;
+}
+
+.prose a {
+  color: #38bdf8;
+  text-decoration: none;
+}
+.prose a:hover {
+  text-decoration: underline;
+}
+
+.prose code:not(pre code) {
+  background: #041424;
+  border: 1px solid #0d3558;
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.875em;
+  color: #93c5fd;
+}
+
+.prose pre {
+  background: #041424 !important;
+  border: 1px solid #0d3558;
+  border-radius: 8px;
+}
+
+.prose h2 {
+  border-bottom: 1px solid #072038;
+  padding-bottom: 0.4em;
+}
+
+/* Heading anchor links */
+.prose h2:hover::before,
+.prose h3:hover::before {
+  content: "#";
+  position: absolute;
+  margin-left: -1.25em;
+  color: #38bdf8;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.prose h2,
+.prose h3 {
+  position: relative;
+}
+
+/* Hide h1 from prose — rendered separately as page header in layout */
+.prose h1 {
+  display: none;
+}
+

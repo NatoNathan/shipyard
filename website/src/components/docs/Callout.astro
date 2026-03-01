@@ -1,0 +1,60 @@
+---
+type CalloutType = 'note' | 'tip' | 'warning' | 'danger'
+
+interface Props {
+  type?: CalloutType
+  title?: string
+}
+
+const { type = 'note', title } = Astro.props
+
+const config: Record<CalloutType, { icon: string; borderColor: string; bgColor: string; labelColor: string; defaultTitle: string }> = {
+  note: {
+    icon: 'ℹ️',
+    borderColor: '#2563eb',
+    bgColor: 'rgba(37, 99, 235, 0.08)',
+    labelColor: '#60a5fa',
+    defaultTitle: 'Note',
+  },
+  tip: {
+    icon: '⚓',
+    borderColor: '#0891b2',
+    bgColor: 'rgba(8, 145, 178, 0.08)',
+    labelColor: '#22d3ee',
+    defaultTitle: 'Tip',
+  },
+  warning: {
+    icon: '⚠️',
+    borderColor: '#d97706',
+    bgColor: 'rgba(217, 119, 6, 0.08)',
+    labelColor: '#fbbf24',
+    defaultTitle: 'Warning',
+  },
+  danger: {
+    icon: '🚨',
+    borderColor: '#dc2626',
+    bgColor: 'rgba(220, 38, 38, 0.08)',
+    labelColor: '#f87171',
+    defaultTitle: 'Danger',
+  },
+}
+
+const { icon, borderColor, bgColor, labelColor, defaultTitle } = config[type]
+const displayTitle = title ?? defaultTitle
+---
+
+<aside
+  style={`border-left: 3px solid ${borderColor}; background: ${bgColor}; border-radius: 0 6px 6px 0; padding: 0.875rem 1rem; margin: 1.5em 0;`}
+  role="note"
+  data-callout={type}
+>
+  <p
+    style={`margin: 0 0 0.4em 0; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: ${labelColor}; display: flex; align-items: center; gap: 0.4rem;`}
+  >
+    <span aria-hidden="true">{icon}</span>
+    {displayTitle}
+  </p>
+  <div style="margin: 0; color: #cbd5e1;">
+    <slot />
+  </div>
+</aside>

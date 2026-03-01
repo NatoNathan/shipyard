@@ -1,0 +1,75 @@
+---
+const steps = [
+  {
+    n: '01',
+    title: 'Create a consignment',
+    description:
+      'Commit a change manifest alongside your code in the PR. No magic commit message parsing.',
+    code: `shipyard add \\
+  --type minor \\
+  --summary "Add OAuth2 support"`,
+    lang: 'bash',
+  },
+  {
+    n: '02',
+    title: 'Review pending changes',
+    description: 'See what versions will bump before they do. Full dependency propagation preview.',
+    code: `shipyard status
+
+  package  current  bump   next
+  ───────  ───────  ─────  ──────
+  core     1.2.0    minor  1.3.0
+  api-sdk  0.8.1    minor  0.9.0  ↑ linked`,
+    lang: 'text',
+  },
+  {
+    n: '03',
+    title: 'Bump, changelog, tag',
+    description: 'Updates version files, writes CHANGELOG.md, creates git tags. Handles monorepo dependencies.',
+    code: `shipyard version
+
+  ✓ Calculated 2 package versions
+  ✓ Updated go.mod, package.json
+  ✓ Wrote CHANGELOG.md
+  ✓ Tagged core/v1.3.0, api-sdk/v0.9.0`,
+    lang: 'text',
+  },
+  {
+    n: '04',
+    title: 'Publish to GitHub',
+    description: 'Push tags, create GitHub releases with generated release notes. Ship it.',
+    code: `git push --tags
+shipyard release
+
+  ✓ Created release core/v1.3.0
+  ✓ Created release api-sdk/v0.9.0`,
+    lang: 'text',
+  },
+]
+---
+
+<section class="py-20 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-14">
+      <h2 class="text-2xl sm:text-3xl font-bold text-[#f0f9ff] mb-3">How it works</h2>
+      <p class="text-[#94a3b8] max-w-xl mx-auto">
+        Four commands from code change to GitHub release. Consignments live in your repo — reviewable, diffable, deletable.
+      </p>
+    </div>
+
+    <div class="space-y-6">
+      {steps.map((step) => (
+        <div class="grid lg:grid-cols-2 gap-6 items-start p-6 rounded-xl border border-[#072038] bg-[#041424]/60">
+          <div>
+            <div class="text-4xl font-mono font-bold text-[#0d3558] mb-3 leading-none">{step.n}</div>
+            <h3 class="text-lg font-semibold text-[#f0f9ff] mb-2">{step.title}</h3>
+            <p class="text-[#94a3b8] text-sm leading-relaxed">{step.description}</p>
+          </div>
+          <div class="rounded-lg bg-[#020d18] border border-[#0d3558] p-4 font-mono text-sm overflow-x-auto">
+            <pre class="text-[#93c5fd] whitespace-pre-wrap"><code>{step.code}</code></pre>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

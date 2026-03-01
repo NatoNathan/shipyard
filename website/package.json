@@ -1,0 +1,33 @@
+{
+  "name": "shipyard-website",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.3.13",
+    "@astrojs/react": "^4.4.2",
+    "@radix-ui/react-accordion": "^1.2.12",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "astro": "^5.18.0",
+    "astro-pagefind": "^1.8.5",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3"
+  }
+}

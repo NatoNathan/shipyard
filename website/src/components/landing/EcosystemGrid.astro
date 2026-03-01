@@ -1,0 +1,85 @@
+---
+const ecosystems = [
+  {
+    name: 'Go',
+    description: 'Updates version.go const or go.mod comment. Supports monorepo module paths.',
+    file: 'version.go',
+    snippet: 'const Version = "1.3.0"',
+    color: '#00ADD8',
+    icon: 'Go',
+  },
+  {
+    name: 'NPM',
+    description: 'Updates version in package.json. Works with workspaces and scoped packages.',
+    file: 'package.json',
+    snippet: '"version": "2.1.0"',
+    color: '#CB3837',
+    icon: 'npm',
+  },
+  {
+    name: 'Python',
+    description: 'Updates pyproject.toml, __version__.py, or setup.py. PEP 440 compatible.',
+    file: 'pyproject.toml',
+    snippet: 'version = "0.5.0"',
+    color: '#3776AB',
+    icon: 'Py',
+  },
+  {
+    name: 'Cargo',
+    description: 'Updates version in [package] section of Cargo.toml.',
+    file: 'Cargo.toml',
+    snippet: 'version = "0.2.1"',
+    color: '#CE4A00',
+    icon: 'Rs',
+  },
+  {
+    name: 'Helm',
+    description: 'Updates version and appVersion in Chart.yaml for Kubernetes chart releases.',
+    file: 'Chart.yaml',
+    snippet: 'version: 3.0.0',
+    color: '#0F1689',
+    icon: 'Helm',
+  },
+  {
+    name: 'Deno',
+    description: 'Updates version field in deno.json or deno.jsonc.',
+    file: 'deno.json',
+    snippet: '"version": "1.0.0"',
+    color: '#070707',
+    icon: 'Deno',
+  },
+]
+---
+
+<section class="py-20 px-4 sm:px-6 lg:px-8 border-t border-[#072038]">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-bold text-[#f0f9ff] mb-3">One tool, every ecosystem</h2>
+      <p class="text-[#94a3b8] max-w-xl mx-auto text-sm">
+        Shipyard knows how to update version files for each ecosystem — or mix them in a single monorepo.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {ecosystems.map((e) => (
+        <div class="rounded-xl border border-[#072038] bg-[#041424]/60 p-5 hover:border-[#1a5080] transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span
+              class="text-xs font-bold font-mono px-2 py-1 rounded"
+              style={`background: ${e.color}22; color: ${e.color}; border: 1px solid ${e.color}44`}
+            >
+              {e.icon}
+            </span>
+            <span class="font-semibold text-[#f0f9ff]">{e.name}</span>
+          </div>
+          <p class="text-[#94a3b8] text-xs mb-3 leading-relaxed">{e.description}</p>
+          <div class="rounded bg-[#020d18] border border-[#0d3558] px-3 py-2 font-mono text-xs">
+            <span class="text-[#4fa3e0]">{e.file}</span>
+            <br />
+            <span class="text-[#93c5fd]">{e.snippet}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
