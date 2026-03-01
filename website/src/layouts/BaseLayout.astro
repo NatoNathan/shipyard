@@ -37,9 +37,7 @@ const pageTitle = title ? `${title} — ${SITE.title}` : SITE.title
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={new URL(Astro.url.pathname, SITE.url).href} />
 
-    <!-- Pagefind UI (loads after build) -->
-    <link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
-    <script src="/pagefind/pagefind-ui.js" is:inline></script>
+
   </head>
   <body class="min-h-screen flex flex-col bg-[#020d18] text-[#f0f9ff]">
     <Nav />

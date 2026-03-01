@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-ocean-950: #020d18;
@@ -80,15 +81,29 @@ body {
   border-radius: 8px;
 }
 
-/* Pagefind UI theming */
-.pagefind-ui {
-  --pagefind-ui-scale: 0.95;
-  --pagefind-ui-primary: #38bdf8;
-  --pagefind-ui-text: #f0f9ff;
-  --pagefind-ui-background: #041424;
-  --pagefind-ui-border: #072038;
-  --pagefind-ui-tag: #0d3558;
-  --pagefind-ui-border-width: 1px;
-  --pagefind-ui-border-radius: 8px;
-  --pagefind-ui-font: ui-sans-serif, system-ui, sans-serif;
+.prose h2 {
+  border-bottom: 1px solid #072038;
+  padding-bottom: 0.4em;
 }
+
+/* Heading anchor links */
+.prose h2:hover::before,
+.prose h3:hover::before {
+  content: "#";
+  position: absolute;
+  margin-left: -1.25em;
+  color: #38bdf8;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.prose h2,
+.prose h3 {
+  position: relative;
+}
+
+/* Hide h1 from prose — rendered separately as page header in layout */
+.prose h1 {
+  display: none;
+}
+
