@@ -161,7 +161,7 @@ func TestGeneratePackageTag_GoMonorepo(t *testing.T) {
 		consignments,
 		"api",
 		version,
-		"builtin:go",
+		"builtin:go-multimodule",
 	)
 
 	require.NoError(t, err)
@@ -190,7 +190,7 @@ func TestBuiltinGoAnnotated(t *testing.T) {
 		consignments,
 		"core",
 		version,
-		"builtin:go-annotated",
+		"builtin:go-multimodule-annotated",
 	)
 
 	require.NoError(t, err)
