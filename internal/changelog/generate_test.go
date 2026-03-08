@@ -364,7 +364,7 @@ func TestGeneratePackageTag_Go(t *testing.T) {
 	version := semver.Version{Major: 2, Minor: 0, Patch: 0}
 
 	generator := NewChangelogGenerator()
-	tagName, message, err := generator.GeneratePackageTag([]*consignment.Consignment{}, "api", version, "builtin:go")
+	tagName, message, err := generator.GeneratePackageTag([]*consignment.Consignment{}, "api", version, "builtin:go-multimodule")
 
 	require.NoError(t, err)
 	assert.Equal(t, "api/v2.0.0", tagName)
@@ -389,7 +389,7 @@ func TestGenerateAllPackageTags(t *testing.T) {
 	}
 
 	generator := NewChangelogGenerator()
-	tags, err := generator.GenerateAllPackageTags([]*consignment.Consignment{}, versions, "builtin:go")
+	tags, err := generator.GenerateAllPackageTags([]*consignment.Consignment{}, versions, "builtin:go-multimodule")
 
 	require.NoError(t, err)
 	require.Len(t, tags, 2)

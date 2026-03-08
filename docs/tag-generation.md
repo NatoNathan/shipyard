@@ -35,7 +35,7 @@ core/v1.2.0
 @scope/package@1.2.0
 ```
 
-**`builtin:go-annotated`** - Go module tag with release notes (annotated)
+**`builtin:go-multimodule-annotated`** - Go module tag with release notes (annotated)
 ```
 core/v1.2.0
 
@@ -92,7 +92,7 @@ tagName, message, err := generator.GeneratePackageTag(
     consignments,
     "core",
     semver.Version{Major: 1, Minor: 2, Patch: 0},
-    "builtin:go-annotated",
+    "builtin:go-multimodule-annotated",
 )
 // Returns: ("core/v1.2.0", "# Release core v1.2.0\n...", nil) - annotated tag
 
@@ -344,7 +344,7 @@ templates:
 
   # Per-package tag template (TemplateTypeTag)
   # Can be lightweight or annotated
-  packageTag: builtin:go-annotated  # or builtin:go for lightweight
+  packageTag: builtin:go-multimodule-annotated  # or builtin:go for lightweight
 
   # Release tag template (TemplateTypeRelease)
   # Marks the entire release event
@@ -357,7 +357,7 @@ templates:
 packages:
   core:
     templates:
-      packageTag: builtin:go-annotated  # Annotated tags with release notes
+      packageTag: builtin:go-multimodule-annotated  # Annotated tags with release notes
 
   api:
     templates:
@@ -416,7 +416,7 @@ release-20260130-143000  # Release tag
 
 ```bash
 # Packages: core v1.2.0, api v2.0.0
-# Template: builtin:go-annotated
+# Template: builtin:go-multimodule-annotated
 
 # Generated tags:
 core/v1.2.0 (annotated)  # Tag with release notes
@@ -441,8 +441,8 @@ release-20260130-143000  # Release tag
 1. **Use consistent tag formats** within a repository
 2. **Choose between lightweight and annotated tags**:
    - **Lightweight** (`builtin:go`, `builtin:npm`): Faster, simpler, good for frequent releases
-   - **Annotated** (`builtin:go-annotated`, `builtin:detailed-annotated`): Include release notes in git history, better for major releases
-3. **Use `builtin:go` or `builtin:go-annotated` for Go monorepos** to enable `go get` with specific packages
+   - **Annotated** (`builtin:go-multimodule-annotated`, `builtin:detailed-annotated`): Include release notes in git history, better for major releases
+3. **Use `builtin:go` or `builtin:go-multimodule-annotated` for Go monorepos** to enable `go get` with specific packages
 4. **Use `builtin:npm` for NPM monorepos** to match NPM's tagging convention
 5. **Use `builtin:release-date` for release tags** for unique, sortable release markers
 6. **Don't mix tagging strategies** - pick one format and stick with it
