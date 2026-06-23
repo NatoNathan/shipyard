@@ -31,11 +31,11 @@ test-unit:
 
 # Run integration tests only
 test-integration:
-    go test -v -race -cover -run Integration ./tests/integration/...
+    go test -v -race -cover -run Integration ./test/integration/...
 
 # Run contract tests only
 test-contract:
-    go test -v -race -cover -tags contract ./tests/contract/...
+    go test -v -race -cover -tags contract ./test/contract/...
 
 # Run linters
 lint:

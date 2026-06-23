@@ -20,7 +20,8 @@ func TestUpgradeCommand_Contract(t *testing.T) {
 	t.Run("command exists", func(t *testing.T) {
 		cmd := NewUpgradeCommand(versionInfo)
 		require.NotNil(t, cmd)
-		assert.Equal(t, "upgrade", cmd.Use)
+		assert.Equal(t, "upgrade", cmd.Name())
+		assert.True(t, strings.HasPrefix(cmd.Use, "upgrade"))
 	})
 
 	t.Run("has correct short description", func(t *testing.T) {
@@ -39,11 +40,11 @@ func TestUpgradeCommand_Contract(t *testing.T) {
 
 	t.Run("has examples", func(t *testing.T) {
 		cmd := NewUpgradeCommand(versionInfo)
-		assert.Contains(t, cmd.Long, "Examples:")
-		assert.Contains(t, cmd.Long, "shipyard upgrade")
-		assert.Contains(t, cmd.Long, "--yes")
-		assert.Contains(t, cmd.Long, "--dry-run")
-		assert.Contains(t, cmd.Long, "--force")
+		assert.NotEmpty(t, cmd.Example)
+		assert.Contains(t, cmd.Example, "shipyard upgrade")
+		assert.Contains(t, cmd.Example, "--yes")
+		assert.Contains(t, cmd.Example, "--dry-run")
+		assert.Contains(t, cmd.Example, "--force")
 	})
 }
 
@@ -278,7 +279,6 @@ func TestVersionInfo_Structure(t *testing.T) {
 		assert.NotEmpty(t, info.Date)
 	})
 }
-
 
 func TestUpgradeCommand_UsageMessage(t *testing.T) {
 	versionInfo := VersionInfo{

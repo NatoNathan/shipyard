@@ -33,7 +33,7 @@ func NewStatusCommand() *cobra.Command {
 		Use:                   "status [-p package]... [-o {table|json}]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"ls", "list"},
-		Short:   "Check cargo and chart your course",
+		Short:                 "Check cargo and chart your course",
 		Long: `Review pending cargo and see which ports of call (versions) await. Shows all
 loaded consignments grouped by vessel with calculated destination coordinates.`,
 		Example: `  # Show pending changes
@@ -101,6 +101,13 @@ func runStatus(opts *StatusOptions) error {
 
 	// Check if there are any consignments
 	if len(consignments) == 0 {
+		if opts.Output == "json" {
+			return outputJSONWithBumps(
+				map[string][]*consignment.Consignment{},
+				map[string]version.VersionBump{},
+				opts,
+			)
+		}
 		fmt.Println(ui.InfoMessage("No pending consignments"))
 		return nil
 	}
@@ -150,6 +157,9 @@ func calculateVersionBumpsForStatus(cfg *config.Config, projectPath string, cons
 func readAllConsignments(dir string) ([]*consignment.Consignment, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []*consignment.Consignment{}, nil
+		}
 		return nil, err
 	}
 
@@ -314,4 +324,3 @@ func outputTableWithBumps(grouped map[string][]*consignment.Consignment, version
 
 	return nil
 }
-

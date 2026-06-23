@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +11,31 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/require"
 )
+
+var shipyardBinaryPath string
+
+func TestMain(m *testing.M) {
+	tempDir, err := os.MkdirTemp("", "shipyard-contract-*")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create contract test directory: %v\n", err)
+		os.Exit(1)
+	}
+	shipyardBinaryPath = filepath.Join(tempDir, "shipyard")
+	cmd := exec.Command("go", "build", "-o", shipyardBinaryPath, "../../cmd/shipyard")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build shipyard: %v\n%s", err, output)
+		os.Exit(1)
+	}
+
+	code := m.Run()
+	if err := os.RemoveAll(tempDir); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to remove contract test directory: %v\n", err)
+		if code == 0 {
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
 
 // initGitRepo initializes a git repository for testing
 func initGitRepo(t *testing.T, dir string) {
@@ -21,14 +47,8 @@ func initGitRepo(t *testing.T, dir string) {
 // buildShipyard builds the shipyard binary and returns its path
 func buildShipyard(t *testing.T) string {
 	t.Helper()
-
-	// Build the binary in a temp directory
-	tempBin := filepath.Join(t.TempDir(), "shipyard")
-	cmd := exec.Command("go", "build", "-o", tempBin, "../../cmd/shipyard")
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "Failed to build shipyard: %s", string(output))
-
-	return tempBin
+	require.NotEmpty(t, shipyardBinaryPath, "contract test binary was not initialized")
+	return shipyardBinaryPath
 }
 
 // initializeTestRepo creates a git repo, sets up a single "core" package, and runs shipyard init

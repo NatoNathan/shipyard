@@ -1,8 +1,10 @@
 package contract
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,7 +16,6 @@ import (
 func TestStatusCommand_ExitCodes(t *testing.T) {
 	// Build the shipyard binary for testing
 	shipyardBin := buildShipyard(t)
-	defer os.Remove(shipyardBin)
 
 	t.Run("exit 0 with no consignments", func(t *testing.T) {
 		// Setup: Create initialized repo
@@ -49,6 +50,20 @@ func TestStatusCommand_ExitCodes(t *testing.T) {
 		assert.Contains(t, string(output), "1.0.1")
 	})
 
+	t.Run("clean clone with missing consignments returns empty JSON", func(t *testing.T) {
+		tempDir := t.TempDir()
+		initializeTestRepo(t, shipyardBin, tempDir)
+		require.NoError(t, os.RemoveAll(filepath.Join(tempDir, ".shipyard", "consignments")))
+
+		cmd := exec.Command(shipyardBin, "--json", "status")
+		cmd.Dir = tempDir
+		output, err := cmd.CombinedOutput()
+
+		require.NoError(t, err, "status should exit 0 with a missing consignments directory: %s", output)
+		assert.True(t, json.Valid(output), "status should return valid JSON: %s", output)
+		assert.JSONEq(t, `{}`, string(output))
+	})
+
 	t.Run("exit 1 when not initialized", func(t *testing.T) {
 		// Setup: Non-initialized directory
 		tempDir := t.TempDir()
@@ -67,7 +82,6 @@ func TestStatusCommand_ExitCodes(t *testing.T) {
 // TestStatusCommand_OutputFormat tests output format consistency
 func TestStatusCommand_OutputFormat(t *testing.T) {
 	shipyardBin := buildShipyard(t)
-	defer os.Remove(shipyardBin)
 
 	t.Run("table format by default", func(t *testing.T) {
 		// Setup
@@ -151,7 +165,6 @@ func TestStatusCommand_OutputFormat(t *testing.T) {
 // TestStatusCommand_GlobalJSONFlag tests that global --json flag is respected
 func TestStatusCommand_GlobalJSONFlag(t *testing.T) {
 	shipyardBin := buildShipyard(t)
-	defer os.Remove(shipyardBin)
 
 	t.Run("global --json flag produces JSON output", func(t *testing.T) {
 		// Setup
@@ -191,7 +204,6 @@ func TestStatusCommand_GlobalJSONFlag(t *testing.T) {
 
 func TestStatusCommand_PackageFiltering(t *testing.T) {
 	shipyardBin := buildShipyard(t)
-	defer os.Remove(shipyardBin)
 
 	t.Run("filter single package", func(t *testing.T) {
 		// Setup: Multiple packages

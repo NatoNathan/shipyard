@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,6 +63,24 @@ func TestStatusCommand_EmptyConsignments(t *testing.T) {
 
 	// Verify: Output indicates no pending changes
 	assert.Contains(t, output, "No pending consignments")
+}
+
+func TestStatusCommand_MissingConsignmentsDirectoryJSON(t *testing.T) {
+	tempDir := t.TempDir()
+	setupInitializedRepo(t, tempDir)
+	require.NoError(t, os.RemoveAll(filepath.Join(tempDir, ".shipyard", "consignments")))
+	defer changeToDir(t, tempDir)()
+
+	cmd := NewStatusCommand()
+	cmd.SetArgs([]string{"--output", "json"})
+
+	output := captureOutput(func() {
+		err := cmd.Execute()
+		require.NoError(t, err)
+	})
+
+	assert.JSONEq(t, `{}`, output)
+	assert.True(t, json.Valid([]byte(output)))
 }
 
 // TestStatusCommand_NotInitialized tests status in non-initialized directory

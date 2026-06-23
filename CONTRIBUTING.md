@@ -22,7 +22,7 @@ Thank you for your interest in contributing to Shipyard! This document provides 
 
 ### Prerequisites
 
-- **Go 1.21+** - [Install Go](https://go.dev/doc/install)
+- **Go 1.25.x** - [Install Go](https://go.dev/doc/install) (the module currently requires Go 1.25.1)
 - **Git** - [Install Git](https://git-scm.com/downloads)
 - **Just** - [Install Just](https://github.com/casey/just#installation) (task runner)
 - **golangci-lint** - [Install golangci-lint](https://golangci-lint.run/usage/install/)
