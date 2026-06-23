@@ -52,7 +52,7 @@ func NewSnapshotCommand() *cobra.Command {
 		Use:                   "snapshot [-p package]... [--preview] [--no-commit] [--no-tag]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"snap"},
-		Short:   "Take a navigational reading of the current state",
+		Short:                 "Take a navigational reading of the current state",
 		Long: `Create a timestamped snapshot pre-release version.
 Snapshots are independent of the stage-based pre-release system.
 
@@ -109,7 +109,7 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 	}
 
 	// 2. Read consignments
-	consignmentsDir := filepath.Join(projectPath, ".shipyard", "consignments")
+	consignmentsDir := filepath.Join(projectPath, cfg.Consignments.Path)
 	var consignments []*consignment.Consignment
 	if len(opts.Packages) > 0 {
 		consignments, err = consignment.ReadAllConsignmentsFiltered(consignmentsDir, opts.Packages)

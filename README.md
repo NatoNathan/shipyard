@@ -317,6 +317,19 @@ Global flags:
 
 See [CLI Reference](https://shipyard.tamez.dev/docs/cli) for complete documentation.
 
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success, including read-only commands with no pending work |
+| `1` | Invalid configuration, filesystem failure, git failure, or other command error |
+| `2` | A pre-release or snapshot command has no pending consignments, or promotion cannot advance |
+| `3` | Promotion was requested without pre-release state |
+
+Read-only commands treat absent optional state (such as an empty consignments directory or missing history file) as no work, while malformed or inaccessible paths remain errors.
+
+
+
 ## Configuration
 
 Shipyard configuration lives in `.shipyard/shipyard.yaml`:

@@ -88,7 +88,7 @@ func runStatus(opts *StatusOptions) error {
 	}
 
 	// Read all pending consignments
-	consignmentsDir := filepath.Join(shipyardDir, "consignments")
+	consignmentsDir := filepath.Join(cwd, cfg.Consignments.Path)
 	consignments, err := readAllConsignments(consignmentsDir)
 	if err != nil {
 		return fmt.Errorf("failed to read consignments: %w", err)

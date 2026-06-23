@@ -54,7 +54,7 @@ func NewPromoteCommand() *cobra.Command {
 		Use:                   "promote [-p package]... [--preview] [--no-commit] [--no-tag]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"advance"},
-		Short:   "Advance through the harbor channel",
+		Short:                 "Advance through the harbor channel",
 		Long: `Promote a pre-release to the next stage in order.
 Advances pre-releases through configured stages (e.g., alpha → beta → rc).
 
@@ -132,7 +132,7 @@ func runPromoteWithDir(projectPath string, opts *PromoteCommandOptions) error {
 	}
 
 	// 3. Read consignments and calculate target versions
-	consignmentsDir := filepath.Join(projectPath, ".shipyard", "consignments")
+	consignmentsDir := filepath.Join(projectPath, cfg.Consignments.Path)
 	var consignments []*consignment.Consignment
 	if len(opts.Packages) > 0 {
 		consignments, err = consignment.ReadAllConsignmentsFiltered(consignmentsDir, opts.Packages)

@@ -83,6 +83,32 @@ func TestStatusCommand_MissingConsignmentsDirectoryJSON(t *testing.T) {
 	assert.True(t, json.Valid([]byte(output)))
 }
 
+func TestStatusCommand_UsesConfiguredConsignmentsPath(t *testing.T) {
+	tempDir := t.TempDir()
+	setupInitializedRepo(t, tempDir)
+	defer changeToDir(t, tempDir)()
+
+	defaultDir := filepath.Join(tempDir, ".shipyard", "consignments")
+	require.NoError(t, os.RemoveAll(defaultDir))
+	customDir := filepath.Join(tempDir, "changes", "pending")
+	require.NoError(t, os.MkdirAll(customDir, 0755))
+	createStatusTestConsignment(t, customDir, "custom-1", []string{"core"}, types.ChangeTypePatch, "Custom path fix")
+
+	configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	configContent = append(configContent, []byte("consignments:\n  path: changes/pending\n")...)
+	require.NoError(t, os.WriteFile(configPath, configContent, 0644))
+
+	cmd := NewStatusCommand()
+	cmd.SetArgs([]string{"--verbose"})
+	output := captureOutput(func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	assert.Contains(t, output, "Custom path fix")
+}
+
 // TestStatusCommand_NotInitialized tests status in non-initialized directory
 func TestStatusCommand_NotInitialized(t *testing.T) {
 	// Setup: Change to non-initialized directory

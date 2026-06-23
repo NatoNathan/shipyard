@@ -40,7 +40,7 @@ func NewVersionCommand() *cobra.Command {
 		Use:                   "version [command] [-p package]... [--preview] [--no-commit] [--no-tag]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"bump", "sail"},
-		Short:   "Sail to the next port",
+		Short:                 "Sail to the next port",
 		Long: `Set sail with your cargo and reach the next version port. Navigates the fleet
 through calculated routes, updates ship's logs, plants harbor markers (tags),
 and archives the voyage in history.
@@ -110,7 +110,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 2. Read pending consignments
-	consignmentsDir := filepath.Join(projectPath, ".shipyard", "consignments")
+	consignmentsDir := filepath.Join(projectPath, cfg.Consignments.Path)
 	var consignments []*consignment.Consignment
 	if len(opts.Packages) > 0 {
 		consignments, err = consignment.ReadAllConsignmentsFiltered(consignmentsDir, opts.Packages)
@@ -214,7 +214,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 8. Archive consignments to history with version context
-	historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
+	historyPath := filepath.Join(projectPath, cfg.History.Path)
 
 	var historyEntries []history.Entry
 	for _, pkg := range cfg.Packages {
@@ -325,7 +325,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	for _, c := range consignments {
-		consignmentPath := filepath.Join(projectPath, ".shipyard", "consignments", c.ID+".md")
+		consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
 		filesToStage = append(filesToStage, consignmentPath)
 	}
 
@@ -438,7 +438,6 @@ func filterConsignmentsForPackage(consignments []*consignment.Consignment, packa
 	}
 	return filtered
 }
-
 
 // displayPreview shows what changes would be made without applying them
 func displayPreview(versionBumps map[string]version.VersionBump, consignments []*consignment.Consignment, cfg *config.Config) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -180,15 +181,49 @@ func TestVersionCommand_PreviewMode(t *testing.T) {
 	})
 }
 
+func TestVersionCommand_PreviewFilesystemSemantics(t *testing.T) {
+	t.Run("missing configured consignments directory is a no-op", func(t *testing.T) {
+		tempDir := setupVersionTestRepo(t)
+		consignmentsDir := filepath.Join(tempDir, ".shipyard", "consignments")
+		require.NoError(t, os.RemoveAll(consignmentsDir))
+
+		err := runVersionWithDir(tempDir, &VersionCommandOptions{Preview: true})
+
+		require.NoError(t, err)
+		assert.NoDirExists(t, consignmentsDir, "preview must not create a missing read-only directory")
+	})
+
+	t.Run("uses configured consignments path", func(t *testing.T) {
+		tempDir := setupVersionTestRepo(t)
+		defaultDir := filepath.Join(tempDir, ".shipyard", "consignments")
+		require.NoError(t, os.RemoveAll(defaultDir))
+		customDir := filepath.Join(tempDir, "changes", "pending")
+		require.NoError(t, os.MkdirAll(customDir, 0755))
+		createTestConsignmentForVersion(t, customDir, "custom-1", []string{"test-package"}, "patch", "Custom path fix")
+
+		configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+		configContent, err := os.ReadFile(configPath)
+		require.NoError(t, err)
+		configContent = []byte(strings.Replace(string(configContent), ".shipyard/consignments", "changes/pending", 1))
+		require.NoError(t, os.WriteFile(configPath, configContent, 0644))
+
+		err = runVersionWithDir(tempDir, &VersionCommandOptions{Preview: true})
+
+		require.NoError(t, err)
+		assert.FileExists(t, filepath.Join(customDir, "custom-1.md"))
+		assert.NoDirExists(t, defaultDir)
+	})
+}
+
 // TestVersionCommand_VersionBumpPropagation tests dependency version propagation
 func TestVersionCommand_VersionBumpPropagation(t *testing.T) {
 	tests := []struct {
-		name              string
-		packages          []string
-		dependencies      map[string][]string
-		directChanges     map[string]string // package -> changeType
-		expectedVersions  map[string]string // package -> version
-		description       string
+		name             string
+		packages         []string
+		dependencies     map[string][]string
+		directChanges    map[string]string // package -> changeType
+		expectedVersions map[string]string // package -> version
+		description      string
 	}{
 		{
 			name:     "linked dependency propagation",
@@ -251,31 +286,31 @@ func TestVersionCommand_VersionBumpPropagation(t *testing.T) {
 // TestVersionCommand_FileUpdates tests version file updates for different ecosystems
 func TestVersionCommand_FileUpdates(t *testing.T) {
 	tests := []struct {
-		name         string
-		ecosystem    string
-		versionFile  string
-		oldVersion   string
-		newVersion   string
+		name            string
+		ecosystem       string
+		versionFile     string
+		oldVersion      string
+		newVersion      string
 		expectedContent string
-		description  string
+		description     string
 	}{
 		{
-			name:        "go version.go update",
-			ecosystem:   "go",
-			versionFile: "version.go",
-			oldVersion:  "1.0.0",
-			newVersion:  "1.1.0",
+			name:            "go version.go update",
+			ecosystem:       "go",
+			versionFile:     "version.go",
+			oldVersion:      "1.0.0",
+			newVersion:      "1.1.0",
 			expectedContent: `const Version = "1.1.0"`,
-			description: "should update Go version constant",
+			description:     "should update Go version constant",
 		},
 		{
-			name:        "npm package.json update",
-			ecosystem:   "npm",
-			versionFile: "package.json",
-			oldVersion:  "2.0.0",
-			newVersion:  "2.1.0",
+			name:            "npm package.json update",
+			ecosystem:       "npm",
+			versionFile:     "package.json",
+			oldVersion:      "2.0.0",
+			newVersion:      "2.1.0",
 			expectedContent: `"version": "2.1.0"`,
-			description: "should update package.json version field",
+			description:     "should update package.json version field",
 		},
 	}
 
@@ -300,8 +335,8 @@ func TestVersionCommand_ChangelogGeneration(t *testing.T) {
 			consignments: []string{"fix: bug", "feat: feature"},
 			template:     "builtin:default",
 			expectedContent: []string{
-				"## ",      // section header
-				"- ",       // list item
+				"## ", // section header
+				"- ",  // list item
 				"fix: bug",
 				"feat: feature",
 			},
@@ -376,11 +411,11 @@ func TestVersionCommand_GitOperations(t *testing.T) {
 // TestVersionCommand_HistoryArchival tests consignment archival to history.json
 func TestVersionCommand_HistoryArchival(t *testing.T) {
 	tests := []struct {
-		name              string
-		consignmentCount  int
-		existingHistory   int
-		expectedTotal     int
-		description       string
+		name             string
+		consignmentCount int
+		existingHistory  int
+		expectedTotal    int
+		description      string
 	}{
 		{
 			name:             "append to empty history",

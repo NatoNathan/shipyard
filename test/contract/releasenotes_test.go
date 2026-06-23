@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,6 +60,66 @@ func TestReleaseNotesContract_NoHistory(t *testing.T) {
 		strings.Contains(outputStr, "no releases found") ||
 			strings.Contains(outputStr, "no releases"),
 		"Output should indicate no releases found, got: %s", string(output))
+}
+
+func TestReleaseNotesContract_MissingHistory(t *testing.T) {
+	shipyardBin := buildShipyard(t)
+	tempDir := t.TempDir()
+	initializeTestRepo(t, shipyardBin, tempDir)
+	require.NoError(t, os.Remove(filepath.Join(tempDir, ".shipyard", "history.json")))
+
+	cmd := exec.Command(shipyardBin, "--json", "release-notes", "--package", "core")
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	require.NoError(t, err, "missing history should be treated as empty: %s", output)
+	assert.True(t, json.Valid(output), "output should be valid JSON: %s", output)
+	assert.JSONEq(t, `{"package":"core","entries":[]}`, string(output))
+}
+
+func TestReleaseNotesContract_ConfiguredHistoryPath(t *testing.T) {
+	shipyardBin := buildShipyard(t)
+	tempDir := t.TempDir()
+	initializeTestRepo(t, shipyardBin, tempDir)
+
+	customDir := filepath.Join(tempDir, "release-data")
+	require.NoError(t, os.MkdirAll(customDir, 0755))
+	writeHistoryJSON(t, tempDir, `[{"version":"1.0.1","package":"core","tag":"core/v1.0.1","timestamp":"2026-01-30T10:00:00Z","consignments":[]}]`)
+	require.NoError(t, os.Rename(
+		filepath.Join(tempDir, ".shipyard", "history.json"),
+		filepath.Join(customDir, "history.json"),
+	))
+	writeConfig(t, tempDir, `packages:
+  - name: core
+    path: ./core
+    ecosystem: go
+consignments:
+  path: .shipyard/consignments
+history:
+  path: release-data/history.json
+`)
+
+	cmd := exec.Command(shipyardBin, "release-notes", "--package", "core")
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	require.NoError(t, err, "release-notes should honor configured history path: %s", output)
+	assert.Contains(t, string(output), "1.0.1")
+}
+
+func TestReleaseNotesContract_InvalidHistoryPath(t *testing.T) {
+	shipyardBin := buildShipyard(t)
+	tempDir := t.TempDir()
+	initializeTestRepo(t, shipyardBin, tempDir)
+	require.NoError(t, os.Remove(filepath.Join(tempDir, ".shipyard", "history.json")))
+	require.NoError(t, os.Mkdir(filepath.Join(tempDir, ".shipyard", "history.json"), 0755))
+
+	cmd := exec.Command(shipyardBin, "release-notes", "--package", "core")
+	cmd.Dir = tempDir
+	output, err := cmd.CombinedOutput()
+
+	require.Error(t, err, "a non-file history path should fail: %s", output)
+	assert.Equal(t, 1, getExitCode(err))
 }
 
 // TestReleaseNotesContract_JSONOutput tests that global --json flag produces JSON output

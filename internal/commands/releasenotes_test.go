@@ -69,6 +69,54 @@ func TestReleaseNotesCommand_NoHistory(t *testing.T) {
 	assert.Contains(t, output, "No releases found", "Should indicate no releases")
 }
 
+func TestReleaseNotesCommand_MissingConfiguredHistory(t *testing.T) {
+	tempDir := t.TempDir()
+	setupMinimalShipyardDir(t, tempDir)
+	require.NoError(t, os.Remove(filepath.Join(tempDir, ".shipyard", "history.json")))
+	defer changeToDir(t, tempDir)()
+
+	t.Run("human output", func(t *testing.T) {
+		cmd := NewReleaseNotesCommand()
+		output := captureOutput(func() {
+			require.NoError(t, cmd.Execute())
+		})
+		assert.Contains(t, output, "No releases found")
+	})
+
+	t.Run("json output", func(t *testing.T) {
+		output := captureOutput(func() {
+			require.NoError(t, runReleaseNotes(&ReleaseNotesOptions{JSON: true}))
+		})
+		assert.JSONEq(t, `{"package":"test","entries":[]}`, output)
+	})
+}
+
+func TestReleaseNotesCommand_UsesConfiguredHistoryPath(t *testing.T) {
+	tempDir := setupReleaseNotesTestRepo(t)
+	defer changeToDir(t, tempDir)()
+
+	customDir := filepath.Join(tempDir, "release-data")
+	require.NoError(t, os.MkdirAll(customDir, 0755))
+	require.NoError(t, os.Rename(
+		filepath.Join(tempDir, ".shipyard", "history.json"),
+		filepath.Join(customDir, "history.json"),
+	))
+
+	configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	configContent = append(configContent, []byte("history:\n  path: release-data/history.json\n")...)
+	require.NoError(t, os.WriteFile(configPath, configContent, 0644))
+
+	cmd := NewReleaseNotesCommand()
+	cmd.SetArgs([]string{"--package", "core"})
+	output := captureOutput(func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	assert.Contains(t, output, "1.1.0")
+}
+
 // Helper functions
 
 func setupReleaseNotesTestRepo(t *testing.T) string {

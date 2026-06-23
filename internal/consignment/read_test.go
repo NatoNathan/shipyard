@@ -245,6 +245,16 @@ func TestReadAllConsignments_MissingDirectoryIsEmpty(t *testing.T) {
 	assert.Empty(t, result)
 }
 
+func TestReadAllConsignments_NonDirectoryPathReturnsError(t *testing.T) {
+	consignmentDir := filepath.Join(t.TempDir(), "consignments")
+	require.NoError(t, os.WriteFile(consignmentDir, []byte("not a directory"), 0644))
+
+	result, err := ReadAllConsignments(consignmentDir)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
 func TestReadAllConsignmentsWithFilter(t *testing.T) {
 	tmpDir := t.TempDir()
 	consignmentDir := filepath.Join(tmpDir, ".shipyard", "consignments")

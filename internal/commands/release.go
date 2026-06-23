@@ -17,12 +17,12 @@ import (
 
 // ReleaseOptions holds options for the release command
 type ReleaseOptions struct {
-	Package     string
-	Draft       bool
-	Prerelease  bool
-	Tag         string
-	JSON        bool   // Output in JSON format
-	Quiet       bool   // Suppress output
+	Package    string
+	Draft      bool
+	Prerelease bool
+	Tag        string
+	JSON       bool // Output in JSON format
+	Quiet      bool // Suppress output
 }
 
 // NewReleaseCommand creates the release command
@@ -33,7 +33,7 @@ func NewReleaseCommand() *cobra.Command {
 		Use:                   "release [-p package] [--tag tag] [--draft] [--prerelease]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"publish"},
-		Short:   "Signal arrival at port",
+		Short:                 "Signal arrival at port",
 		Long: `Publish a version release to GitHub. Creates a GitHub release using an existing
 git tag. The tag must already exist locally and be pushed to the remote.
 
@@ -101,7 +101,7 @@ func runRelease(opts *ReleaseOptions) error {
 	}
 
 	// Read history to find latest entry for package
-	historyPath := filepath.Join(cwd, ".shipyard", "history.json")
+	historyPath := filepath.Join(cwd, cfg.History.Path)
 	entries, err := history.ReadHistory(historyPath)
 	if err != nil {
 		return fmt.Errorf("failed to read history: %w", err)
