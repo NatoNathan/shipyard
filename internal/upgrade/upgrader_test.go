@@ -21,9 +21,9 @@ func TestNewUpgrader(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, false)
 
 	tests := []struct {
-		name        string
-		method      InstallMethod
-		expectError bool
+		name         string
+		method       InstallMethod
+		expectError  bool
 		upgraderType string
 	}{
 		{
@@ -299,5 +299,48 @@ func TestScriptUpgrader_DownloadFile(t *testing.T) {
 		data, err := upgrader.downloadFile(ctx, server.URL+"/test")
 		assert.Error(t, err)
 		assert.Nil(t, data)
+	})
+
+	t.Run("rejects oversized content length", func(t *testing.T) {
+		oversizedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "11")
+			w.Write([]byte("hello world"))
+		}))
+		defer oversizedServer.Close()
+
+		limited := &ScriptUpgrader{log: log, maxDownloadBytes: 5}
+		data, err := limited.downloadFile(context.Background(), oversizedServer.URL)
+
+		assert.Error(t, err)
+		assert.Nil(t, data)
+		assert.Contains(t, err.Error(), "maximum size")
+	})
+
+	t.Run("rejects streaming response beyond limit", func(t *testing.T) {
+		oversizedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("hello world"))
+		}))
+		defer oversizedServer.Close()
+
+		limited := &ScriptUpgrader{log: log, maxDownloadBytes: 5}
+		data, err := limited.downloadFile(context.Background(), oversizedServer.URL)
+
+		assert.Error(t, err)
+		assert.Nil(t, data)
+		assert.Contains(t, err.Error(), "maximum size")
+	})
+
+	t.Run("limits redirects", func(t *testing.T) {
+		redirectServer := httptest.NewServer(nil)
+		redirectServer.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, redirectServer.URL+r.URL.Path, http.StatusFound)
+		})
+		defer redirectServer.Close()
+
+		data, err := upgrader.downloadFile(context.Background(), redirectServer.URL+"/loop")
+
+		assert.Error(t, err)
+		assert.Nil(t, data)
+		assert.Contains(t, err.Error(), "redirects")
 	})
 }

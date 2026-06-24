@@ -23,17 +23,25 @@ const (
 
 // TemplateLoader handles loading templates from various sources
 type TemplateLoader struct {
-	baseDir   string
-	cache     map[string]string
-	authToken string
-	timeout   time.Duration
+	baseDir          string
+	cache            map[string]string
+	authToken        string
+	timeout          time.Duration
+	maxResponseBytes int64
 }
+
+const (
+	defaultTemplateTimeout          = 30 * time.Second
+	defaultTemplateMaxResponseBytes = int64(1 << 20)
+	maxTemplateRedirects            = 3
+)
 
 // NewTemplateLoader creates a new template loader
 func NewTemplateLoader() *TemplateLoader {
 	return &TemplateLoader{
-		cache:   make(map[string]string),
-		timeout: 30 * time.Second,
+		cache:            make(map[string]string),
+		timeout:          defaultTemplateTimeout,
+		maxResponseBytes: defaultTemplateMaxResponseBytes,
 	}
 }
 
@@ -55,6 +63,11 @@ func (l *TemplateLoader) GetAuthToken() string {
 // SetTimeout sets the timeout for remote operations
 func (l *TemplateLoader) SetTimeout(timeout time.Duration) {
 	l.timeout = timeout
+}
+
+// SetMaxResponseBytes sets the maximum remote template response size.
+func (l *TemplateLoader) SetMaxResponseBytes(maxBytes int64) {
+	l.maxResponseBytes = maxBytes
 }
 
 // Load loads a template from the specified source
@@ -175,6 +188,15 @@ func (l *TemplateLoader) loadFile(path string) (string, error) {
 func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 	client := &http.Client{
 		Timeout: l.timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= maxTemplateRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxTemplateRedirects)
+			}
+			if l.authToken != "" && len(via) > 0 && sameOrigin(req, via[0]) {
+				req.Header.Set("Authorization", "Bearer "+l.authToken)
+			}
+			return nil
+		},
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -197,12 +219,36 @@ func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 		return "", fmt.Errorf("failed to fetch template: HTTP %d", resp.StatusCode)
 	}
 
-	content, err := io.ReadAll(resp.Body)
+	maxBytes := l.maxResponseBytes
+	if maxBytes <= 0 {
+		maxBytes = defaultTemplateMaxResponseBytes
+	}
+	if resp.ContentLength > maxBytes {
+		return "", fmt.Errorf("template response exceeds maximum size of %d bytes", maxBytes)
+	}
+
+	content, err := readLimited(resp.Body, maxBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
 	return string(content), nil
+}
+
+func sameOrigin(req *http.Request, first *http.Request) bool {
+	return req.URL.Scheme == first.URL.Scheme && req.URL.Host == first.URL.Host
+}
+
+func readLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
+	limited := io.LimitReader(reader, maxBytes+1)
+	content, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxBytes {
+		return nil, fmt.Errorf("response exceeds maximum size of %d bytes", maxBytes)
+	}
+	return content, nil
 }
 
 // loadGit loads a template from a git repository
@@ -248,4 +294,3 @@ func parseGitSource(source string) (gitURL, path, ref string) {
 
 	return gitURL, path, ref
 }
-

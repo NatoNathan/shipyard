@@ -1,6 +1,9 @@
 package template
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -159,15 +162,82 @@ func TestLoadTemplate_Inline(t *testing.T) {
 }
 
 func TestLoadTemplate_HTTPS(t *testing.T) {
-	// These tests require network access
-	t.Run("https URL", func(t *testing.T) {
-		t.Skip("Skipping network test - would need mock HTTP server")
+	t.Run("loads from local HTTP server with auth", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+			_, _ = w.Write([]byte("remote template"))
+		}))
+		defer server.Close()
 
 		loader := NewTemplateLoader()
-		_, err := loader.Load("https://example.com/template.tmpl")
+		loader.SetAuthToken("test-token")
+		content, err := loader.Load(server.URL + "/template.tmpl")
 
-		// In real implementation, this would fetch from URL
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, "remote template", content)
+	})
+
+	t.Run("rejects oversized content length", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "11")
+			_, _ = w.Write([]byte("hello world"))
+		}))
+		defer server.Close()
+
+		loader := NewTemplateLoader()
+		loader.SetMaxResponseBytes(5)
+		_, err := loader.Load(server.URL + "/template.tmpl")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "maximum size")
+	})
+
+	t.Run("rejects streaming response beyond limit", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("hello world"))
+		}))
+		defer server.Close()
+
+		loader := NewTemplateLoader()
+		loader.SetMaxResponseBytes(5)
+		_, err := loader.Load(server.URL + "/template.tmpl")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "maximum size")
+	})
+
+	t.Run("limits redirects", func(t *testing.T) {
+		server := httptest.NewServer(nil)
+		server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, server.URL+r.URL.Path, http.StatusFound)
+		})
+		defer server.Close()
+
+		loader := NewTemplateLoader()
+		_, err := loader.Load(server.URL + "/template.tmpl")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "redirects")
+	})
+
+	t.Run("preserves auth across same-origin redirect", func(t *testing.T) {
+		server := httptest.NewServer(nil)
+		server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/start" {
+				http.Redirect(w, r, server.URL+"/final", http.StatusFound)
+				return
+			}
+			assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+			_, _ = fmt.Fprint(w, "redirected template")
+		})
+		defer server.Close()
+
+		loader := NewTemplateLoader()
+		loader.SetAuthToken("test-token")
+		content, err := loader.Load(server.URL + "/start")
+
+		require.NoError(t, err)
+		assert.Equal(t, "redirected template", content)
 	})
 }
 

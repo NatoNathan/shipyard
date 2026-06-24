@@ -95,9 +95,16 @@ func (u *GoUpgrader) GetUpgradeCommand() string {
 
 // ScriptUpgrader handles upgrades for script/manual installations
 type ScriptUpgrader struct {
-	binaryPath string
-	log        *logger.Logger
+	binaryPath       string
+	log              *logger.Logger
+	maxDownloadBytes int64
 }
+
+const (
+	defaultUpgradeDownloadTimeout  = 5 * time.Minute
+	defaultUpgradeMaxDownloadBytes = int64(200 << 20)
+	maxUpgradeRedirects            = 3
+)
 
 func (u *ScriptUpgrader) Upgrade(ctx context.Context, release *ReleaseInfo) error {
 	// Determine platform string
@@ -170,7 +177,15 @@ func (u *ScriptUpgrader) downloadFile(ctx context.Context, url string) ([]byte, 
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 5 * time.Minute}
+	client := &http.Client{
+		Timeout: defaultUpgradeDownloadTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= maxUpgradeRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxUpgradeRedirects)
+			}
+			return nil
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -181,7 +196,27 @@ func (u *ScriptUpgrader) downloadFile(ctx context.Context, url string) ([]byte, 
 		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
 
-	return io.ReadAll(resp.Body)
+	maxBytes := u.maxDownloadBytes
+	if maxBytes <= 0 {
+		maxBytes = defaultUpgradeMaxDownloadBytes
+	}
+	if resp.ContentLength > maxBytes {
+		return nil, fmt.Errorf("download exceeds maximum size of %d bytes", maxBytes)
+	}
+
+	return readLimited(resp.Body, maxBytes)
+}
+
+func readLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
+	limited := io.LimitReader(reader, maxBytes+1)
+	content, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxBytes {
+		return nil, fmt.Errorf("download exceeds maximum size of %d bytes", maxBytes)
+	}
+	return content, nil
 }
 
 // verifyChecksum verifies the SHA256 checksum of the downloaded file
