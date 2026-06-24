@@ -1,6 +1,7 @@
 package template
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -123,12 +124,42 @@ func TestParseTemplate_FunctionWhitelisting(t *testing.T) {
 		}
 	})
 
-	t.Run("env function should be blocked if configured", func(t *testing.T) {
-		t.Skip("Environment access blocking would be implemented in production")
-		// In a real implementation, we'd block functions like:
-		// - env (environment variable access)
-		// - getHostByName (network access)
-		// - exec (command execution)
+	t.Run("environment and network functions are blocked by default", func(t *testing.T) {
+		blockedFunctions := []string{
+			`{{ env "SHIPYARD_SECRET" }}`,
+			`{{ expandenv "$SHIPYARD_SECRET" }}`,
+			`{{ getHostByName "example.com" }}`,
+		}
+
+		parser := NewTemplateParser()
+		for _, content := range blockedFunctions {
+			_, err := parser.Parse("test", content)
+			assert.Error(t, err, "blocked function should not parse: %s", content)
+			assert.Contains(t, err.Error(), "function")
+		}
+	})
+
+	t.Run("blocked functions cannot be reintroduced accidentally", func(t *testing.T) {
+		parser := NewTemplateParser()
+		parser.AddFunction("env", func(string) string { return "leaked" })
+
+		_, err := parser.Parse("test", `{{ env "SHIPYARD_SECRET" }}`)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "function")
+	})
+
+	t.Run("environment functions require explicit opt in", func(t *testing.T) {
+		t.Setenv("SHIPYARD_SECRET", "safe-opt-in")
+
+		parser := NewTemplateParser()
+		parser.EnableEnvironmentAccess()
+		tmpl, err := parser.Parse("test", `{{ env "SHIPYARD_SECRET" }} {{ expandenv "$SHIPYARD_SECRET" }}`)
+
+		require.NoError(t, err)
+		var output bytes.Buffer
+		require.NoError(t, tmpl.Execute(&output, nil))
+		assert.Equal(t, "safe-opt-in safe-opt-in", output.String())
 	})
 }
 
