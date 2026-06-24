@@ -34,7 +34,6 @@ To advance to the next stage, use [`shipyard version promote`](./promote.md). To
 
 | Option | Description |
 |--------|-------------|
-| `--config`, `-c` | Path to configuration file (default: `.shipyard/shipyard.yaml`) |
 | `--json`, `-j` | Output in JSON format |
 | `--quiet`, `-q` | Suppress all output except errors |
 | `--verbose`, `-v` | Enable verbose logging |
@@ -513,6 +512,6 @@ jobs:
 ## See Also
 
 - [Configuration Reference](../configuration.md)
-- [Tag Templates](../tag-templates.md)
+- [Tag Templates](../tag-generation.md)
 - [Consignment Format](../consignment-format.md)
-- [CI/CD Integration Guide](../ci-cd.md)
+- [CI/CD Integration Guide](../../README.md#development)

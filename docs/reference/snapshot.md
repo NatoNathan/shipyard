@@ -34,7 +34,6 @@ Like taking a quick navigational reading, snapshots capture the current state wi
 
 | Option | Description |
 |--------|-------------|
-| `--config`, `-c` | Path to configuration file (default: `.shipyard/shipyard.yaml`) |
 | `--json`, `-j` | Output in JSON format |
 | `--quiet`, `-q` | Suppress all output except errors |
 | `--verbose`, `-v` | Enable verbose logging |
@@ -368,12 +367,12 @@ Use snapshot versions for Docker image tags:
 - [`version prerelease`](./prerelease.md) - Create stage-based pre-release (alpha, beta, rc)
 - [`version promote`](./promote.md) - Promote to next stage or stable
 - [`version`](./version.md) - Create stable release
-- [`consign`](./consign.md) - Record changes that will be in snapshot
+- [`consign`](./add.md) - Record changes that will be in snapshot
 - [`release`](./release.md) - Publish release (snapshots can use `--prerelease` flag)
 
 ## See Also
 
 - [Configuration Reference](../configuration.md)
 - [Pre-Release Reference](./prerelease.md)
-- [Tag Templates](../tag-templates.md)
-- [CI/CD Integration Guide](../ci-cd.md)
+- [Tag Templates](../tag-generation.md)
+- [CI/CD Integration Guide](../../README.md#development)

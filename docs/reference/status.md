@@ -23,11 +23,10 @@ The `status` command shows pending consignments and their calculated version bum
 
 ## Global Options
 
-These options are available for all shipyard commands:
+These global options are provided by the root command:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |

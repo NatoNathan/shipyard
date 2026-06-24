@@ -25,11 +25,10 @@ Supports interactive mode (prompts for configuration) and non-interactive mode (
 
 ## Global Options
 
-These options are available for all shipyard commands:
+These global options are provided by the root command:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -159,4 +158,4 @@ packages:
 ## See Also
 
 - [Configuration Reference](../configuration.md) - Full shipyard.yaml format
-- [Getting Started](../getting-started.md) - First-time setup guide
+- [Getting Started](../../README.md#basic-usage) - First-time setup guide

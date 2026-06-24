@@ -98,6 +98,7 @@ git push --tags
 | `version snapshot` | - | Create timestamped snapshot version |
 | `version promote` | - | Advance a pre-release stage |
 | `version prerelease` | `pre` | Create or increment a pre-release |
+| `config` | `cfg` | Review configuration commands |
 | `config show` | - | Display configuration |
 | `completion` | - | Generate shell completion |
 | `upgrade` | - | Upgrade Shipyard CLI |
@@ -352,7 +353,7 @@ jq '.[] | select(.consignments[].changeType == "major")' .shipyard/history.json
 
 ## Global Flags
 
-All commands support these global flags:
+The CLI provides these global flags:
 
 | Flag | Short | Description |
 |------|-------|-------------|

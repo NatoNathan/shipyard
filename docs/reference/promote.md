@@ -29,7 +29,6 @@ The `promote` command advances pre-releases through configured stages. Like navi
 
 | Option | Description |
 |--------|-------------|
-| `--config`, `-c` | Path to configuration file (default: `.shipyard/shipyard.yaml`) |
 | `--json`, `-j` | Output in JSON format |
 | `--quiet`, `-q` | Suppress all output except errors |
 | `--verbose`, `-v` | Enable verbose logging |
@@ -485,12 +484,12 @@ jobs:
 - [`version prerelease`](./prerelease.md) - Create or increment pre-release at current stage
 - [`version snapshot`](./snapshot.md) - Create timestamped snapshot build
 - [`version`](./version.md) - Promote to stable release (from highest stage)
-- [`consign`](./consign.md) - Record changes that will be promoted
+- [`consign`](./add.md) - Record changes that will be promoted
 - [`status`](./status.md) - View current pre-release stage
 
 ## See Also
 
 - [Configuration Reference](../configuration.md)
 - [Pre-Release Reference](./prerelease.md)
-- [Tag Templates](../tag-templates.md)
-- [CI/CD Integration Guide](../ci-cd.md)
+- [Tag Templates](../tag-generation.md)
+- [CI/CD Integration Guide](../../README.md#development)
