@@ -3,8 +3,12 @@ package commands
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,9 +53,36 @@ packages:
 
 // TestInitCommand_RemoteConfigGit tests initialization with git remote config
 func TestInitCommand_RemoteConfigGit(t *testing.T) {
-	// This test is more complex as it requires setting up a git repository
-	// For now, we'll skip it and rely on HTTP/file-based testing
-	t.Skip("Git remote config testing requires more complex setup")
+	tempDir := t.TempDir()
+	initGitRepo(t, tempDir)
+
+	remoteRepoDir := filepath.Join(t.TempDir(), "remote-config.git")
+	repo, err := gogit.PlainInit(remoteRepoDir, false)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(remoteRepoDir, "shipyard.yaml"), []byte("packages: []\n"), 0644))
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+	_, err = worktree.Add("shipyard.yaml")
+	require.NoError(t, err)
+	_, err = worktree.Commit("add remote config", &gogit.CommitOptions{
+		Author: &object.Signature{Name: "Test", Email: "test@example.com", When: time.Now()},
+	})
+	require.NoError(t, err)
+
+	remote := "file://" + remoteRepoDir + "#shipyard.yaml@master"
+	err = runInit(tempDir, InitOptions{Yes: true, Force: false, Remote: remote})
+	require.NoError(t, err)
+
+	configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	content := string(configContent)
+
+	assert.Contains(t, content, "extends:")
+	assert.Contains(t, content, "git: file://"+remoteRepoDir)
+	assert.Contains(t, content, "path: shipyard.yaml")
+	assert.Contains(t, content, "ref: master")
+	assert.False(t, strings.Contains(content, "url: "+remote), "git remotes should be stored as structured git/path/ref fields")
 }
 
 // TestInitCommand_RemoteConfigMerge tests that remote and local configs are properly merged

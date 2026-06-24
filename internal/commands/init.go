@@ -20,9 +20,9 @@ import (
 type InitOptions struct {
 	Force  bool
 	Remote string
-	Yes    bool  // Skip prompts and use defaults
-	JSON   bool  // Output in JSON format
-	Quiet  bool  // Suppress output
+	Yes    bool // Skip prompts and use defaults
+	JSON   bool // Output in JSON format
+	Quiet  bool // Suppress output
 }
 
 // NewInitCommand creates the init command
@@ -35,7 +35,7 @@ func NewInitCommand() *cobra.Command {
 		Use:                   "init [-f] [-y] [-r url]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"setup"},
-		Short:   "Set sail - prepare your repository",
+		Short:                 "Set sail - prepare your repository",
 		Long: `Prepare your repository for the versioning voyage ahead. Sets up the shipyard
 with cargo manifests, navigation charts, and the captain's log.
 
@@ -127,11 +127,11 @@ func runInit(projectPath string, options InitOptions) error {
 	if options.JSON {
 		// JSON output
 		jsonData := map[string]interface{}{
-			"success":              true,
-			"configPath":           configPath,
-			"consignmentsDir":      filepath.Join(shipyardDir, "consignments"),
-			"historyFile":          historyPath,
-			"initialized":          true,
+			"success":         true,
+			"configPath":      configPath,
+			"consignmentsDir": filepath.Join(shipyardDir, "consignments"),
+			"historyFile":     historyPath,
+			"initialized":     true,
 		}
 		return PrintJSON(os.Stdout, jsonData)
 	}
@@ -195,11 +195,7 @@ func generateConfiguration(projectPath string, options InitOptions) (*config.Con
 
 	// Add remote config if provided
 	if options.Remote != "" {
-		cfg.Extends = []config.RemoteConfig{
-			{
-				URL: options.Remote,
-			},
-		}
+		cfg.Extends = []config.RemoteConfig{config.NewRemoteConfig(options.Remote)}
 	}
 
 	// Auto-detect packages

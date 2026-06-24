@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
 )
 
 // DetectInstallation determines how shipyard was installed
@@ -81,7 +83,7 @@ func isDocker() bool {
 	}
 
 	// Check cgroup
-	data, err := os.ReadFile("/proc/1/cgroup")
+	data, err := fileutil.ReadFile("/proc/1/cgroup")
 	if err == nil && strings.Contains(string(data), "docker") {
 		return true
 	}
@@ -157,7 +159,7 @@ func isGoInstall(path string) bool {
 // canWriteFile checks if we have write permission to a file
 func canWriteFile(path string) bool {
 	// Try to open for writing
-	file, err := os.OpenFile(path, os.O_WRONLY, 0)
+	file, err := fileutil.OpenFile(path, os.O_WRONLY, 0)
 	if err != nil {
 		return false
 	}

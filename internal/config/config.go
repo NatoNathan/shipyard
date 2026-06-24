@@ -325,10 +325,10 @@ func (c *Config) Merge(overlay *Config) *Config {
 		GitHub:       c.GitHub,
 		PreRelease:   c.PreRelease,
 	}
-	
+
 	// Append overlay packages
 	merged.Packages = append(merged.Packages, overlay.Packages...)
-	
+
 	// Overlay takes precedence for other fields
 	if len(overlay.Extends) > 0 {
 		merged.Extends = overlay.Extends
@@ -420,6 +420,15 @@ func (c *Config) WithDefaults() *Config {
 	return &result
 }
 
+// NewRemoteConfig parses a remote configuration source string into a typed
+// remote config descriptor. HTTP/file sources are stored as URL sources, while
+// git-style sources populate Git, Path, and Ref.
+func NewRemoteConfig(value string) RemoteConfig {
+	var rc RemoteConfig
+	rc.parseImplied(value)
+	return rc
+}
+
 // UnmarshalYAML implements custom unmarshaling for RemoteConfig
 func (rc *RemoteConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Try string format first (implied type detection)
@@ -428,7 +437,7 @@ func (rc *RemoteConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		rc.parseImplied(str)
 		return nil
 	}
-	
+
 	// Fall back to object format
 	type rawConfig RemoteConfig
 	var raw rawConfig
@@ -448,7 +457,7 @@ func (rc *RemoteConfig) parseImplied(value string) {
 		rc.parseGitURL(value)
 		return
 	}
-	
+
 	// HTTP(S) URL
 	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
 		if strings.Contains(value, ".git") || strings.Contains(value, "#") {
@@ -458,7 +467,7 @@ func (rc *RemoteConfig) parseImplied(value string) {
 		}
 		return
 	}
-	
+
 	// Default: treat as direct URL
 	rc.URL = value
 }
@@ -467,7 +476,7 @@ func (rc *RemoteConfig) parseImplied(value string) {
 func (rc *RemoteConfig) parseGitURL(value string) {
 	parts := strings.SplitN(value, "#", 2)
 	rc.Git = parts[0]
-	
+
 	if len(parts) == 2 {
 		fragment := parts[1]
 		if idx := strings.LastIndex(fragment, "@"); idx != -1 {
@@ -477,7 +486,7 @@ func (rc *RemoteConfig) parseGitURL(value string) {
 			rc.Path = fragment
 		}
 	}
-	
+
 	if rc.Path == "" {
 		rc.Path = "shipyard.yaml"
 	}

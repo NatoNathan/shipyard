@@ -1,6 +1,10 @@
 # Shipyard CLI Development Commands
 # https://github.com/casey/just
 
+GOLANGCI_LINT_VERSION := "v2.12.2"
+GOSEC_VERSION := "v2.27.1"
+GOVULNCHECK_VERSION := "v1.3.0"
+
 # Default recipe to display help
 default:
     @just --list
@@ -39,7 +43,7 @@ test-contract:
 
 # Run linters
 lint:
-    golangci-lint run
+    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{GOLANGCI_LINT_VERSION}} run
 
 # Run linters via Dagger
 lint-dagger:
@@ -50,9 +54,10 @@ fmt:
     go fmt ./...
     gofmt -s -w .
 
-# Run security scanner
+# Run pinned security scanners
 security:
-    gosec ./...
+    go run github.com/securego/gosec/v2/cmd/gosec@{{GOSEC_VERSION}} ./...
+    go run golang.org/x/vuln/cmd/govulncheck@{{GOVULNCHECK_VERSION}} ./...
 
 # Clean build artifacts
 clean:
@@ -84,8 +89,8 @@ verify:
     go mod tidy
     git diff --exit-code go.mod go.sum
 
-# Run all CI checks (lint, test, verify)
-ci: lint test verify
+# Run all CI checks (lint, test, verify, security)
+ci: lint test verify security
     @echo "All CI checks passed!"
 
 # Run all CI checks via Dagger
@@ -130,8 +135,9 @@ watch:
 # Initialize development environment
 dev-setup:
     go mod download
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-    go install github.com/securego/gosec/v2/cmd/gosec@latest
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{GOLANGCI_LINT_VERSION}}
+    go install github.com/securego/gosec/v2/cmd/gosec@{{GOSEC_VERSION}}
+    go install golang.org/x/vuln/cmd/govulncheck@{{GOVULNCHECK_VERSION}}
     @echo "Development environment ready!"
 
 # Release build with version information

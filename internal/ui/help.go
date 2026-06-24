@@ -52,6 +52,14 @@ func HelpFunc(cmd *cobra.Command, args []string) {
 	writeHelp(w, cmd)
 }
 
+func writeHelpLine(w io.Writer, args ...interface{}) {
+	_, _ = fmt.Fprintln(w, args...)
+}
+
+func writeHelpText(w io.Writer, args ...interface{}) {
+	_, _ = fmt.Fprint(w, args...)
+}
+
 func writeHelp(w io.Writer, cmd *cobra.Command) {
 	// Description (Long or Short)
 	desc := cmd.Long
@@ -59,62 +67,62 @@ func writeHelp(w io.Writer, cmd *cobra.Command) {
 		desc = cmd.Short
 	}
 	if desc != "" {
-		fmt.Fprintln(w, helpDescriptionStyle.Render(desc))
-		fmt.Fprintln(w)
+		writeHelpLine(w, helpDescriptionStyle.Render(desc))
+		writeHelpLine(w)
 	}
 
 	// USAGE
-	fmt.Fprintln(w, helpSectionStyle.Render("USAGE"))
-	fmt.Fprintln(w, "  "+renderUsageLine(cmd))
-	fmt.Fprintln(w)
+	writeHelpLine(w, helpSectionStyle.Render("USAGE"))
+	writeHelpLine(w, "  "+renderUsageLine(cmd))
+	writeHelpLine(w)
 
 	// ALIASES
 	if len(cmd.Aliases) > 0 {
-		fmt.Fprintln(w, helpSectionStyle.Render("ALIASES"))
+		writeHelpLine(w, helpSectionStyle.Render("ALIASES"))
 		allNames := append([]string{cmd.Name()}, cmd.Aliases...)
 		styledNames := make([]string, len(allNames))
 		for i, name := range allNames {
 			styledNames[i] = helpAliasStyle.Render(name)
 		}
-		fmt.Fprintln(w, "  "+strings.Join(styledNames, ", "))
-		fmt.Fprintln(w)
+		writeHelpLine(w, "  "+strings.Join(styledNames, ", "))
+		writeHelpLine(w)
 	}
 
 	// EXAMPLES
 	if cmd.Example != "" {
-		fmt.Fprintln(w, helpSectionStyle.Render("EXAMPLES"))
-		fmt.Fprintln(w, renderExamples(cmd))
-		fmt.Fprintln(w)
+		writeHelpLine(w, helpSectionStyle.Render("EXAMPLES"))
+		writeHelpLine(w, renderExamples(cmd))
+		writeHelpLine(w)
 	}
 
 	// COMMANDS (subcommands)
 	if hasVisibleSubcommands(cmd) {
-		fmt.Fprintln(w, helpSectionStyle.Render("COMMANDS"))
-		fmt.Fprint(w, renderCommands(cmd))
-		fmt.Fprintln(w)
+		writeHelpLine(w, helpSectionStyle.Render("COMMANDS"))
+		writeHelpText(w, renderCommands(cmd))
+		writeHelpLine(w)
 	}
 
 	// FLAGS (local)
 	localFlags := cmd.LocalNonPersistentFlags()
 	if hasVisibleFlags(localFlags) {
-		fmt.Fprintln(w, helpSectionStyle.Render("FLAGS"))
-		fmt.Fprint(w, renderFlags(localFlags))
-		fmt.Fprintln(w)
+		writeHelpLine(w, helpSectionStyle.Render("FLAGS"))
+		writeHelpText(w, renderFlags(localFlags))
+		writeHelpLine(w)
 	}
 
 	// GLOBAL FLAGS (inherited)
 	inheritedFlags := cmd.InheritedFlags()
 	if hasVisibleFlags(inheritedFlags) {
-		fmt.Fprintln(w, helpSectionStyle.Render("GLOBAL FLAGS"))
-		fmt.Fprint(w, renderFlags(inheritedFlags))
-		fmt.Fprintln(w)
+		writeHelpLine(w, helpSectionStyle.Render("GLOBAL FLAGS"))
+		writeHelpText(w, renderFlags(inheritedFlags))
+		writeHelpLine(w)
 	}
 
 	// Footer hint
 	if hasVisibleSubcommands(cmd) {
 		cmdPath := cmd.CommandPath()
 		footer := fmt.Sprintf(`Use "%s [command] --help" for more information about a command.`, cmdPath)
-		fmt.Fprintln(w, helpFooterStyle.Render(footer))
+		writeHelpLine(w, helpFooterStyle.Render(footer))
 	}
 }
 

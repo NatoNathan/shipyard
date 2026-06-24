@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
 )
 
 // OpenEditor opens a text editor for the user to edit content
@@ -43,7 +46,15 @@ func OpenEditorWithFunc(dir, initialContent string, editorFunc func(string) erro
 			editor = "vim" // Default to vim
 		}
 
-		cmd := exec.Command(editor, tempPath)
+		editorParts := strings.Fields(editor)
+		if len(editorParts) == 0 {
+			return "", fmt.Errorf("EDITOR is empty")
+		}
+		if _, err := exec.LookPath(editorParts[0]); err != nil {
+			return "", fmt.Errorf("editor executable not found: %w", err)
+		}
+		args := append(editorParts[1:], tempPath)
+		cmd := exec.Command(editorParts[0], args...) // #nosec G204,G702 -- EDITOR is a user-selected executable; exec.Command does not invoke a shell.
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -54,7 +65,7 @@ func OpenEditorWithFunc(dir, initialContent string, editorFunc func(string) erro
 	}
 
 	// Read edited content
-	content, err := os.ReadFile(tempPath)
+	content, err := fileutil.ReadFile(tempPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read edited content: %w", err)
 	}

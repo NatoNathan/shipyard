@@ -1,6 +1,9 @@
 package upgrade
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -81,8 +84,13 @@ type GoUpgrader struct {
 
 func (u *GoUpgrader) Upgrade(ctx context.Context, release *ReleaseInfo) error {
 	version := release.TagName
+	if !isSafeReleaseTag(version) {
+		return fmt.Errorf("invalid release tag: %s", version)
+	}
 	installPath := fmt.Sprintf("github.com/NatoNathan/shipyard/cmd/shipyard@%s", version)
 
+	// #nosec G204 -- command is fixed to `go install`; installPath is constructed
+	// from a validated release tag and a constant module path.
 	cmd := exec.CommandContext(ctx, "go", "install", installPath)
 	cmd.Stdout = u.log.Writer()
 	cmd.Stderr = u.log.Writer()
@@ -91,6 +99,19 @@ func (u *GoUpgrader) Upgrade(ctx context.Context, release *ReleaseInfo) error {
 
 func (u *GoUpgrader) GetUpgradeCommand() string {
 	return "go install github.com/NatoNathan/shipyard/cmd/shipyard@latest"
+}
+
+func isSafeReleaseTag(tag string) bool {
+	if !strings.HasPrefix(tag, "v") || len(tag) < 2 {
+		return false
+	}
+	for _, r := range tag[1:] {
+		if (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '+' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // ScriptUpgrader handles upgrades for script/manual installations
@@ -244,34 +265,37 @@ func (u *ScriptUpgrader) verifyChecksum(data []byte, filename string, checksums 
 	return fmt.Errorf("checksum not found for %s", filename)
 }
 
-// extractBinary extracts the binary from a tar.gz archive
+// extractBinary extracts the binary from a tar.gz archive.
 func (u *ScriptUpgrader) extractBinary(tarballData []byte) ([]byte, error) {
-	// Create temp file for tarball
-	tmpDir, err := os.MkdirTemp("", "shipyard-upgrade-")
+	gzipReader, err := gzip.NewReader(bytes.NewReader(tarballData))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read gzip archive: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
+	defer func() { _ = gzipReader.Close() }()
 
-	tarballPath := filepath.Join(tmpDir, "shipyard.tar.gz")
-	if err := os.WriteFile(tarballPath, tarballData, 0644); err != nil {
-		return nil, err
+	tarReader := tar.NewReader(gzipReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read tar archive: %w", err)
+		}
+		if header.FileInfo().IsDir() {
+			continue
+		}
+		if filepath.Base(header.Name) != "shipyard" {
+			continue
+		}
+		cleanName := filepath.Clean(header.Name)
+		if filepath.IsAbs(cleanName) || strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) || cleanName == ".." {
+			return nil, fmt.Errorf("unsafe archive path: %s", header.Name)
+		}
+		return io.ReadAll(tarReader)
 	}
 
-	// Extract tarball
-	cmd := exec.Command("tar", "-xzf", tarballPath, "-C", tmpDir)
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("tar extraction failed: %w", err)
-	}
-
-	// Find the binary
-	binaryPath := filepath.Join(tmpDir, "shipyard")
-	data, err := os.ReadFile(binaryPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read extracted binary: %w", err)
-	}
-
-	return data, nil
+	return nil, fmt.Errorf("shipyard binary not found in archive")
 }
 
 // atomicReplace replaces the current binary with the new one atomically
@@ -295,6 +319,7 @@ func (u *ScriptUpgrader) atomicReplace(newBinary []byte) error {
 	_ = tmpFile.Close()
 
 	// Make executable
+	// #nosec G302 -- installed CLI binaries must be executable by the user.
 	if err := os.Chmod(tmpPath, 0755); err != nil {
 		return fmt.Errorf("failed to chmod new binary: %w", err)
 	}

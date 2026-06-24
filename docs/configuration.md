@@ -167,8 +167,14 @@ templates:
 ```
 
 Each template accepts either:
-- `source`: Path to `.tmpl` file or builtin name
+- `source`: Path to `.tmpl` file, builtin name, HTTP(S) URL, or git source (`git:<repo>#<path>@<ref>`)
 - `inline`: Template content directly in YAML
+
+#### Remote Template Trust Boundaries
+
+Treat remote templates as code from the repository or server that provided them. Shipyard renders templates in-process, but the default function map blocks environment and DNS access: Sprig's `env`, `expandenv`, and `getHostByName` functions are unavailable unless environment access is explicitly enabled by trusted application code.
+
+Remote template downloads are bounded: HTTP(S) sources use a timeout, response-size limit, and redirect limit; git sources are shallow-cloned with the loader timeout and only read normalized paths inside the clone. Authentication is explicit via the configured template auth token and is not inferred from process environment by the template itself.
 
 #### Builtin Templates
 

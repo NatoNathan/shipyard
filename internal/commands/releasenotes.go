@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/history"
 	"github.com/NatoNathan/shipyard/internal/template"
@@ -113,7 +115,7 @@ func runReleaseNotes(opts *ReleaseNotesOptions) error {
 
 		output := "No releases found in history\n"
 		if opts.Output != "" {
-			return os.WriteFile(opts.Output, []byte(output), 0644)
+			return fileutil.WriteFile(opts.Output, []byte(output), 0644)
 		}
 		fmt.Print(output)
 		return nil
@@ -205,7 +207,7 @@ func runReleaseNotes(opts *ReleaseNotesOptions) error {
 		if !opts.Quiet {
 			fmt.Printf("Release notes written to %s\n", opts.Output)
 		}
-		return os.WriteFile(opts.Output, []byte(notes), 0644)
+		return fileutil.WriteFile(opts.Output, []byte(notes), 0644)
 	}
 
 	if !opts.Quiet {

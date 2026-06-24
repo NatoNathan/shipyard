@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
 
@@ -26,7 +28,7 @@ func NewNPMEcosystem(path string) *NPMEcosystem {
 func (n *NPMEcosystem) ReadVersion() (semver.Version, error) {
 	packageJSONPath := filepath.Join(n.path, "package.json")
 
-	content, err := os.ReadFile(packageJSONPath)
+	content, err := fileutil.ReadFile(packageJSONPath)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read package.json: %w", err)
 	}
@@ -50,7 +52,7 @@ func (n *NPMEcosystem) UpdateVersion(version semver.Version) error {
 	packageJSONPath := filepath.Join(n.path, "package.json")
 
 	// Read existing content
-	content, err := os.ReadFile(packageJSONPath)
+	content, err := fileutil.ReadFile(packageJSONPath)
 	if err != nil {
 		return fmt.Errorf("failed to read package.json: %w", err)
 	}
@@ -63,7 +65,7 @@ func (n *NPMEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("no version field found in package.json")
 	}
 
-	return os.WriteFile(packageJSONPath, newContent, 0644)
+	return fileutil.WriteFile(packageJSONPath, newContent, 0644)
 }
 
 // GetVersionFiles returns paths to all version-containing files

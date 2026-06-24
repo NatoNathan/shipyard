@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/pkg/types"
 	"github.com/yuin/goldmark"
 	meta "github.com/yuin/goldmark-meta"
@@ -19,7 +21,7 @@ import (
 // Returns a Consignment struct with parsed YAML frontmatter and markdown body
 func ReadConsignment(path string) (*Consignment, error) {
 	// Read file content
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read consignment file: %w", err)
 	}
@@ -241,4 +243,3 @@ func containsAnyPackage(consignmentPackages []string, filter []string) bool {
 
 	return false
 }
-

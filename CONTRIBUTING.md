@@ -25,7 +25,8 @@ Thank you for your interest in contributing to Shipyard! This document provides 
 - **Go 1.25.x** - [Install Go](https://go.dev/doc/install) (the module currently requires Go 1.25.1)
 - **Git** - [Install Git](https://git-scm.com/downloads)
 - **Just** - [Install Just](https://github.com/casey/just#installation) (task runner)
-- **golangci-lint** - [Install golangci-lint](https://golangci-lint.run/usage/install/)
+- **golangci-lint** - installed at the repository-pinned version by `just dev-setup`
+- **gosec** and **govulncheck** - installed at repository-pinned versions by `just dev-setup`
 
 ### Development Setup
 
@@ -42,8 +43,8 @@ Thank you for your interest in contributing to Shipyard! This document provides 
 
    This will:
    - Download Go dependencies
-   - Install golangci-lint (linter)
-   - Install gosec (security scanner)
+   - Install golangci-lint (linter) at the pinned repository version
+   - Install gosec and govulncheck (security scanners) at pinned repository versions
 
 3. **Build the CLI**:
    ```bash
@@ -576,9 +577,9 @@ just bench                 # Run benchmarks
 ```bash
 just lint                  # Run linters
 just fmt                   # Format code
-just security              # Run security scanner (gosec)
+just security              # Run pinned security scanners (gosec + govulncheck)
 just verify                # Verify go.mod is tidy
-just ci                    # Run all CI checks (lint, test, verify)
+just ci                    # Run all CI checks (lint, test, verify, security)
 ```
 
 ### Dependencies
@@ -732,6 +733,7 @@ This ensures Shipyard's features are battle-tested on real releases.
    - Template rendering (changelog, tags, release notes)
    - Builtin template definitions
    - Custom template loading
+   - Remote-template trust boundaries: env/DNS helpers blocked by default, downloads bounded, auth explicit
 
 7. **Git Layer** (`internal/git/`)
    - Git operations (commit, tag, push)

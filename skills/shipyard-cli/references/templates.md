@@ -161,6 +161,8 @@ templates:
 
 Shipyard templates have access to Go template functions plus Sprig functions.
 
+> **Remote template trust boundary:** Treat templates loaded from HTTP(S), git, or shared remote configuration as trusted code from that source. By default, Shipyard removes Sprig's environment and DNS helpers (`env`, `expandenv`, `getHostByName`) so templates cannot read process secrets or perform DNS lookups. Environment access is only available when trusted application code explicitly opts in. Remote HTTP(S) template downloads use bounded timeouts, response-size limits, and redirect limits; git template sources are shallow-cloned with a timeout and read only normalized in-repository paths.
+
 ### String Functions
 
 ```

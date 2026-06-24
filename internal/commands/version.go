@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/internal/changelog"
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/consignment"
@@ -310,7 +312,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 		if err := tx.Backup(changelogPath); err != nil {
 			return err
 		}
-		if err := os.WriteFile(changelogPath, []byte(changelogContent), 0644); err != nil {
+		if err := fileutil.WriteFile(changelogPath, []byte(changelogContent), 0644); err != nil {
 			return fmt.Errorf("failed to write changelog for %s: %w", pkg.Name, err)
 		}
 

@@ -1,6 +1,7 @@
 package template
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // SourceType represents the type of template source
@@ -176,7 +183,7 @@ func (l *TemplateLoader) loadFile(path string) (string, error) {
 		path = filepath.Join(l.baseDir, path)
 	}
 
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read template file: %w", err)
 	}
@@ -191,9 +198,6 @@ func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= maxTemplateRedirects {
 				return fmt.Errorf("stopped after %d redirects", maxTemplateRedirects)
-			}
-			if l.authToken != "" && len(via) > 0 && sameOrigin(req, via[0]) {
-				req.Header.Set("Authorization", "Bearer "+l.authToken)
 			}
 			return nil
 		},
@@ -235,10 +239,6 @@ func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 	return string(content), nil
 }
 
-func sameOrigin(req *http.Request, first *http.Request) bool {
-	return req.URL.Scheme == first.URL.Scheme && req.URL.Host == first.URL.Host
-}
-
 func readLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
 	limited := io.LimitReader(reader, maxBytes+1)
 	content, err := io.ReadAll(limited)
@@ -251,22 +251,64 @@ func readLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
 	return content, nil
 }
 
-// loadGit loads a template from a git repository
+// loadGit loads a template from a git repository.
 // Format: git:https://github.com/user/repo.git#path/to/template@branch
 func (l *TemplateLoader) loadGit(source string) (string, error) {
-	// Parse git source
-	gitURL, path, ref := parseGitSource(source)
-
-	if gitURL == "" {
+	gitURL, templatePath, ref := parseGitSource(source)
+	if gitURL == "" || templatePath == "" {
 		return "", fmt.Errorf("invalid git source format: %s", source)
 	}
+	cleanTemplatePath := filepath.Clean(templatePath)
+	if filepath.IsAbs(cleanTemplatePath) || cleanTemplatePath == ".." || strings.HasPrefix(cleanTemplatePath, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("unsafe git template path: %s", templatePath)
+	}
 
-	// For now, return error indicating git support is not yet implemented
-	// Full implementation would:
-	// 1. Clone or fetch the repository
-	// 2. Checkout the specified ref
-	// 3. Read the file at the specified path
-	return "", fmt.Errorf("git template loading not yet implemented (URL: %s, path: %s, ref: %s)", gitURL, path, ref)
+	cloneDir, err := os.MkdirTemp("", "shipyard-template-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create git template cache: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(cloneDir) }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), l.timeout)
+	defer cancel()
+
+	_, err = gogit.PlainCloneContext(ctx, cloneDir, false, &gogit.CloneOptions{
+		URL:           gitURL,
+		Depth:         1,
+		SingleBranch:  true,
+		ReferenceName: referenceNameFor(ref),
+		Auth:          l.gitAuth(gitURL),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to clone template repository: %w", err)
+	}
+
+	content, err := fileutil.ReadFile(filepath.Join(cloneDir, cleanTemplatePath))
+	if err != nil {
+		return "", fmt.Errorf("failed to read git template file: %w", err)
+	}
+
+	return string(content), nil
+}
+
+func referenceNameFor(ref string) plumbing.ReferenceName {
+	if ref == "" {
+		return ""
+	}
+	if strings.HasPrefix(ref, "refs/") {
+		return plumbing.ReferenceName(ref)
+	}
+	return plumbing.NewBranchReferenceName(ref)
+}
+
+func (l *TemplateLoader) gitAuth(gitURL string) transport.AuthMethod {
+	if l.authToken == "" {
+		return nil
+	}
+	if strings.HasPrefix(gitURL, "https://") {
+		return &gitHttp.BasicAuth{Username: "token", Password: l.authToken}
+	}
+	return nil
 }
 
 // parseGitSource parses a git source string into components

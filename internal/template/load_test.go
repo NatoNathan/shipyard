@@ -7,7 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -242,16 +245,38 @@ func TestLoadTemplate_HTTPS(t *testing.T) {
 }
 
 func TestLoadTemplate_Git(t *testing.T) {
-	t.Run("git repository", func(t *testing.T) {
-		t.Skip("Skipping git test - would need mock repository")
+	t.Run("loads from local git repository", func(t *testing.T) {
+		repoDir := t.TempDir()
+		repo, err := gogit.PlainInit(repoDir, false)
+		require.NoError(t, err)
+
+		templatePath := filepath.Join(repoDir, "templates", "changelog.tmpl")
+		require.NoError(t, os.MkdirAll(filepath.Dir(templatePath), 0755))
+		require.NoError(t, os.WriteFile(templatePath, []byte("git template"), 0644))
+
+		worktree, err := repo.Worktree()
+		require.NoError(t, err)
+		_, err = worktree.Add("templates/changelog.tmpl")
+		require.NoError(t, err)
+		_, err = worktree.Commit("add template", &gogit.CommitOptions{
+			Author: &object.Signature{Name: "Test", Email: "test@example.com", When: time.Now()},
+		})
+		require.NoError(t, err)
 
 		loader := NewTemplateLoader()
-		source := "git:https://github.com/example/templates.git#path/to/template.tmpl@main"
+		source := "git:" + repoDir + "#templates/changelog.tmpl@master"
+		content, err := loader.Load(source)
 
-		_, err := loader.Load(source)
+		require.NoError(t, err)
+		assert.Equal(t, "git template", content)
+	})
 
-		// In real implementation, this would clone and read from git
-		assert.NoError(t, err)
+	t.Run("rejects unsafe git template path", func(t *testing.T) {
+		loader := NewTemplateLoader()
+		_, err := loader.Load("git:/tmp/repo#../secret@main")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unsafe")
 	})
 }
 

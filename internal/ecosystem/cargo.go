@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/BurntSushi/toml"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
@@ -39,7 +41,7 @@ type CargoManifest struct {
 func (c *CargoEcosystem) ReadVersion() (semver.Version, error) {
 	cargoPath := filepath.Join(c.path, "Cargo.toml")
 
-	content, err := os.ReadFile(cargoPath)
+	content, err := fileutil.ReadFile(cargoPath)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read Cargo.toml: %w", err)
 	}
@@ -62,7 +64,7 @@ func (c *CargoEcosystem) UpdateVersion(version semver.Version) error {
 	cargoPath := filepath.Join(c.path, "Cargo.toml")
 
 	// Read existing content
-	content, err := os.ReadFile(cargoPath)
+	content, err := fileutil.ReadFile(cargoPath)
 	if err != nil {
 		return fmt.Errorf("failed to read Cargo.toml: %w", err)
 	}
@@ -98,7 +100,7 @@ func (c *CargoEcosystem) UpdateVersion(version semver.Version) error {
 
 	newContent := contentStr[:packageIdx] + newPackageSection + contentStr[packageEnd:]
 
-	return os.WriteFile(cargoPath, []byte(newContent), 0644)
+	return fileutil.WriteFile(cargoPath, []byte(newContent), 0644)
 }
 
 // GetVersionFiles returns paths to all version-containing files

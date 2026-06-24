@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
 )
 
 type fileSnapshot struct {
@@ -26,7 +28,7 @@ func (tx *fileTransaction) Backup(path string) error {
 		return nil
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := fileutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			tx.snapshots[path] = fileSnapshot{path: path, exists: false}
@@ -47,11 +49,11 @@ func (tx *fileTransaction) Rollback() error {
 	for i := len(tx.order) - 1; i >= 0; i-- {
 		snapshot := tx.snapshots[tx.order[i]]
 		if snapshot.exists {
-			if err := os.MkdirAll(filepath.Dir(snapshot.path), 0755); err != nil {
+			if err := fileutil.MkdirAll(filepath.Dir(snapshot.path), 0755); err != nil {
 				rollbackErr = joinRollbackError(rollbackErr, fmt.Errorf("failed to recreate directory for %s: %w", snapshot.path, err))
 				continue
 			}
-			if err := os.WriteFile(snapshot.path, snapshot.data, 0644); err != nil {
+			if err := fileutil.WriteFile(snapshot.path, snapshot.data, 0644); err != nil {
 				rollbackErr = joinRollbackError(rollbackErr, fmt.Errorf("failed to restore %s: %w", snapshot.path, err))
 			}
 			continue
