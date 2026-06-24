@@ -49,6 +49,10 @@ lint:
 lint-dagger:
     dagger call lint --source=.
 
+# Run security scanners via Dagger
+security-dagger:
+    dagger call security --source=.
+
 # Format code
 fmt:
     go fmt ./...
@@ -140,11 +144,19 @@ dev-setup:
     go install golang.org/x/vuln/cmd/govulncheck@{{GOVULNCHECK_VERSION}}
     @echo "Development environment ready!"
 
-# Release build with version information
+# Create release archives locally with the canonical Dagger package stage
+release-package VERSION="v0.0.0-dev":
+    dagger call package-only --source=. --version={{ VERSION }} export --path=./dist
+
+# Publish a release with the canonical Dagger release pipeline (requires tokens)
 release VERSION:
-    @echo "Building release {{ VERSION }}..."
-    go build -ldflags "-X main.version={{ VERSION }} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/shipyard ./cmd/shipyard
-    @echo "Release {{ VERSION }} built successfully!"
+    dagger call release \
+      --source=. \
+      --version={{ VERSION }} \
+      --github-token=env:GITHUB_TOKEN \
+      --npm-token=env:NPM_TOKEN \
+      --docker-registry=ghcr.io/natonathan/shipyard \
+      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }}
 
 # Test Dagger build stage
 dagger-build:
@@ -162,4 +174,4 @@ dagger-test-release:
       --github-token=env:GITHUB_TOKEN \
       --npm-token=env:NPM_TOKEN \
       --docker-registry=ghcr.io/natonathan/shipyard \
-      --docker-token=env:GITHUB_TOKEN
+      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }}

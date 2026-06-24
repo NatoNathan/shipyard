@@ -557,8 +557,9 @@ All commands use [Just](https://github.com/casey/just) task runner:
 just build                 # Build binary to bin/shipyard
 just install               # Install to $GOPATH/bin
 just run [ARGS]            # Run CLI with arguments (e.g., just run status)
-just build-all             # Build for all platforms
-just release VERSION       # Release build with version info
+just build-all             # Developer cross-build smoke test
+just release-package VERSION # Build release archives into dist/ with Dagger
+just release VERSION       # Publish through the canonical Dagger release pipeline
 ```
 
 ### Testing
@@ -578,6 +579,7 @@ just bench                 # Run benchmarks
 just lint                  # Run linters
 just fmt                   # Format code
 just security              # Run pinned security scanners (gosec + govulncheck)
+just security-dagger       # Run the Dagger security function
 just verify                # Verify go.mod is tidy
 just ci                    # Run all CI checks (lint, test, verify, security)
 ```
@@ -618,71 +620,51 @@ just coverage
 
 ## Releasing
 
-Shipyard dogfoods itself for version management and release automation.
+Shipyard uses one canonical release path:
+
+1. Shipyard creates the version commit and git tag.
+2. Pushing the version tag triggers `.github/workflows/release.yml`.
+3. The release workflow calls the Dagger `release` function.
+4. Dagger builds, packages, and publishes GitHub release artifacts, Homebrew, npm, and Docker images.
 
 ### Automated Release Process (Recommended)
 
 1. **Create consignments for your changes**:
    ```bash
-   # Add a change note
    shipyard add --summary "Add new feature" --bump minor
-
-   # Or open PR with consignments committed
    ```
 
 2. **Merge to main**:
-   - When PR merges to main, GitHub Actions automatically:
-     - Checks for pending consignments
-     - Runs `shipyard version` to create tag
-     - Pushes tag to trigger release build
-     - GoReleaser builds binaries
-     - Shipyard generates release notes
+   - `.github/workflows/auto-version.yml` checks for pending consignments.
+   - If consignments exist, it runs `shipyard version`.
+   - It pushes the version commit and tags.
 
-3. **Release is published**:
-   - GitHub release created with binaries
-   - Release notes generated from Shipyard
-   - All platforms built and uploaded
+3. **Tag push publishes the release**:
+   - `.github/workflows/release.yml` runs on `v*` tags.
+   - It invokes `dagger call release` from the repository root.
+   - Dagger creates archives/checksums and publishes all configured distribution channels.
 
 ### Manual Release Process
 
-If you need to create a release manually:
-
-1. **Ensure main branch is ready**:
-   ```bash
-   just ci  # Run all checks
-   ```
-
-2. **Use Shipyard to create version**:
-   ```bash
-   # Review pending changes
-   shipyard status
-
-   # Create version bump and git tag
-   shipyard version
-   ```
-
-3. **Push to trigger release**:
-   ```bash
-   git push --follow-tags
-   ```
-
-4. **GitHub Actions will**:
-   - Build binaries for all platforms
-   - Generate and attach release notes
-   - Publish GitHub release
-
-### Testing Releases Locally
+Use the same canonical path manually when automation is not appropriate:
 
 ```bash
-# Test GoReleaser configuration
-just goreleaser-check
+just ci
+shipyard status
+shipyard version
+git push --follow-tags
+```
 
-# Build snapshot (no tag needed)
-just goreleaser-snapshot
+The tag push triggers the same Dagger-backed GitHub Actions release workflow used by automated releases.
 
-# Binaries will be in dist/
-# Test a binary:
-./dist/shipyard_linux_amd64_v1/shipyard version
+### Local Release Validation
+
+```bash
+# Build archives and checksums into ./dist without publishing
+just release-package v0.0.0-dev
+
+# Exercise the full publish pipeline against test credentials/registries
+just dagger-test-release
 ```
 
 ### Version Format
@@ -694,11 +676,11 @@ just goreleaser-snapshot
 
 Shipyard uses itself for version management:
 - ✅ Consignments track changes
-- ✅ `shipyard version` creates tags and updates changelogs
-- ✅ GoReleaser builds binaries and publishes to GitHub
+- ✅ `shipyard version` creates version commits, tags, changelogs, and history
+- ✅ Dagger builds binaries, packages archives, and publishes distribution channels
 - ✅ `shipyard release-notes` generates release descriptions
 
-This ensures Shipyard's features are battle-tested on real releases.
+This keeps Shipyard's release-management features exercised by Shipyard's own release process.
 
 ## Architecture Overview
 

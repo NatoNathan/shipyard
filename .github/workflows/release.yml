@@ -1,7 +1,6 @@
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -23,7 +22,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -31,20 +30,18 @@ jobs:
       - name: Set up Dagger
         uses: dagger/dagger-for-github@v7
         with:
-          version: "latest"
+          version: "0.19.10"
 
       - name: Run Dagger Release Pipeline
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION_TAG: ${{ github.ref_name }}
-          DOCKER_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          dagger call -m ./dagger release \
+          dagger call release \
             --source=. \
             --version="$VERSION_TAG" \
             --github-token=env:GITHUB_TOKEN \
             --npm-token=env:NPM_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
-            --docker-username=NatoNathan \
-            --docker-token=env:DOCKER_TOKEN
+            --docker-username=${{ github.repository_owner }}
