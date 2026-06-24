@@ -95,7 +95,7 @@ func runVersion(opts *VersionCommandOptions) error {
 }
 
 // runVersionWithDir executes the version command logic in a specific directory
-func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
+func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err error) {
 	// Phase 1: Validation and initialization
 	if opts.Preview {
 		fmt.Println()
@@ -160,6 +160,15 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 6. Apply version bumps to files
+	tx := newFileTransaction()
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = fmt.Errorf("%w; additionally failed to roll back filesystem changes: %v", err, rollbackErr)
+			}
+		}
+	}()
+
 	// Build version map with new versions for context
 	allNewVersions := make(map[string]semver.Version)
 	for pkgName, pkgBump := range versionBumps {
@@ -183,6 +192,12 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		handler, err := GetEcosystemHandlerWithContext(pkg, pkgPath, handlerCtx)
 		if err != nil {
 			return err
+		}
+
+		for _, versionFile := range handler.GetVersionFiles() {
+			if err := tx.Backup(filepath.Join(pkgPath, versionFile)); err != nil {
+				return err
+			}
 		}
 
 		if err := handler.UpdateVersion(bump.NewVersion); err != nil {
@@ -253,6 +268,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		historyEntries = append(historyEntries, entry)
 	}
 
+	if err := tx.Backup(historyPath); err != nil {
+		return err
+	}
 	if err := history.AppendToHistory(historyPath, historyEntries); err != nil {
 		return fmt.Errorf("failed to archive consignments: %w", err)
 	}
@@ -289,6 +307,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		changelogPath := filepath.Join(projectPath, pkg.Path, "CHANGELOG.md")
+		if err := tx.Backup(changelogPath); err != nil {
+			return err
+		}
 		if err := os.WriteFile(changelogPath, []byte(changelogContent), 0644); err != nil {
 			return fmt.Errorf("failed to write changelog for %s: %w", pkg.Name, err)
 		}
@@ -301,6 +322,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	// 10. Delete processed consignment files
 	for _, c := range consignments {
 		consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
+		if err := tx.Backup(consignmentPath); err != nil {
+			return err
+		}
 		if err := os.Remove(consignmentPath); err != nil {
 			return fmt.Errorf("failed to delete consignment %s: %w", c.ID, err)
 		}
@@ -331,6 +355,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 
 	prereleaseStatePath := filepath.Join(projectPath, ".shipyard", "prerelease.yml")
 	if prerelease.Exists(prereleaseStatePath) {
+		if err := tx.Backup(prereleaseStatePath); err != nil {
+			return err
+		}
 		if err := prerelease.DeleteState(prereleaseStatePath); err != nil {
 			return fmt.Errorf("failed to delete prerelease state: %w", err)
 		}

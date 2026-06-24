@@ -181,6 +181,46 @@ func TestVersionCommand_PreviewMode(t *testing.T) {
 	})
 }
 
+func TestVersionCommand_RollsBackFilesystemChangesOnChangelogFailure(t *testing.T) {
+	tempDir := setupVersionTestRepo(t)
+	consignmentsDir := filepath.Join(tempDir, ".shipyard", "consignments")
+	createTestConsignmentForVersion(t, consignmentsDir, "rollback-1", []string{"test-package"}, "patch", "Rollback me")
+
+	versionFile := filepath.Join(tempDir, "test-package", "version.go")
+	historyPath := filepath.Join(tempDir, ".shipyard", "history.json")
+	consignmentPath := filepath.Join(consignmentsDir, "rollback-1.md")
+
+	originalVersion, err := os.ReadFile(versionFile)
+	require.NoError(t, err)
+	originalHistory, err := os.ReadFile(historyPath)
+	require.NoError(t, err)
+
+	badTemplatePath := filepath.Join(tempDir, "bad-changelog.tmpl")
+	require.NoError(t, os.WriteFile(badTemplatePath, []byte("{{ .Version"), 0644))
+
+	configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	configContent = []byte(strings.Replace(string(configContent), `source: "builtin:default"`, `source: "file:bad-changelog.tmpl"`, 1))
+	require.NoError(t, os.WriteFile(configPath, configContent, 0644))
+
+	err = runVersionWithDir(tempDir, &VersionCommandOptions{NoCommit: true, NoTag: true})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to generate changelog")
+
+	rolledBackVersion, err := os.ReadFile(versionFile)
+	require.NoError(t, err)
+	assert.Equal(t, string(originalVersion), string(rolledBackVersion), "version file should be restored")
+
+	rolledBackHistory, err := os.ReadFile(historyPath)
+	require.NoError(t, err)
+	assert.Equal(t, string(originalHistory), string(rolledBackHistory), "history should be restored")
+
+	assert.FileExists(t, consignmentPath, "pending consignment should remain for a retry")
+	assert.NoFileExists(t, filepath.Join(tempDir, "test-package", "CHANGELOG.md"), "failed changelog should not leave a new file behind")
+}
+
 func TestVersionCommand_PreviewFilesystemSemantics(t *testing.T) {
 	t.Run("missing configured consignments directory is a no-op", func(t *testing.T) {
 		tempDir := setupVersionTestRepo(t)
