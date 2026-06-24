@@ -25,6 +25,18 @@ type ReleaseOptions struct {
 	Quiet      bool // Suppress output
 }
 
+// ReleasePublisher publishes a prepared release.
+type ReleasePublisher interface {
+	PublishRelease(ctx context.Context, packageName string, version semver.Version, tagName string, releaseNotes string, draft bool, prerelease bool) error
+}
+
+// ReleasePublisherFactory creates a release publisher for the current repository and configuration.
+type ReleasePublisherFactory func(repoPath string, cfg *config.Config) ReleasePublisher
+
+var newReleasePublisher ReleasePublisherFactory = func(repoPath string, cfg *config.Config) ReleasePublisher {
+	return github.NewReleasePublisher(repoPath, cfg)
+}
+
 // NewReleaseCommand creates the release command
 func NewReleaseCommand() *cobra.Command {
 	opts := &ReleaseOptions{}
@@ -147,7 +159,7 @@ func runRelease(opts *ReleaseOptions) error {
 	}
 
 	// Create release publisher
-	publisher := github.NewReleasePublisher(cwd, cfg)
+	publisher := newReleasePublisher(cwd, cfg)
 
 	// Publish release
 	ctx := context.Background()

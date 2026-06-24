@@ -11,20 +11,35 @@ import (
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
 
+// ReleaseClient creates releases in a remote release service.
+type ReleaseClient interface {
+	CreateRelease(ctx context.Context, owner, repo string, release *upgrade.CreateReleaseRequest) (*upgrade.ReleaseInfo, error)
+}
+
 // ReleasePublisher handles publishing releases to GitHub
 type ReleasePublisher struct {
-	client   *upgrade.GitHubClient
-	repoPath string
-	config   *config.Config
+	client    ReleaseClient
+	repoPath  string
+	config    *config.Config
+	tagExists func(tagName string) error
+	tagPushed func(tagName string) error
 }
 
 // NewReleasePublisher creates a new release publisher
 func NewReleasePublisher(repoPath string, cfg *config.Config) *ReleasePublisher {
-	return &ReleasePublisher{
-		client:   upgrade.NewGitHubClient(),
+	return NewReleasePublisherWithClient(repoPath, cfg, upgrade.NewGitHubClient())
+}
+
+// NewReleasePublisherWithClient creates a release publisher with an injected client.
+func NewReleasePublisherWithClient(repoPath string, cfg *config.Config, client ReleaseClient) *ReleasePublisher {
+	publisher := &ReleasePublisher{
+		client:   client,
 		repoPath: repoPath,
 		config:   cfg,
 	}
+	publisher.tagExists = publisher.verifyTagExists
+	publisher.tagPushed = publisher.verifyTagPushed
+	return publisher
 }
 
 // PublishRelease creates a GitHub release for a package version
@@ -43,12 +58,12 @@ func (p *ReleasePublisher) PublishRelease(
 	}
 
 	// Verify tag exists locally
-	if err := p.verifyTagExists(tagName); err != nil {
+	if err := p.tagExists(tagName); err != nil {
 		return fmt.Errorf("run `shipyard version` first to create version tag %s: %w", tagName, err)
 	}
 
 	// Verify tag pushed to remote
-	if err := p.verifyTagPushed(tagName); err != nil {
+	if err := p.tagPushed(tagName); err != nil {
 		return fmt.Errorf("push tags first: `git push --tags`: %w", err)
 	}
 

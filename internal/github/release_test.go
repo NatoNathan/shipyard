@@ -1,8 +1,11 @@
 package github
 
 import (
+	"context"
 	"testing"
 
+	"github.com/NatoNathan/shipyard/internal/config"
+	"github.com/NatoNathan/shipyard/internal/upgrade"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 	"github.com/stretchr/testify/assert"
 )
@@ -60,4 +63,47 @@ func TestExtractTitleFromNotes(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+type fakeReleaseClient struct {
+	owner   string
+	repo    string
+	request *upgrade.CreateReleaseRequest
+	err     error
+}
+
+func (c *fakeReleaseClient) CreateRelease(ctx context.Context, owner, repo string, release *upgrade.CreateReleaseRequest) (*upgrade.ReleaseInfo, error) {
+	c.owner = owner
+	c.repo = repo
+	c.request = release
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &upgrade.ReleaseInfo{TagName: release.TagName, Name: release.Name, Body: release.Body, Prerelease: release.Prerelease}, nil
+}
+
+func TestReleasePublisher_PublishReleaseUsesInjectedClient(t *testing.T) {
+	cfg := &config.Config{
+		GitHub: config.GitHubConfig{
+			Owner: "octo",
+			Repo:  "shipyard",
+		},
+	}
+	client := &fakeReleaseClient{}
+	publisher := NewReleasePublisherWithClient(t.TempDir(), cfg, client)
+	publisher.tagExists = func(tagName string) error { return nil }
+	publisher.tagPushed = func(tagName string) error { return nil }
+
+	version := semver.Version{Major: 1, Minor: 2, Patch: 3}
+	err := publisher.PublishRelease(context.Background(), "core", version, "core/v1.2.3", "Ship it\nDetails", true, true)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "octo", client.owner)
+	assert.Equal(t, "shipyard", client.repo)
+	assert.NotNil(t, client.request)
+	assert.Equal(t, "core/v1.2.3", client.request.TagName)
+	assert.Equal(t, "Ship it", client.request.Name)
+	assert.Equal(t, "Ship it\nDetails", client.request.Body)
+	assert.True(t, client.request.Draft)
+	assert.True(t, client.request.Prerelease)
 }
