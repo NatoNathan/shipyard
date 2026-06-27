@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 {{- range $breaking }}
-- {{ .Summary }}{{ if index .Metadata "issue" }} ([#{{ index .Metadata "issue" }}]({{ index .Metadata "issueUrl" }})){{ end }}
+- {{ .Summary }}{{ if index .Metadata "issue" }}{{ if index .Metadata "issueUrl" }} ([#{{ index .Metadata "issue" }}]({{ index .Metadata "issueUrl" }})){{ else }} (#{{ index .Metadata "issue" }}){{ end }}{{ end }}
 {{- end }}
 {{- end }}
 
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 {{- range $added }}
-- {{ .Summary }}{{ if index .Metadata "issue" }} ([#{{ index .Metadata "issue" }}]({{ index .Metadata "issueUrl" }})){{ end }}
+- {{ .Summary }}{{ if index .Metadata "issue" }}{{ if index .Metadata "issueUrl" }} ([#{{ index .Metadata "issue" }}]({{ index .Metadata "issueUrl" }})){{ else }} (#{{ index .Metadata "issue" }}){{ end }}{{ end }}
 {{- end }}
 {{- end }}
 
@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 {{- range $fixed }}
-- {{ .Summary }}{{ if index .Metadata "issue" }} ([#{{ index .Metadata "issue" }}]({{ index .Metadata "issueUrl" }})){{ end }}
+- {{ .Summary }}{{ if index .Metadata "issue" }}{{ if index .Metadata "issueUrl" }} ([#{{ index .Metadata "issue" }}]({{ index .Metadata "issueUrl" }})){{ else }} (#{{ index .Metadata "issue" }}){{ end }}{{ end }}
 {{- end }}
 {{- end }}
 
