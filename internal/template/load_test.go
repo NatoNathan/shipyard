@@ -297,7 +297,7 @@ func TestLoadTemplate_Git(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = os.RemoveAll(repoDir) })
 
-		outsideFile := filepath.Join(os.TempDir(), fmt.Sprintf("shipyard-template-secret-%d.tmpl", time.Now().UnixNano()))
+		outsideFile := filepath.Join(filepath.Dir(repoDir), fmt.Sprintf("shipyard-template-secret-%d.tmpl", time.Now().UnixNano()))
 		require.NoError(t, os.WriteFile(outsideFile, []byte("secret"), 0644))
 		t.Cleanup(func() { _ = os.Remove(outsideFile) })
 
