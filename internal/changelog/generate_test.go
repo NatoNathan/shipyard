@@ -439,11 +439,23 @@ func TestGenerateReleaseTag_Versions(t *testing.T) {
 }
 
 func TestGetDefaultTemplates(t *testing.T) {
-	assert.Equal(t, "builtin:default", GetDefaultChangelogTemplate())
-	assert.Equal(t, "builtin:default", GetDefaultPackageTagTemplate())
-	assert.Equal(t, "builtin:release-date", GetDefaultReleaseTagTemplate())
-	assert.Equal(t, "builtin:default", GetDefaultReleaseNotesTemplate())
-	assert.Equal(t, "builtin:default", GetDefaultCommitTemplate())
+	cases := []struct {
+		name string
+		got  func() string
+		want string
+	}{
+		{"changelog", GetDefaultChangelogTemplate, "builtin:default"},
+		{"package tag", GetDefaultPackageTagTemplate, "builtin:default"},
+		{"release tag", GetDefaultReleaseTagTemplate, "builtin:release-date"},
+		{"release notes", GetDefaultReleaseNotesTemplate, "builtin:default"},
+		{"commit", GetDefaultCommitTemplate, "builtin:default"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, tc.got())
+		})
+	}
 }
 
 func TestGenerateReleaseNotes(t *testing.T) {

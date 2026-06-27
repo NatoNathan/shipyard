@@ -382,12 +382,13 @@ func (g *ChangelogGenerator) buildSinglePackageContext(
 		}
 	}
 
-	// Build context
+	now := time.Now()
 	context := map[string]interface{}{
 		"Package":      packageName,
 		"Version":      version.String(),
 		"Consignments": templateConsignments,
-		"Date":         time.Now(),
+		"Date":         now,
+		"Timestamp":    now,
 		"Metadata":     aggregateMetadata(consignments),
 	}
 

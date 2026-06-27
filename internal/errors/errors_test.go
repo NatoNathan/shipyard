@@ -174,6 +174,7 @@ func TestGitError_NilCause(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "git error")
 	assert.Contains(t, err.Error(), "tag failed")
+	assert.NotContains(t, err.Error(), "<nil>")
 
 	var gitErr *GitError
 	assert.True(t, errors.As(err, &gitErr))

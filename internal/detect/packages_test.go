@@ -274,8 +274,9 @@ func TestDetectPackages_DenoPackage(t *testing.T) {
 		packages, err := DetectPackages(tempDir)
 		require.NoError(t, err)
 
-		assert.Len(t, packages, 1)
+		require.Len(t, packages, 1)
 		assert.Equal(t, config.EcosystemDeno, packages[0].Ecosystem)
+		assert.Equal(t, filepath.Base(tempDir), packages[0].Name)
 	})
 }
 
