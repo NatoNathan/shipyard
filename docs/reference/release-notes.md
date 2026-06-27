@@ -14,7 +14,7 @@ shipyard changelog [OPTIONS]
 
 The `release-notes` command generates release notes from version history. It:
 
-1. Reads entries from `.shipyard/history.json`
+1. Reads entries from the configured history file
 2. Filters by package, version, or metadata
 3. Renders output using a template
 4. Writes to stdout or a file

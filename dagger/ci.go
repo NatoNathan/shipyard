@@ -125,16 +125,23 @@ func (m *Shipyard) Security(
 	// Source code directory
 	source *dagger.Directory,
 ) (string, error) {
-	container := m.goContainer(source).
-		WithExec([]string{"go", "run", "github.com/securego/gosec/v2/cmd/gosec@" + GosecVersion, "./..."}).
-		WithExec([]string{"go", "run", "golang.org/x/vuln/cmd/govulncheck@" + GovulncheckVersion, "./..."})
+	container := m.goContainer(source)
 
-	output, err := container.Stdout(ctx)
+	gosecOutput, err := container.
+		WithExec([]string{"go", "run", "github.com/securego/gosec/v2/cmd/gosec@" + GosecVersion, "./..."}).
+		Stdout(ctx)
 	if err != nil {
-		return "", fmt.Errorf("security scan failed: %w", err)
+		return "", fmt.Errorf("gosec scan failed: %w", err)
 	}
 
-	return output, nil
+	govulnOutput, err := container.
+		WithExec([]string{"go", "run", "golang.org/x/vuln/cmd/govulncheck@" + GovulncheckVersion, "./..."}).
+		Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("govulncheck scan failed: %w", err)
+	}
+
+	return strings.TrimSpace(gosecOutput) + "\n" + strings.TrimSpace(govulnOutput), nil
 }
 
 // CI runs the full CI pipeline: test, lint, security, and build

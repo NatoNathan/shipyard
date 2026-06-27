@@ -1,6 +1,9 @@
 package upgrade
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -151,6 +154,28 @@ func TestScriptUpgrader_VerifyChecksum(t *testing.T) {
 		err := upgrader.verifyChecksum(testData, "test.tar.gz", []byte(checksums))
 		assert.Error(t, err)
 	})
+}
+
+func TestScriptUpgrader_ExtractBinaryLimitsExpandedEntry(t *testing.T) {
+	var tarball bytes.Buffer
+	gzipWriter := gzip.NewWriter(&tarball)
+	tarWriter := tar.NewWriter(gzipWriter)
+	payload := []byte("oversized")
+	require.NoError(t, tarWriter.WriteHeader(&tar.Header{
+		Name: "shipyard",
+		Mode: 0755,
+		Size: int64(len(payload)),
+	}))
+	_, err := tarWriter.Write(payload)
+	require.NoError(t, err)
+	require.NoError(t, tarWriter.Close())
+	require.NoError(t, gzipWriter.Close())
+
+	upgrader := &ScriptUpgrader{maxDownloadBytes: 4}
+	_, err = upgrader.extractBinary(tarball.Bytes())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "maximum size")
 }
 
 func TestScriptUpgrader_AtomicReplace(t *testing.T) {

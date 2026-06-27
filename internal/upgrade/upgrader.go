@@ -292,7 +292,11 @@ func (u *ScriptUpgrader) extractBinary(tarballData []byte) ([]byte, error) {
 		if filepath.IsAbs(cleanName) || strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) || cleanName == ".." {
 			return nil, fmt.Errorf("unsafe archive path: %s", header.Name)
 		}
-		return io.ReadAll(tarReader)
+		maxBytes := u.maxDownloadBytes
+		if maxBytes <= 0 {
+			maxBytes = defaultUpgradeMaxDownloadBytes
+		}
+		return readLimited(tarReader, maxBytes)
 	}
 
 	return nil, fmt.Errorf("shipyard binary not found in archive")

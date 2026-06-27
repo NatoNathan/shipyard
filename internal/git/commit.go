@@ -7,6 +7,7 @@ import (
 
 	gogit "github.com/go-git/go-git/v5"
 	gogitconfig "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -76,6 +77,43 @@ func CreateCommit(repoPath, message string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)
+	}
+
+	return nil
+}
+
+// HeadHash returns the current HEAD commit hash.
+func HeadHash(repoPath string) (plumbing.Hash, error) {
+	repo, err := gogit.PlainOpen(repoPath)
+	if err != nil {
+		return plumbing.ZeroHash, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return plumbing.ZeroHash, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	return head.Hash(), nil
+}
+
+// ResetHard resets the working tree and HEAD to the given commit hash.
+func ResetHard(repoPath string, hash plumbing.Hash) error {
+	repo, err := gogit.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	if err := worktree.Reset(&gogit.ResetOptions{
+		Commit: hash,
+		Mode:   gogit.HardReset,
+	}); err != nil {
+		return fmt.Errorf("failed to reset repository: %w", err)
 	}
 
 	return nil

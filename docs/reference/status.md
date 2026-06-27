@@ -42,22 +42,6 @@ shipyard status --package core
 shipyard status --package core --package api
 ```
 
-### `--quiet`, `-q`
-
-Minimal output.
-
-```bash
-shipyard status --quiet
-```
-
-### `--verbose`, `-v`
-
-Verbose output with timestamps and metadata.
-
-```bash
-shipyard status --verbose
-```
-
 ## Examples
 
 ### Basic Usage

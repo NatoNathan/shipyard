@@ -22,6 +22,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/NatoNathan/shipyard/internal/version"
 	"github.com/NatoNathan/shipyard/pkg/semver"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
 )
 
@@ -163,8 +164,22 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 
 	// 6. Apply version bumps to files
 	tx := newFileTransaction()
+	var originalHeadSet bool
+	originalHead := plumbing.ZeroHash
+	commitCreated := false
+	var createdTags []string
 	defer func() {
 		if err != nil {
+			if len(createdTags) > 0 {
+				if rollbackErr := git.DeleteTags(projectPath, createdTags); rollbackErr != nil {
+					err = fmt.Errorf("%w; additionally failed to delete created tags: %v", err, rollbackErr)
+				}
+			}
+			if commitCreated && originalHeadSet {
+				if rollbackErr := git.ResetHard(projectPath, originalHead); rollbackErr != nil {
+					err = fmt.Errorf("%w; additionally failed to roll back git commit: %v", err, rollbackErr)
+				}
+			}
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				err = fmt.Errorf("%w; additionally failed to roll back filesystem changes: %v", err, rollbackErr)
 			}
@@ -369,7 +384,51 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 		}
 	}
 
-	if !opts.NoCommit && len(filesToStage) > 0 {
+	shouldCommit := !opts.NoCommit && len(filesToStage) > 0
+	shouldTag := !opts.NoTag && len(packageTags) > 0
+
+	if shouldCommit || shouldTag {
+		originalHead, err = git.HeadHash(projectPath)
+		if err != nil {
+			return fmt.Errorf("failed to capture git HEAD before version changes: %w", err)
+		}
+		originalHeadSet = true
+	}
+
+	var annotatedTags []struct {
+		name    string
+		message string
+	}
+	var lightweightTags []string
+	var allTagNames []string
+
+	if shouldTag {
+		for pkgName, tag := range packageTags {
+			allTagNames = append(allTagNames, tag.Name)
+			if tag.Message != "" {
+				annotatedTags = append(annotatedTags, struct {
+					name    string
+					message string
+				}{name: tag.Name, message: tag.Message})
+			} else {
+				lightweightTags = append(lightweightTags, tag.Name)
+			}
+
+			if opts.Verbose {
+				if tag.Message != "" {
+					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating annotated tag for %s: %s", pkgName, tag.Name)))
+				} else {
+					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating lightweight tag for %s: %s", pkgName, tag.Name)))
+				}
+			}
+		}
+
+		if err := git.EnsureTagsAbsent(projectPath, allTagNames); err != nil {
+			return fmt.Errorf("failed to validate tags: %w", err)
+		}
+	}
+
+	if shouldCommit {
 		if err := git.StageFiles(projectPath, filesToStage); err != nil {
 			return fmt.Errorf("failed to stage files: %w", err)
 		}
@@ -397,41 +456,26 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 		if err := git.CreateCommit(projectPath, commitMessage); err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
+		commitCreated = true
 
 		if opts.Verbose {
 			fmt.Println(ui.Dimmed(fmt.Sprintf("Created commit with %d file(s)", len(filesToStage))))
 		}
 	}
 
-	if !opts.NoTag && len(packageTags) > 0 {
-		annotatedTags := make(map[string]string)
-		lightweightTags := []string{}
-		for pkgName, tag := range packageTags {
-			if tag.Message != "" {
-				annotatedTags[tag.Name] = tag.Message
-			} else {
-				lightweightTags = append(lightweightTags, tag.Name)
+	if shouldTag {
+		for _, tag := range annotatedTags {
+			if err := git.CreateAnnotatedTag(projectPath, tag.name, tag.message); err != nil {
+				return fmt.Errorf("failed to create annotated tag %s: %w", tag.name, err)
 			}
-
-			if opts.Verbose {
-				if tag.Message != "" {
-					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating annotated tag for %s: %s", pkgName, tag.Name)))
-				} else {
-					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating lightweight tag for %s: %s", pkgName, tag.Name)))
-				}
-			}
+			createdTags = append(createdTags, tag.name)
 		}
 
-		if len(annotatedTags) > 0 {
-			if err := git.CreateAnnotatedTags(projectPath, annotatedTags); err != nil {
-				return fmt.Errorf("failed to create annotated tags: %w", err)
+		for _, tagName := range lightweightTags {
+			if err := git.CreateLightweightTag(projectPath, tagName); err != nil {
+				return fmt.Errorf("failed to create lightweight tag %s: %w", tagName, err)
 			}
-		}
-
-		if len(lightweightTags) > 0 {
-			if err := git.CreateLightweightTags(projectPath, lightweightTags); err != nil {
-				return fmt.Errorf("failed to create lightweight tags: %w", err)
-			}
+			createdTags = append(createdTags, tagName)
 		}
 
 		if opts.Verbose {

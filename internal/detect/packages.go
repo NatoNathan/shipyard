@@ -24,8 +24,8 @@ func DetectPackages(rootPath string) ([]config.Package, error) {
 			return err
 		}
 
-		// Skip hidden directories except .git
-		if info.IsDir() && strings.HasPrefix(info.Name(), ".") && info.Name() != ".git" {
+		// Skip hidden directories.
+		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
 			return filepath.SkipDir
 		}
 
@@ -33,7 +33,7 @@ func DetectPackages(rootPath string) ([]config.Package, error) {
 		if info.IsDir() {
 			dirName := info.Name()
 			if dirName == "node_modules" || dirName == "vendor" || dirName == "__pycache__" ||
-				dirName == ".git" || dirName == "dist" || dirName == "build" || dirName == "target" {
+				dirName == "dist" || dirName == "build" || dirName == "target" {
 				return filepath.SkipDir
 			}
 		}

@@ -199,6 +199,12 @@ func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 			if len(via) >= maxTemplateRedirects {
 				return fmt.Errorf("stopped after %d redirects", maxTemplateRedirects)
 			}
+			if l.authToken != "" && len(via) > 0 {
+				original := via[0].URL
+				if req.URL.Scheme != "https" || req.URL.Host != original.Host {
+					return fmt.Errorf("refusing authenticated redirect to different origin")
+				}
+			}
 			return nil
 		},
 	}
@@ -283,7 +289,21 @@ func (l *TemplateLoader) loadGit(source string) (string, error) {
 		return "", fmt.Errorf("failed to clone template repository: %w", err)
 	}
 
-	content, err := fileutil.ReadFile(filepath.Join(cloneDir, cleanTemplatePath))
+	templateFile := filepath.Join(cloneDir, cleanTemplatePath)
+	resolvedCloneDir, err := filepath.EvalSymlinks(cloneDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve git clone directory: %w", err)
+	}
+	resolvedTemplateFile, err := filepath.EvalSymlinks(templateFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve git template file: %w", err)
+	}
+	rel, err := filepath.Rel(resolvedCloneDir, resolvedTemplateFile)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("unsafe git template path: %s", templatePath)
+	}
+
+	content, err := fileutil.ReadFile(resolvedTemplateFile)
 	if err != nil {
 		return "", fmt.Errorf("failed to read git template file: %w", err)
 	}

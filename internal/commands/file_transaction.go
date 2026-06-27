@@ -11,6 +11,7 @@ import (
 type fileSnapshot struct {
 	path   string
 	data   []byte
+	mode   os.FileMode
 	exists bool
 }
 
@@ -28,7 +29,7 @@ func (tx *fileTransaction) Backup(path string) error {
 		return nil
 	}
 
-	data, err := fileutil.ReadFile(path)
+	info, err := os.Stat(filepath.Clean(path))
 	if err != nil {
 		if os.IsNotExist(err) {
 			tx.snapshots[path] = fileSnapshot{path: path, exists: false}
@@ -38,8 +39,13 @@ func (tx *fileTransaction) Backup(path string) error {
 		return fmt.Errorf("failed to back up %s: %w", path, err)
 	}
 
+	data, err := fileutil.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to back up %s: %w", path, err)
+	}
+
 	copied := append([]byte(nil), data...)
-	tx.snapshots[path] = fileSnapshot{path: path, data: copied, exists: true}
+	tx.snapshots[path] = fileSnapshot{path: path, data: copied, mode: info.Mode().Perm(), exists: true}
 	tx.order = append(tx.order, path)
 	return nil
 }
@@ -53,7 +59,7 @@ func (tx *fileTransaction) Rollback() error {
 				rollbackErr = joinRollbackError(rollbackErr, fmt.Errorf("failed to recreate directory for %s: %w", snapshot.path, err))
 				continue
 			}
-			if err := fileutil.WriteFile(snapshot.path, snapshot.data, 0644); err != nil {
+			if err := fileutil.WriteFile(snapshot.path, snapshot.data, snapshot.mode); err != nil {
 				rollbackErr = joinRollbackError(rollbackErr, fmt.Errorf("failed to restore %s: %w", snapshot.path, err))
 			}
 			continue

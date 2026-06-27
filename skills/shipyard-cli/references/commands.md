@@ -1613,7 +1613,7 @@ jobs:
 ### See Also
 
 - [Configuration Reference](./configuration.md)
-- [Pre-Release Reference](#prerelease)
+- [Pre-Release Reference](#prerelease---create-or-increment-a-pre-release-version-at-the-current-stage)
 - [Tag Templates](../../../docs/tag-generation.md)
 - [CI/CD Integration Guide](./workflows.md)
 
@@ -2476,7 +2476,7 @@ Use snapshot versions for Docker image tags:
 ### See Also
 
 - [Configuration Reference](./configuration.md)
-- [Pre-Release Reference](#prerelease)
+- [Pre-Release Reference](#prerelease---create-or-increment-a-pre-release-version-at-the-current-stage)
 - [Tag Templates](../../../docs/tag-generation.md)
 - [CI/CD Integration Guide](./workflows.md)
 

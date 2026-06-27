@@ -52,7 +52,7 @@ func (p *TemplateParser) Parse(name, content string) (*template.Template, error)
 
 // AddFunction adds a custom function to the function map.
 func (p *TemplateParser) AddFunction(name string, fn interface{}) {
-	if isBlockedTemplateFunction(name) && !p.allowEnvAccess {
+	if isBlockedTemplateFunction(name) && !(p.allowEnvAccess && isEnvironmentTemplateFunction(name)) {
 		return
 	}
 	p.funcMap[name] = fn
@@ -101,6 +101,15 @@ func getSafeSprigFunctions() template.FuncMap {
 
 func isBlockedTemplateFunction(name string) bool {
 	for _, fnName := range blockedTemplateFunctions {
+		if name == fnName {
+			return true
+		}
+	}
+	return false
+}
+
+func isEnvironmentTemplateFunction(name string) bool {
+	for _, fnName := range environmentTemplateFunctions {
 		if name == fnName {
 			return true
 		}

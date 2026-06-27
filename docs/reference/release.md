@@ -13,7 +13,7 @@ shipyard publish [OPTIONS]
 
 The `release` command publishes a version release to GitHub. It:
 
-1. Reads version history from `.shipyard/history.json`
+1. Reads version history from the configured history file
 2. Finds the entry for the specified package/tag
 3. Generates release notes from the history entry
 4. Creates a GitHub release using the existing git tag

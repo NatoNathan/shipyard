@@ -134,7 +134,7 @@ func TestParseTemplate_FunctionWhitelisting(t *testing.T) {
 		parser := NewTemplateParser()
 		for _, content := range blockedFunctions {
 			_, err := parser.Parse("test", content)
-			assert.Error(t, err, "blocked function should not parse: %s", content)
+			require.Error(t, err, "blocked function should not parse: %s", content)
 			assert.Contains(t, err.Error(), "function")
 		}
 	})
@@ -145,7 +145,7 @@ func TestParseTemplate_FunctionWhitelisting(t *testing.T) {
 
 		_, err := parser.Parse("test", `{{ env "SHIPYARD_SECRET" }}`)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "function")
 	})
 
@@ -160,6 +160,17 @@ func TestParseTemplate_FunctionWhitelisting(t *testing.T) {
 		var output bytes.Buffer
 		require.NoError(t, tmpl.Execute(&output, nil))
 		assert.Equal(t, "safe-opt-in safe-opt-in", output.String())
+	})
+
+	t.Run("environment opt in does not unblock network functions", func(t *testing.T) {
+		parser := NewTemplateParser()
+		parser.EnableEnvironmentAccess()
+		parser.AddFunction("getHostByName", func(string) string { return "127.0.0.1" })
+
+		_, err := parser.Parse("test", `{{ getHostByName "example.com" }}`)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "function")
 	})
 }
 

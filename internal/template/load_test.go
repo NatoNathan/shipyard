@@ -223,24 +223,37 @@ func TestLoadTemplate_HTTPS(t *testing.T) {
 		assert.Contains(t, err.Error(), "redirects")
 	})
 
-	t.Run("preserves auth across same-origin redirect", func(t *testing.T) {
+	t.Run("allows unauthenticated same-origin redirect", func(t *testing.T) {
 		server := httptest.NewServer(nil)
 		server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/start" {
 				http.Redirect(w, r, server.URL+"/final", http.StatusFound)
 				return
 			}
-			assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 			_, _ = fmt.Fprint(w, "redirected template")
 		})
 		defer server.Close()
 
 		loader := NewTemplateLoader()
-		loader.SetAuthToken("test-token")
 		content, err := loader.Load(server.URL + "/start")
 
 		require.NoError(t, err)
 		assert.Equal(t, "redirected template", content)
+	})
+
+	t.Run("rejects authenticated redirect to insecure target", func(t *testing.T) {
+		server := httptest.NewServer(nil)
+		server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, server.URL+"/final", http.StatusFound)
+		})
+		defer server.Close()
+
+		loader := NewTemplateLoader()
+		loader.SetAuthToken("test-token")
+		_, err := loader.Load(server.URL + "/start")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "authenticated redirect")
 	})
 }
 
@@ -274,6 +287,36 @@ func TestLoadTemplate_Git(t *testing.T) {
 	t.Run("rejects unsafe git template path", func(t *testing.T) {
 		loader := NewTemplateLoader()
 		_, err := loader.Load("git:/tmp/repo#../secret@main")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unsafe")
+	})
+
+	t.Run("rejects symlink escape from git template path", func(t *testing.T) {
+		repoDir := t.TempDir()
+		outsideFile := filepath.Join(os.TempDir(), fmt.Sprintf("shipyard-template-secret-%d.tmpl", time.Now().UnixNano()))
+		require.NoError(t, os.WriteFile(outsideFile, []byte("secret"), 0644))
+		t.Cleanup(func() { _ = os.Remove(outsideFile) })
+
+		repo, err := gogit.PlainInit(repoDir, false)
+		require.NoError(t, err)
+
+		templatePath := filepath.Join(repoDir, "templates", "escape.tmpl")
+		require.NoError(t, os.MkdirAll(filepath.Dir(templatePath), 0755))
+		require.NoError(t, os.Symlink(filepath.Join("..", "..", filepath.Base(outsideFile)), templatePath))
+
+		worktree, err := repo.Worktree()
+		require.NoError(t, err)
+		_, err = worktree.Add("templates/escape.tmpl")
+		require.NoError(t, err)
+		_, err = worktree.Commit("add symlink template", &gogit.CommitOptions{
+			Author: &object.Signature{Name: "Test", Email: "test@example.com", When: time.Now()},
+		})
+		require.NoError(t, err)
+
+		loader := NewTemplateLoader()
+		source := "git:" + repoDir + "#templates/escape.tmpl@master"
+		_, err = loader.Load(source)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsafe")
