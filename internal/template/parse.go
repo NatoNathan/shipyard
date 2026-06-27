@@ -52,7 +52,7 @@ func (p *TemplateParser) Parse(name, content string) (*template.Template, error)
 
 // AddFunction adds a custom function to the function map.
 func (p *TemplateParser) AddFunction(name string, fn interface{}) {
-	if isBlockedTemplateFunction(name) && !(p.allowEnvAccess && isEnvironmentTemplateFunction(name)) {
+	if isBlockedTemplateFunction(name) && (!p.allowEnvAccess || !isEnvironmentTemplateFunction(name)) {
 		return
 	}
 	p.funcMap[name] = fn
