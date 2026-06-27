@@ -204,6 +204,81 @@ func TestDetectPackages_NestedStructure(t *testing.T) {
 	assert.GreaterOrEqual(t, len(packages), 2, "Should detect at least 2 packages")
 }
 
+// TestDetectPackages_HelmChart tests detection of Helm charts
+func TestDetectPackages_HelmChart(t *testing.T) {
+	tempDir := t.TempDir()
+
+	chartYAML := `apiVersion: v2
+name: my-helm-chart
+description: A test chart
+version: 0.1.0
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "Chart.yaml"), []byte(chartYAML), 0644))
+
+	packages, err := DetectPackages(tempDir)
+	require.NoError(t, err)
+
+	assert.Len(t, packages, 1)
+	assert.Equal(t, "my-helm-chart", packages[0].Name)
+	assert.Equal(t, config.EcosystemHelm, packages[0].Ecosystem)
+}
+
+// TestDetectPackages_CargoPackage tests detection of Rust/Cargo packages
+func TestDetectPackages_CargoPackage(t *testing.T) {
+	tempDir := t.TempDir()
+
+	cargoToml := `[package]
+name = "my-rust-crate"
+version = "0.1.0"
+edition = "2021"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "Cargo.toml"), []byte(cargoToml), 0644))
+
+	packages, err := DetectPackages(tempDir)
+	require.NoError(t, err)
+
+	assert.Len(t, packages, 1)
+	assert.Equal(t, "my-rust-crate", packages[0].Name)
+	assert.Equal(t, config.EcosystemCargo, packages[0].Ecosystem)
+}
+
+// TestDetectPackages_DenoPackage tests detection of Deno projects
+func TestDetectPackages_DenoPackage(t *testing.T) {
+	t.Run("deno.json with name field", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		denoJSON := `{
+  "name": "@scope/my-deno-package",
+  "version": "1.0.0"
+}
+`
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "deno.json"), []byte(denoJSON), 0644))
+
+		packages, err := DetectPackages(tempDir)
+		require.NoError(t, err)
+
+		assert.Len(t, packages, 1)
+		assert.Equal(t, "@scope/my-deno-package", packages[0].Name)
+		assert.Equal(t, config.EcosystemDeno, packages[0].Ecosystem)
+	})
+
+	t.Run("deno.json without name uses directory name", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		denoJSON := `{
+  "version": "1.0.0"
+}
+`
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "deno.json"), []byte(denoJSON), 0644))
+
+		packages, err := DetectPackages(tempDir)
+		require.NoError(t, err)
+
+		assert.Len(t, packages, 1)
+		assert.Equal(t, config.EcosystemDeno, packages[0].Ecosystem)
+	})
+}
+
 // TestDetectPackages_MultipleEcosystemsSameDir tests behavior when multiple ecosystem markers exist in same directory
 func TestDetectPackages_MultipleEcosystemsSameDir(t *testing.T) {
 	tempDir := t.TempDir()

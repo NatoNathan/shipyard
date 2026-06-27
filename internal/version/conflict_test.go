@@ -131,6 +131,26 @@ func TestResolveConflictsWithInfo(t *testing.T) {
 	})
 }
 
+func TestLogConflictWarnings(t *testing.T) {
+	t.Run("no-op on empty slice", func(t *testing.T) {
+		// Verify it doesn't panic
+		assert.NotPanics(t, func() {
+			LogConflictWarnings(nil)
+			LogConflictWarnings([]ConflictInfo{})
+		})
+	})
+
+	t.Run("logs without panic for non-empty conflicts", func(t *testing.T) {
+		conflicts := []ConflictInfo{
+			{Package: "core", ResolvedType: "minor", Sources: []string{"direct", "propagated"}},
+			{Package: "api", ResolvedType: "major", Sources: []string{"propagated"}},
+		}
+		assert.NotPanics(t, func() {
+			LogConflictWarnings(conflicts)
+		})
+	})
+}
+
 func TestIntegrationWithPropagation(t *testing.T) {
 	t.Run("full propagation pipeline with conflicts - higher priority wins", func(t *testing.T) {
 		// Complex scenario:

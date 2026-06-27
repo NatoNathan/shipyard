@@ -426,20 +426,28 @@ func aggregateMetadata(consignments []*consignment.Consignment) map[string]inter
 	return metadata
 }
 
-// GenerateReleaseNotes generates release notes for a single package
+// GenerateReleaseNotes generates release notes for a single package.
+// Release notes templates receive a single-entry context (flat .Package, .Version,
+// .Timestamp, .Consignments fields) rather than the ChangelogContext used for changelogs.
 func (g *ChangelogGenerator) GenerateReleaseNotes(
 	consignments []*consignment.Consignment,
 	packageName string,
 	version semver.Version,
 	templateSource string,
 ) (string, error) {
-	// Load template (specify we need a releasenotes template)
 	templateContent, err := g.loader.Load(templateSource, template.TemplateTypeReleaseNotes)
 	if err != nil {
 		return "", fmt.Errorf("failed to load template: %w", err)
 	}
 
-	return g.GenerateForPackageWithTemplate(consignments, packageName, version, templateContent)
+	filtered := filterConsignmentsForPackage(consignments, packageName)
+	context := g.buildSinglePackageContext(packageName, version, filtered)
+
+	result, err := g.renderer.Render(templateContent, context)
+	if err != nil {
+		return "", fmt.Errorf("failed to render release notes: %w", err)
+	}
+	return result, nil
 }
 
 // GetDefaultChangelogTemplate returns the default changelog template source

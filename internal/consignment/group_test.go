@@ -320,6 +320,97 @@ func TestSortConsignmentsByTimestamp(t *testing.T) {
 	assert.Equal(t, "c3", sorted[2].ID)
 }
 
+func TestGetUniquePackages(t *testing.T) {
+	now := time.Now()
+
+	t.Run("returns sorted unique packages", func(t *testing.T) {
+		consignments := []*Consignment{
+			{ID: "c1", Timestamp: now, Packages: []string{"core", "api"}},
+			{ID: "c2", Timestamp: now, Packages: []string{"api", "web"}},
+			{ID: "c3", Timestamp: now, Packages: []string{"core"}},
+		}
+		pkgs := GetUniquePackages(consignments)
+		assert.Equal(t, []string{"api", "core", "web"}, pkgs)
+	})
+
+	t.Run("empty consignments returns empty", func(t *testing.T) {
+		pkgs := GetUniquePackages([]*Consignment{})
+		assert.Empty(t, pkgs)
+	})
+}
+
+func TestAggregateMetadata(t *testing.T) {
+	now := time.Now()
+
+	t.Run("merges metadata last value wins", func(t *testing.T) {
+		consignments := []*Consignment{
+			{ID: "c1", Timestamp: now, Metadata: map[string]interface{}{"author": "alice", "issue": "JIRA-1"}},
+			{ID: "c2", Timestamp: now, Metadata: map[string]interface{}{"author": "bob"}},
+		}
+		meta := AggregateMetadata(consignments)
+		assert.Equal(t, "bob", meta["author"])
+		assert.Equal(t, "JIRA-1", meta["issue"])
+	})
+
+	t.Run("nil metadata entries are skipped", func(t *testing.T) {
+		consignments := []*Consignment{
+			{ID: "c1", Timestamp: now, Metadata: nil},
+			{ID: "c2", Timestamp: now, Metadata: map[string]interface{}{"key": "value"}},
+		}
+		meta := AggregateMetadata(consignments)
+		assert.Equal(t, "value", meta["key"])
+	})
+
+	t.Run("empty consignments returns empty map", func(t *testing.T) {
+		meta := AggregateMetadata([]*Consignment{})
+		assert.Empty(t, meta)
+	})
+}
+
+func TestGetConsignmentsByDateRange(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	day1 := base
+	day2 := base.Add(24 * time.Hour)
+	day3 := base.Add(48 * time.Hour)
+
+	consignments := []*Consignment{
+		{ID: "c1", Timestamp: day1},
+		{ID: "c2", Timestamp: day2},
+		{ID: "c3", Timestamp: day3},
+	}
+
+	t.Run("no bounds returns all", func(t *testing.T) {
+		result := GetConsignmentsByDateRange(consignments, nil, nil)
+		assert.Len(t, result, 3)
+	})
+
+	t.Run("start bound excludes earlier", func(t *testing.T) {
+		result := GetConsignmentsByDateRange(consignments, &day2, nil)
+		assert.Len(t, result, 2)
+		assert.Equal(t, "c2", result[0].ID)
+		assert.Equal(t, "c3", result[1].ID)
+	})
+
+	t.Run("end bound excludes later", func(t *testing.T) {
+		result := GetConsignmentsByDateRange(consignments, nil, &day2)
+		assert.Len(t, result, 2)
+		assert.Equal(t, "c1", result[0].ID)
+		assert.Equal(t, "c2", result[1].ID)
+	})
+
+	t.Run("both bounds", func(t *testing.T) {
+		result := GetConsignmentsByDateRange(consignments, &day2, &day2)
+		assert.Len(t, result, 1)
+		assert.Equal(t, "c2", result[0].ID)
+	})
+
+	t.Run("range with no matches returns nil", func(t *testing.T) {
+		future := day3.Add(24 * time.Hour)
+		result := GetConsignmentsByDateRange(consignments, &future, nil)
+		assert.Empty(t, result)
+	})
+}
+
 func TestGroupConsignmentsByMetadata(t *testing.T) {
 	now := time.Now()
 

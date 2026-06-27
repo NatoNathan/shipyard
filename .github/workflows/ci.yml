@@ -67,15 +67,22 @@ jobs:
         with:
           version: "0.21.7"
 
-      - name: Run tests with coverage
-        run: dagger call coverage --source . export --path ./coverage.out
+      - name: Run tests with coverage and JUnit results
+        run: dagger call coverage-and-results --source . export --path ./results
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@f2274c2c340e0c81c8f7dc407b2a477b8935f171 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.out
+          files: ./results/coverage.out
           fail_ci_if_error: true
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./results/junit.xml
 
   security:
     name: Security

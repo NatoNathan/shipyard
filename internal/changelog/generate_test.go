@@ -438,6 +438,60 @@ func TestGenerateReleaseTag_Versions(t *testing.T) {
 	assert.Equal(t, "", message) // Lightweight tag
 }
 
+func TestGetDefaultTemplates(t *testing.T) {
+	assert.Equal(t, "builtin:default", GetDefaultChangelogTemplate())
+	assert.Equal(t, "builtin:default", GetDefaultPackageTagTemplate())
+	assert.Equal(t, "builtin:release-date", GetDefaultReleaseTagTemplate())
+	assert.Equal(t, "builtin:default", GetDefaultReleaseNotesTemplate())
+	assert.Equal(t, "builtin:default", GetDefaultCommitTemplate())
+}
+
+func TestGenerateReleaseNotes(t *testing.T) {
+	consignments := []*consignment.Consignment{
+		{
+			ID:         "c1",
+			Timestamp:  time.Now(),
+			Packages:   []string{"core"},
+			ChangeType: types.ChangeTypeMinor,
+			Summary:    "Added new feature",
+		},
+	}
+	version := semver.Version{Major: 1, Minor: 1, Patch: 0}
+
+	generator := NewChangelogGenerator()
+	result, err := generator.GenerateReleaseNotes(consignments, "core", version, "builtin:default")
+
+	require.NoError(t, err)
+	assert.Contains(t, result, "Added new feature")
+}
+
+func TestGenerateCommitMessage(t *testing.T) {
+	consignments := []*consignment.Consignment{
+		{
+			ID:         "c1",
+			Timestamp:  time.Now(),
+			Packages:   []string{"core"},
+			ChangeType: types.ChangeTypeMinor,
+			Summary:    "feat: added OAuth2",
+		},
+	}
+
+	versionBumps := map[string]VersionBump{
+		"core": {
+			Package:    "core",
+			OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
+			NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
+			ChangeType: "minor",
+		},
+	}
+
+	generator := NewChangelogGenerator()
+	result, err := generator.GenerateCommitMessage(consignments, versionBumps, "builtin:default")
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+}
+
 func TestGeneratePackageTag_CustomTemplate(t *testing.T) {
 	version := semver.Version{Major: 2, Minor: 0, Patch: 0}
 

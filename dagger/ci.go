@@ -56,6 +56,30 @@ func (m *Shipyard) Coverage(
 	return container.File("/src/coverage.out")
 }
 
+// CoverageAndResults runs tests once, producing both a coverage profile and a
+// JUnit XML test-results file. Returns a minimal directory containing only
+// coverage.out and junit.xml so CI can export and upload both to Codecov.
+func (m *Shipyard) CoverageAndResults(
+	ctx context.Context,
+	// Source code directory
+	source *dagger.Directory,
+) *dagger.Directory {
+	container := m.goContainer(source).
+		WithExec([]string{"go", "install", "gotest.tools/gotestsum@" + GotestsumVersion}).
+		WithExec([]string{
+			"/go/bin/gotestsum",
+			"--junitfile", "junit.xml",
+			"--",
+			"-coverprofile=coverage.out",
+			"-covermode=atomic",
+			"./...",
+		})
+
+	return dag.Directory().
+		WithFile("coverage.out", container.File("/src/coverage.out")).
+		WithFile("junit.xml", container.File("/src/junit.xml"))
+}
+
 // CoverageReport runs tests and returns the coverage percentage
 func (m *Shipyard) CoverageReport(
 	ctx context.Context,

@@ -229,6 +229,173 @@ func TestWithDefaultsDeepCopy(t *testing.T) {
 	assert.Equal(t, "linked", result.Packages[0].Dependencies[0].Strategy)
 }
 
+func TestPreReleaseConfig_StageNavigation(t *testing.T) {
+	cfg := &PreReleaseConfig{
+		Stages: []StageConfig{
+			{Name: "rc", Order: 3},
+			{Name: "alpha", Order: 1},
+			{Name: "beta", Order: 2},
+		},
+	}
+
+	t.Run("GetLowestOrderStage returns alpha", func(t *testing.T) {
+		s, ok := cfg.GetLowestOrderStage()
+		assert.True(t, ok)
+		assert.Equal(t, "alpha", s.Name)
+	})
+
+	t.Run("GetLowestOrderStage empty config", func(t *testing.T) {
+		_, ok := (&PreReleaseConfig{}).GetLowestOrderStage()
+		assert.False(t, ok)
+	})
+
+	t.Run("GetStageByName found", func(t *testing.T) {
+		s, ok := cfg.GetStageByName("beta")
+		assert.True(t, ok)
+		assert.Equal(t, 2, s.Order)
+	})
+
+	t.Run("GetStageByName not found", func(t *testing.T) {
+		_, ok := cfg.GetStageByName("gamma")
+		assert.False(t, ok)
+	})
+
+	t.Run("GetNextStage from alpha returns beta", func(t *testing.T) {
+		s, ok := cfg.GetNextStage("alpha")
+		assert.True(t, ok)
+		assert.Equal(t, "beta", s.Name)
+	})
+
+	t.Run("GetNextStage from rc returns false (highest)", func(t *testing.T) {
+		_, ok := cfg.GetNextStage("rc")
+		assert.False(t, ok)
+	})
+
+	t.Run("GetNextStage unknown stage returns false", func(t *testing.T) {
+		_, ok := cfg.GetNextStage("gamma")
+		assert.False(t, ok)
+	})
+
+	t.Run("IsHighestStage rc is highest", func(t *testing.T) {
+		assert.True(t, cfg.IsHighestStage("rc"))
+	})
+
+	t.Run("IsHighestStage alpha is not highest", func(t *testing.T) {
+		assert.False(t, cfg.IsHighestStage("alpha"))
+	})
+
+	t.Run("IsHighestStage unknown returns false", func(t *testing.T) {
+		assert.False(t, cfg.IsHighestStage("gamma"))
+	})
+}
+
+func TestPreReleaseConfig_Validate(t *testing.T) {
+	cases := []struct {
+		name    string
+		cfg     PreReleaseConfig
+		wantErr string
+	}{
+		{
+			name: "no stages is valid",
+			cfg:  PreReleaseConfig{},
+		},
+		{
+			name: "valid stages",
+			cfg: PreReleaseConfig{Stages: []StageConfig{
+				{Name: "alpha", Order: 1},
+				{Name: "beta", Order: 2},
+			}},
+		},
+		{
+			name: "duplicate stage name",
+			cfg: PreReleaseConfig{Stages: []StageConfig{
+				{Name: "alpha", Order: 1},
+				{Name: "alpha", Order: 2},
+			}},
+			wantErr: "duplicate stage name: alpha",
+		},
+		{
+			name: "duplicate stage order",
+			cfg: PreReleaseConfig{Stages: []StageConfig{
+				{Name: "alpha", Order: 1},
+				{Name: "beta", Order: 1},
+			}},
+			wantErr: "duplicate stage order: 1",
+		},
+		{
+			name: "empty stage name",
+			cfg: PreReleaseConfig{Stages: []StageConfig{
+				{Name: "", Order: 1},
+			}},
+			wantErr: "stage name is required",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cfg.Validate()
+			if tc.wantErr != "" {
+				assert.ErrorContains(t, err, tc.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestNewRemoteConfig(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		wantURL  string
+		wantGit  string
+		wantPath string
+		wantRef  string
+	}{
+		{
+			name:    "plain HTTP URL becomes URL field",
+			input:   "https://example.com/shipyard.yaml",
+			wantURL: "https://example.com/shipyard.yaml",
+		},
+		{
+			name:    "SSH git URL",
+			input:   "git@github.com:org/repo.git",
+			wantGit: "git@github.com:org/repo.git",
+			wantPath: "shipyard.yaml",
+			wantRef:  "main",
+		},
+		{
+			name:    "HTTPS git URL with fragment",
+			input:   "https://github.com/org/repo.git#configs/shipyard.yaml@v1.2.0",
+			wantGit: "https://github.com/org/repo.git",
+			wantPath: "configs/shipyard.yaml",
+			wantRef:  "v1.2.0",
+		},
+		{
+			name:    "HTTPS .git URL without fragment defaults",
+			input:   "https://github.com/org/repo.git",
+			wantGit: "https://github.com/org/repo.git",
+			wantPath: "shipyard.yaml",
+			wantRef:  "main",
+		},
+		{
+			name:    "plain string treated as URL",
+			input:   "file:///local/shipyard.yaml",
+			wantURL: "file:///local/shipyard.yaml",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rc := NewRemoteConfig(tc.input)
+			assert.Equal(t, tc.wantURL, rc.URL)
+			assert.Equal(t, tc.wantGit, rc.Git)
+			assert.Equal(t, tc.wantPath, rc.Path)
+			assert.Equal(t, tc.wantRef, rc.Ref)
+		})
+	}
+}
+
 // TestPackage_IsTagOnly tests the IsTagOnly method
 func TestPackage_IsTagOnly(t *testing.T) {
 	tests := []struct {
