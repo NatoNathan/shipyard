@@ -40,6 +40,12 @@ func (m *Shipyard) Release(
 	if dockerToken == nil {
 		dockerToken = githubToken
 	}
+	if npmOidcTokenUrl == "" {
+		return fmt.Errorf("npm OIDC token request URL is required")
+	}
+	if npmOidcToken == nil {
+		return fmt.Errorf("npm OIDC token request token is required")
+	}
 
 	// Get commit SHA from git
 	commit, err := dag.Container().
