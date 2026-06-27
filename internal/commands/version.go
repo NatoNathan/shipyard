@@ -230,19 +230,48 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 	generator := changelog.NewChangelogGenerator()
 	generator.SetBaseDir(projectPath)
 
-	tagTemplateSource := "builtin:default"
-	if cfg.Templates.TagName != nil && cfg.Templates.TagName.Source != "" {
-		tagTemplateSource = cfg.Templates.TagName.Source
+	globalTagTemplateSource := "builtin:default"
+	globalTagTemplateInline := ""
+	if cfg.Templates.TagName != nil {
+		switch {
+		case cfg.Templates.TagName.Inline != "":
+			globalTagTemplateInline = cfg.Templates.TagName.Inline
+		case cfg.Templates.TagName.Source != "":
+			globalTagTemplateSource = cfg.Templates.TagName.Source
+		}
 	}
 
-	versions := make(map[string]semver.Version)
-	for pkgName, bump := range versionBumps {
-		versions[pkgName] = bump.NewVersion
-	}
-
-	packageTags, err := generator.GenerateAllPackageTags(consignments, versions, tagTemplateSource)
-	if err != nil {
-		return fmt.Errorf("failed to generate tags: %w", err)
+	packageTags := make(map[string]changelog.PackageTag)
+	for _, pkg := range cfg.Packages {
+		bump, hasBump := versionBumps[pkg.Name]
+		if !hasBump {
+			continue
+		}
+		var tagName, tagMsg string
+		if pkg.Templates != nil && pkg.Templates.TagName != nil {
+			switch {
+			case pkg.Templates.TagName.Inline != "":
+				tagName, tagMsg, err = generator.GeneratePackageTagWithContext(consignments, pkg.Name, bump.NewVersion, pkg.Templates.TagName.Inline)
+			case pkg.Templates.TagName.Source != "":
+				tagName, tagMsg, err = generator.GeneratePackageTag(consignments, pkg.Name, bump.NewVersion, pkg.Templates.TagName.Source)
+			default:
+				if globalTagTemplateInline != "" {
+					tagName, tagMsg, err = generator.GeneratePackageTagWithContext(consignments, pkg.Name, bump.NewVersion, globalTagTemplateInline)
+				} else {
+					tagName, tagMsg, err = generator.GeneratePackageTag(consignments, pkg.Name, bump.NewVersion, globalTagTemplateSource)
+				}
+			}
+		} else {
+			if globalTagTemplateInline != "" {
+				tagName, tagMsg, err = generator.GeneratePackageTagWithContext(consignments, pkg.Name, bump.NewVersion, globalTagTemplateInline)
+			} else {
+				tagName, tagMsg, err = generator.GeneratePackageTag(consignments, pkg.Name, bump.NewVersion, globalTagTemplateSource)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("failed to generate tag for package %s: %w", pkg.Name, err)
+		}
+		packageTags[pkg.Name] = changelog.PackageTag{Name: tagName, Message: tagMsg}
 	}
 
 	// 8. Archive consignments to history with version context
@@ -318,7 +347,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 			templateSource = cfg.Templates.Changelog.Source
 		}
 
-		changelogContent, err := template.RenderReleaseNotesWithTemplate(pkgEntries, templateSource)
+		changelogContent, err := template.RenderChangelogWithTemplate(pkgEntries, templateSource)
 		if err != nil {
 			return fmt.Errorf("failed to generate changelog for %s: %w", pkg.Name, err)
 		}

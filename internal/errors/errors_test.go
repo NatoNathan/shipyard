@@ -147,3 +147,107 @@ func TestExitCodeErrorWithNilCause(t *testing.T) {
 	assert.True(t, errors.As(err, &exitErr))
 	assert.Nil(t, exitErr.Unwrap())
 }
+
+func TestConfigError_NilCause(t *testing.T) {
+	err := NewConfigError("bad config", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "bad config")
+	assert.NotContains(t, err.Error(), "<nil>")
+
+	var cfgErr *ConfigError
+	assert.True(t, errors.As(err, &cfgErr))
+	assert.Nil(t, cfgErr.Unwrap())
+}
+
+func TestConfigError_Unwrap(t *testing.T) {
+	cause := errors.New("root cause")
+	err := NewConfigError("outer", cause)
+
+	assert.Equal(t, cause, errors.Unwrap(err))
+	assert.True(t, errors.Is(err, cause))
+}
+
+func TestGitError_NilCause(t *testing.T) {
+	err := NewGitError("tag failed", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "git error")
+	assert.Contains(t, err.Error(), "tag failed")
+	assert.NotContains(t, err.Error(), "<nil>")
+
+	var gitErr *GitError
+	assert.True(t, errors.As(err, &gitErr))
+	assert.Nil(t, gitErr.Unwrap())
+}
+
+func TestGitError_Unwrap(t *testing.T) {
+	cause := errors.New("exit status 1")
+	err := NewGitError("push failed", cause)
+
+	assert.Equal(t, cause, errors.Unwrap(err))
+	assert.True(t, errors.Is(err, cause))
+}
+
+func TestUpgradeError(t *testing.T) {
+	cause := errors.New("network timeout")
+	err := NewUpgradeError("failed to fetch release", cause)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "upgrade error")
+	assert.Contains(t, err.Error(), "failed to fetch release")
+	assert.Contains(t, err.Error(), "network timeout")
+
+	var upgradeErr *UpgradeError
+	assert.True(t, errors.As(err, &upgradeErr))
+	assert.Equal(t, cause, upgradeErr.Unwrap())
+	assert.True(t, errors.Is(err, cause))
+}
+
+func TestUpgradeError_NilCause(t *testing.T) {
+	err := NewUpgradeError("no release found", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no release found")
+	assert.NotContains(t, err.Error(), "<nil>")
+
+	var upgradeErr *UpgradeError
+	assert.True(t, errors.As(err, &upgradeErr))
+	assert.Nil(t, upgradeErr.Unwrap())
+}
+
+func TestNetworkError(t *testing.T) {
+	cause := errors.New("connection refused")
+	err := NewNetworkError("failed to reach GitHub", cause)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "network error")
+	assert.Contains(t, err.Error(), "failed to reach GitHub")
+	assert.Contains(t, err.Error(), "connection refused")
+
+	var netErr *NetworkError
+	assert.True(t, errors.As(err, &netErr))
+	assert.Equal(t, cause, netErr.Unwrap())
+	assert.True(t, errors.Is(err, cause))
+}
+
+func TestNetworkError_NilCause(t *testing.T) {
+	err := NewNetworkError("timeout", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timeout")
+	assert.NotContains(t, err.Error(), "<nil>")
+
+	var netErr *NetworkError
+	assert.True(t, errors.As(err, &netErr))
+	assert.Nil(t, netErr.Unwrap())
+}
+
+func TestDependencyError_NoCycle(t *testing.T) {
+	err := NewDependencyError("missing package", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency error")
+	assert.Contains(t, err.Error(), "missing package")
+	assert.NotContains(t, err.Error(), "->")
+}

@@ -196,10 +196,16 @@ func runReleaseNotes(opts *ReleaseNotesOptions) error {
 		return PrintJSON(os.Stdout, jsonData)
 	}
 
-	// Render release notes using template
-	notes, err := template.RenderReleaseNotesWithTemplate(entries, templateType)
-	if err != nil {
-		return fmt.Errorf("failed to render release notes: %w", err)
+	// Render using the appropriate mode: changelog (all versions) or release-notes (single version)
+	var notes string
+	var renderErr error
+	if opts.AllVersions {
+		notes, renderErr = template.RenderChangelogWithTemplate(entries, templateType)
+	} else {
+		notes, renderErr = template.RenderReleaseNotesWithTemplate(entries, templateType)
+	}
+	if renderErr != nil {
+		return fmt.Errorf("failed to render release notes: %w", renderErr)
 	}
 
 	// Output rendered notes

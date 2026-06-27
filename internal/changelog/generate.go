@@ -8,6 +8,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/fileutil"
 
 	"github.com/NatoNathan/shipyard/internal/consignment"
+	"github.com/NatoNathan/shipyard/internal/history"
 	"github.com/NatoNathan/shipyard/internal/template"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
@@ -104,32 +105,37 @@ func (g *ChangelogGenerator) GenerateForPackageWithTemplate(
 	version semver.Version,
 	inlineTemplate string,
 ) (string, error) {
-	// Filter consignments for this package
 	filtered := filterConsignmentsForPackage(consignments, packageName)
 
-	// Build single-package context
-	singleContext := g.buildSinglePackageContext(packageName, version, filtered)
-
-	// Wrap in array for changelog template (which expects multi-version format)
-	// Convert to Entry-like structure with Timestamp instead of Date
-	type Entry struct {
-		Package      string
-		Version      string
-		Timestamp    time.Time
-		Consignments interface{}
+	histConsignments := make([]history.Consignment, len(filtered))
+	for i, c := range filtered {
+		histConsignments[i] = history.Consignment{
+			ID:         c.ID,
+			Summary:    c.Summary,
+			ChangeType: string(c.ChangeType),
+			Metadata:   c.Metadata,
+		}
 	}
 
-	context := []Entry{
-		{
-			Package:      packageName,
-			Version:      version.String(),
-			Timestamp:    time.Now(),
-			Consignments: singleContext["Consignments"],
-		},
+	entry := history.Entry{
+		Package:      packageName,
+		Version:      version.String(),
+		Timestamp:    time.Now(),
+		Consignments: histConsignments,
 	}
 
-	// Render template
-	result, err := g.renderer.Render(inlineTemplate, context)
+	ctx := template.ChangelogContext{
+		Package:       packageName,
+		LatestVersion: version.String(),
+		Entries:       []history.Entry{entry},
+	}
+	if version.IsPreRelease() {
+		ctx.LatestPreRelease = version.String()
+	} else {
+		ctx.LatestStable = version.String()
+	}
+
+	result, err := g.renderer.Render(inlineTemplate, ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to render changelog: %w", err)
 	}
@@ -376,12 +382,13 @@ func (g *ChangelogGenerator) buildSinglePackageContext(
 		}
 	}
 
-	// Build context
+	now := time.Now()
 	context := map[string]interface{}{
 		"Package":      packageName,
 		"Version":      version.String(),
 		"Consignments": templateConsignments,
-		"Date":         time.Now(),
+		"Date":         now,
+		"Timestamp":    now,
 		"Metadata":     aggregateMetadata(consignments),
 	}
 
@@ -420,20 +427,28 @@ func aggregateMetadata(consignments []*consignment.Consignment) map[string]inter
 	return metadata
 }
 
-// GenerateReleaseNotes generates release notes for a single package
+// GenerateReleaseNotes generates release notes for a single package.
+// Release notes templates receive a single-entry context (flat .Package, .Version,
+// .Timestamp, .Consignments fields) rather than the ChangelogContext used for changelogs.
 func (g *ChangelogGenerator) GenerateReleaseNotes(
 	consignments []*consignment.Consignment,
 	packageName string,
 	version semver.Version,
 	templateSource string,
 ) (string, error) {
-	// Load template (specify we need a releasenotes template)
 	templateContent, err := g.loader.Load(templateSource, template.TemplateTypeReleaseNotes)
 	if err != nil {
 		return "", fmt.Errorf("failed to load template: %w", err)
 	}
 
-	return g.GenerateForPackageWithTemplate(consignments, packageName, version, templateContent)
+	filtered := filterConsignmentsForPackage(consignments, packageName)
+	context := g.buildSinglePackageContext(packageName, version, filtered)
+
+	result, err := g.renderer.Render(templateContent, context)
+	if err != nil {
+		return "", fmt.Errorf("failed to render release notes: %w", err)
+	}
+	return result, nil
 }
 
 // GetDefaultChangelogTemplate returns the default changelog template source

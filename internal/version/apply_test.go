@@ -341,3 +341,84 @@ func TestGetBumpPriority(t *testing.T) {
 	assert.Less(t, GetBumpPriority(types.ChangeTypePatch), GetBumpPriority(types.ChangeTypeMinor))
 	assert.Less(t, GetBumpPriority(types.ChangeTypeMinor), GetBumpPriority(types.ChangeTypeMajor))
 }
+
+func TestFilterBumpsByPackages(t *testing.T) {
+	bumps := map[string]types.ChangeType{
+		"core": types.ChangeTypeMinor,
+		"api":  types.ChangeTypeMajor,
+		"web":  types.ChangeTypePatch,
+	}
+
+	t.Run("filters to specified packages", func(t *testing.T) {
+		result := FilterBumpsByPackages(bumps, []string{"core", "api"})
+		assert.Len(t, result, 2)
+		assert.Equal(t, types.ChangeTypeMinor, result["core"])
+		assert.Equal(t, types.ChangeTypeMajor, result["api"])
+		assert.NotContains(t, result, "web")
+	})
+
+	t.Run("empty package list returns all", func(t *testing.T) {
+		result := FilterBumpsByPackages(bumps, []string{})
+		assert.Equal(t, bumps, result)
+	})
+
+	t.Run("package not in bumps results in empty", func(t *testing.T) {
+		result := FilterBumpsByPackages(bumps, []string{"missing"})
+		assert.Empty(t, result)
+	})
+}
+
+func TestGetPackagesWithBumps(t *testing.T) {
+	t.Run("returns sorted package names", func(t *testing.T) {
+		bumps := map[string]types.ChangeType{
+			"web":  types.ChangeTypePatch,
+			"core": types.ChangeTypeMinor,
+			"api":  types.ChangeTypeMajor,
+		}
+		result := GetPackagesWithBumps(bumps)
+		assert.Equal(t, []string{"api", "core", "web"}, result)
+	})
+
+	t.Run("empty map returns empty slice", func(t *testing.T) {
+		result := GetPackagesWithBumps(map[string]types.ChangeType{})
+		assert.Empty(t, result)
+	})
+}
+
+func TestCalculateVersionDiffs(t *testing.T) {
+	current := map[string]semver.Version{
+		"core": {Major: 1, Minor: 0, Patch: 0},
+		"api":  {Major: 2, Minor: 0, Patch: 0},
+		"web":  {Major: 1, Minor: 5, Patch: 0},
+	}
+	newVers := map[string]semver.Version{
+		"core": {Major: 1, Minor: 1, Patch: 0},
+		"api":  {Major: 2, Minor: 0, Patch: 0}, // unchanged
+		"web":  {Major: 2, Minor: 0, Patch: 0},
+	}
+	bumps := map[string]types.ChangeType{
+		"core": types.ChangeTypeMinor,
+		"api":  types.ChangeTypePatch,
+		"web":  types.ChangeTypeMajor,
+	}
+
+	diffs := CalculateVersionDiffs(current, newVers, bumps)
+
+	// Only core and web actually changed
+	assert.Len(t, diffs, 2)
+
+	diffsByPkg := make(map[string]VersionDiff)
+	for _, d := range diffs {
+		diffsByPkg[d.Package] = d
+	}
+
+	require.Contains(t, diffsByPkg, "core")
+	assert.Equal(t, types.ChangeTypeMinor, diffsByPkg["core"].ChangeType)
+	assert.Equal(t, "1.0.0", diffsByPkg["core"].OldVersion.String())
+	assert.Equal(t, "1.1.0", diffsByPkg["core"].NewVersion.String())
+
+	require.Contains(t, diffsByPkg, "web")
+	assert.Equal(t, types.ChangeTypeMajor, diffsByPkg["web"].ChangeType)
+
+	assert.NotContains(t, diffsByPkg, "api") // unchanged
+}

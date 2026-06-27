@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-{{- range . }}
+{{- range .Entries }}
 {{- if gt (len .Consignments) 0 }}
 
 ## [{{ .Version }}] - {{ .Timestamp | date "2006-01-02" }}

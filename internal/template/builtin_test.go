@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/NatoNathan/shipyard/internal/history"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,41 +13,29 @@ import (
 func TestBuiltinTemplate_Changelog(t *testing.T) {
 	now := time.Date(2026, 1, 30, 14, 30, 0, 0, time.UTC)
 
-	type Consignment struct {
-		Packages   []string
-		ChangeType string
-		Summary    string
-		Metadata   map[string]interface{}
-	}
-
-	type Entry struct {
-		Package      string
-		Version      string
-		Timestamp    time.Time
-		Consignments []Consignment
-	}
-
-	// Changelog template expects array of entries (multi-version)
-	context := []Entry{
-		{
-			Package:   "core",
-			Version:   "1.2.0",
-			Timestamp: now,
-			Consignments: []Consignment{
-				{
-					Packages:   []string{"core"},
-					ChangeType: "minor",
-					Summary:    "Added OAuth2 support",
-					Metadata: map[string]interface{}{
-						"author": "alice@example.com",
-						"issue":  "FEAT-123",
+	context := ChangelogContext{
+		Package:       "core",
+		LatestVersion: "1.2.0",
+		LatestStable:  "1.2.0",
+		Entries: []history.Entry{
+			{
+				Package:   "core",
+				Version:   "1.2.0",
+				Timestamp: now,
+				Consignments: []history.Consignment{
+					{
+						ChangeType: "minor",
+						Summary:    "Added OAuth2 support",
+						Metadata: map[string]interface{}{
+							"author": "alice@example.com",
+							"issue":  "FEAT-123",
+						},
 					},
-				},
-				{
-					Packages:   []string{"core"},
-					ChangeType: "patch",
-					Summary:    "Fixed bug in validation",
-					Metadata:   map[string]interface{}{},
+					{
+						ChangeType: "patch",
+						Summary:    "Fixed bug in validation",
+						Metadata:   map[string]interface{}{},
+					},
 				},
 			},
 		},
@@ -140,38 +129,26 @@ func TestBuiltinTemplate_AllTemplatesValid(t *testing.T) {
 func TestBuiltinTemplate_ChangelogWithSharedConsignments(t *testing.T) {
 	now := time.Date(2026, 1, 30, 14, 30, 0, 0, time.UTC)
 
-	type Consignment struct {
-		Packages   []string
-		ChangeType string
-		Summary    string
-		Metadata   map[string]interface{}
-	}
-
-	type Entry struct {
-		Package      string
-		Version      string
-		Timestamp    time.Time
-		Consignments []Consignment
-	}
-
-	// Test that consignments affecting multiple packages can appear in single-package changelog
-	context := []Entry{
-		{
-			Package:   "core",
-			Version:   "1.2.0",
-			Timestamp: now,
-			Consignments: []Consignment{
-				{
-					Packages:   []string{"core"},
-					ChangeType: "minor",
-					Summary:    "Core feature",
-					Metadata:   map[string]interface{}{},
-				},
-				{
-					Packages:   []string{"core", "api"},
-					ChangeType: "patch",
-					Summary:    "Shared fix",
-					Metadata:   map[string]interface{}{},
+	context := ChangelogContext{
+		Package:       "core",
+		LatestVersion: "1.2.0",
+		LatestStable:  "1.2.0",
+		Entries: []history.Entry{
+			{
+				Package:   "core",
+				Version:   "1.2.0",
+				Timestamp: now,
+				Consignments: []history.Consignment{
+					{
+						ChangeType: "minor",
+						Summary:    "Core feature",
+						Metadata:   map[string]interface{}{},
+					},
+					{
+						ChangeType: "patch",
+						Summary:    "Shared fix",
+						Metadata:   map[string]interface{}{},
+					},
 				},
 			},
 		},
@@ -193,19 +170,17 @@ func TestBuiltinTemplate_ChangelogWithSharedConsignments(t *testing.T) {
 func TestBuiltinTemplate_EmptyConsignments(t *testing.T) {
 	now := time.Date(2026, 1, 30, 14, 30, 0, 0, time.UTC)
 
-	type Entry struct {
-		Package      string
-		Version      string
-		Timestamp    time.Time
-		Consignments []interface{}
-	}
-
-	context := []Entry{
-		{
-			Package:      "core",
-			Version:      "1.0.0",
-			Timestamp:    now,
-			Consignments: []interface{}{}, // Empty
+	context := ChangelogContext{
+		Package:       "core",
+		LatestVersion: "1.0.0",
+		LatestStable:  "1.0.0",
+		Entries: []history.Entry{
+			{
+				Package:      "core",
+				Version:      "1.0.0",
+				Timestamp:    now,
+				Consignments: []history.Consignment{}, // Empty
+			},
 		},
 	}
 
