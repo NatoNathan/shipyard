@@ -52,7 +52,7 @@ func (m *Shipyard) buildPlatform(
 ) *dagger.File {
 	// Use Go 1.25 alpine image for building
 	builder := dag.Container().
-		From("golang:1.25-alpine").
+		From(GoImage).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src").
 		// Set build environment

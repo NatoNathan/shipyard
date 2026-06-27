@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/history"
 	"github.com/NatoNathan/shipyard/internal/template"
@@ -20,8 +22,8 @@ type ReleaseNotesOptions struct {
 	AllVersions    bool
 	MetadataFilter []string
 	Template       string
-	JSON           bool     // Output in JSON format
-	Quiet          bool     // Suppress output
+	JSON           bool // Output in JSON format
+	Quiet          bool // Suppress output
 }
 
 // NewReleaseNotesCommand creates the release-notes command
@@ -32,7 +34,7 @@ func NewReleaseNotesCommand() *cobra.Command {
 		Use:                   "release-notes [-p package] [-o file] [--version version | --all-versions]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"notes", "changelog"},
-		Short:   "Tell the tale of your voyage",
+		Short:                 "Tell the tale of your voyage",
 		Long: `Recount the journey from the captain's log. Transforms version history into
 tales of ports visited and cargo delivered. Filter by vessel or destination,
 write to parchment (file) or speak aloud (stdout).`,
@@ -81,17 +83,39 @@ func runReleaseNotes(opts *ReleaseNotesOptions) error {
 	}
 
 	// Read history
-	historyPath := filepath.Join(cwd, ".shipyard", "history.json")
+	historyPath := filepath.Join(cwd, cfg.History.Path)
 	entries, err := history.ReadHistory(historyPath)
 	if err != nil {
-		return fmt.Errorf("failed to read history: %w", err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to read history: %w", err)
+		}
+		entries = []history.Entry{}
 	}
 
 	// Check if history is empty
 	if len(entries) == 0 {
+		if len(cfg.Packages) == 1 && opts.Package == "" {
+			opts.Package = cfg.Packages[0].Name
+		}
+		if opts.JSON {
+			jsonData := map[string]interface{}{
+				"package": opts.Package,
+				"entries": entries,
+			}
+			if opts.Output != "" {
+				file, err := os.Create(opts.Output)
+				if err != nil {
+					return fmt.Errorf("failed to create output file: %w", err)
+				}
+				defer func() { _ = file.Close() }()
+				return PrintJSON(file, jsonData)
+			}
+			return PrintJSON(os.Stdout, jsonData)
+		}
+
 		output := "No releases found in history\n"
 		if opts.Output != "" {
-			return os.WriteFile(opts.Output, []byte(output), 0644)
+			return fileutil.WriteFile(opts.Output, []byte(output), 0644)
 		}
 		fmt.Print(output)
 		return nil
@@ -183,7 +207,7 @@ func runReleaseNotes(opts *ReleaseNotesOptions) error {
 		if !opts.Quiet {
 			fmt.Printf("Release notes written to %s\n", opts.Output)
 		}
-		return os.WriteFile(opts.Output, []byte(notes), 0644)
+		return fileutil.WriteFile(opts.Output, []byte(notes), 0644)
 	}
 
 	if !opts.Quiet {

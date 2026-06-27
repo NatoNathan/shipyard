@@ -1,7 +1,6 @@
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -16,35 +15,37 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-packages: write
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Set up Dagger
-        uses: dagger/dagger-for-github@v7
+        uses: dagger/dagger-for-github@057a749131c864e4a719e6773baf0d1447ef998f # v7
         with:
-          version: "latest"
+          version: "0.21.7"
 
       - name: Run Dagger Release Pipeline
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION_TAG: ${{ github.ref_name }}
-          DOCKER_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          dagger call -m ./dagger release \
+          dagger call release \
             --source=. \
             --version="$VERSION_TAG" \
             --github-token=env:GITHUB_TOKEN \
             --npm-token=env:NPM_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
-            --docker-username=NatoNathan \
-            --docker-token=env:DOCKER_TOKEN
+            --docker-username=${{ github.repository_owner }}

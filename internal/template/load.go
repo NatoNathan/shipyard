@@ -1,6 +1,7 @@
 package template
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // SourceType represents the type of template source
@@ -23,17 +30,25 @@ const (
 
 // TemplateLoader handles loading templates from various sources
 type TemplateLoader struct {
-	baseDir   string
-	cache     map[string]string
-	authToken string
-	timeout   time.Duration
+	baseDir          string
+	cache            map[string]string
+	authToken        string
+	timeout          time.Duration
+	maxResponseBytes int64
 }
+
+const (
+	defaultTemplateTimeout          = 30 * time.Second
+	defaultTemplateMaxResponseBytes = int64(1 << 20)
+	maxTemplateRedirects            = 3
+)
 
 // NewTemplateLoader creates a new template loader
 func NewTemplateLoader() *TemplateLoader {
 	return &TemplateLoader{
-		cache:   make(map[string]string),
-		timeout: 30 * time.Second,
+		cache:            make(map[string]string),
+		timeout:          defaultTemplateTimeout,
+		maxResponseBytes: defaultTemplateMaxResponseBytes,
 	}
 }
 
@@ -55,6 +70,11 @@ func (l *TemplateLoader) GetAuthToken() string {
 // SetTimeout sets the timeout for remote operations
 func (l *TemplateLoader) SetTimeout(timeout time.Duration) {
 	l.timeout = timeout
+}
+
+// SetMaxResponseBytes sets the maximum remote template response size.
+func (l *TemplateLoader) SetMaxResponseBytes(maxBytes int64) {
+	l.maxResponseBytes = maxBytes
 }
 
 // Load loads a template from the specified source
@@ -163,7 +183,7 @@ func (l *TemplateLoader) loadFile(path string) (string, error) {
 		path = filepath.Join(l.baseDir, path)
 	}
 
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read template file: %w", err)
 	}
@@ -175,6 +195,18 @@ func (l *TemplateLoader) loadFile(path string) (string, error) {
 func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 	client := &http.Client{
 		Timeout: l.timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= maxTemplateRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxTemplateRedirects)
+			}
+			if l.authToken != "" && len(via) > 0 {
+				original := via[0].URL
+				if req.URL.Scheme != "https" || req.URL.Host != original.Host {
+					return fmt.Errorf("refusing authenticated redirect to different origin")
+				}
+			}
+			return nil
+		},
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -197,7 +229,15 @@ func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 		return "", fmt.Errorf("failed to fetch template: HTTP %d", resp.StatusCode)
 	}
 
-	content, err := io.ReadAll(resp.Body)
+	maxBytes := l.maxResponseBytes
+	if maxBytes <= 0 {
+		maxBytes = defaultTemplateMaxResponseBytes
+	}
+	if resp.ContentLength > maxBytes {
+		return "", fmt.Errorf("template response exceeds maximum size of %d bytes", maxBytes)
+	}
+
+	content, err := readLimited(resp.Body, maxBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
@@ -205,22 +245,90 @@ func (l *TemplateLoader) loadHTTPS(url string) (string, error) {
 	return string(content), nil
 }
 
-// loadGit loads a template from a git repository
+func readLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
+	limited := io.LimitReader(reader, maxBytes+1)
+	content, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxBytes {
+		return nil, fmt.Errorf("response exceeds maximum size of %d bytes", maxBytes)
+	}
+	return content, nil
+}
+
+// loadGit loads a template from a git repository.
 // Format: git:https://github.com/user/repo.git#path/to/template@branch
 func (l *TemplateLoader) loadGit(source string) (string, error) {
-	// Parse git source
-	gitURL, path, ref := parseGitSource(source)
-
-	if gitURL == "" {
+	gitURL, templatePath, ref := parseGitSource(source)
+	if gitURL == "" || templatePath == "" {
 		return "", fmt.Errorf("invalid git source format: %s", source)
 	}
+	cleanTemplatePath := filepath.Clean(templatePath)
+	if filepath.IsAbs(cleanTemplatePath) || cleanTemplatePath == ".." || strings.HasPrefix(cleanTemplatePath, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("unsafe git template path: %s", templatePath)
+	}
 
-	// For now, return error indicating git support is not yet implemented
-	// Full implementation would:
-	// 1. Clone or fetch the repository
-	// 2. Checkout the specified ref
-	// 3. Read the file at the specified path
-	return "", fmt.Errorf("git template loading not yet implemented (URL: %s, path: %s, ref: %s)", gitURL, path, ref)
+	cloneDir, err := os.MkdirTemp("", "shipyard-template-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create git template cache: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(cloneDir) }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), l.timeout)
+	defer cancel()
+
+	_, err = gogit.PlainCloneContext(ctx, cloneDir, false, &gogit.CloneOptions{
+		URL:           gitURL,
+		Depth:         1,
+		SingleBranch:  true,
+		ReferenceName: referenceNameFor(ref),
+		Auth:          l.gitAuth(gitURL),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to clone template repository: %w", err)
+	}
+
+	templateFile := filepath.Join(cloneDir, cleanTemplatePath)
+	resolvedCloneDir, err := filepath.EvalSymlinks(cloneDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve git clone directory: %w", err)
+	}
+	resolvedTemplateFile, err := filepath.EvalSymlinks(templateFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve git template file: %w", err)
+	}
+	rel, err := filepath.Rel(resolvedCloneDir, resolvedTemplateFile)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("unsafe git template path: %s", templatePath)
+	}
+
+	content, err := fileutil.ReadFile(resolvedTemplateFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read git template file: %w", err)
+	}
+
+	return string(content), nil
+}
+
+func referenceNameFor(ref string) plumbing.ReferenceName {
+	if ref == "" {
+		return ""
+	}
+	if strings.HasPrefix(ref, "refs/") {
+		return plumbing.ReferenceName(ref)
+	}
+	return plumbing.NewBranchReferenceName(ref)
+}
+
+func (l *TemplateLoader) gitAuth(gitURL string) transport.AuthMethod {
+	if l.authToken == "" {
+		return nil
+	}
+	if strings.HasPrefix(gitURL, "https://") {
+		return &gitHttp.BasicAuth{Username: "token", Password: l.authToken}
+	}
+	return nil
 }
 
 // parseGitSource parses a git source string into components
@@ -248,4 +356,3 @@ func parseGitSource(source string) (gitURL, path, ref string) {
 
 	return gitURL, path, ref
 }
-

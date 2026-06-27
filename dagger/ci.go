@@ -109,9 +109,7 @@ func (m *Shipyard) Lint(
 ) (string, error) {
 	container := m.goContainer(source).
 		// Install golangci-lint v2
-		WithExec([]string{"go", "install", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"}).
-		// Run linter
-		WithExec([]string{"golangci-lint", "run", "--timeout=" + timeout})
+		WithExec([]string{"go", "run", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@" + GolangCILintVersion, "run", "--timeout=" + timeout})
 
 	output, err := container.Stdout(ctx)
 	if err != nil {
@@ -121,7 +119,32 @@ func (m *Shipyard) Lint(
 	return output, nil
 }
 
-// CI runs the full CI pipeline: test, lint, and build
+// Security runs pinned security scanners against the source tree.
+func (m *Shipyard) Security(
+	ctx context.Context,
+	// Source code directory
+	source *dagger.Directory,
+) (string, error) {
+	container := m.goContainer(source)
+
+	gosecOutput, err := container.
+		WithExec([]string{"go", "run", "github.com/securego/gosec/v2/cmd/gosec@" + GosecVersion, "./..."}).
+		Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("gosec scan failed: %w", err)
+	}
+
+	govulnOutput, err := container.
+		WithExec([]string{"go", "run", "golang.org/x/vuln/cmd/govulncheck@" + GovulncheckVersion, "./..."}).
+		Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("govulncheck scan failed: %w", err)
+	}
+
+	return strings.TrimSpace(gosecOutput) + "\n" + strings.TrimSpace(govulnOutput), nil
+}
+
+// CI runs the full CI pipeline: test, lint, security, and build
 func (m *Shipyard) CI(
 	ctx context.Context,
 	// Source code directory
@@ -145,6 +168,13 @@ func (m *Shipyard) CI(
 	}
 	fmt.Println(lintOutput)
 
+	fmt.Println("🔒 Running security scans...")
+	securityOutput, err := m.Security(ctx, source)
+	if err != nil {
+		return fmt.Errorf("security stage failed: %w", err)
+	}
+	fmt.Println(securityOutput)
+
 	fmt.Println("🔨 Building...")
 	_ = m.BuildOnly(ctx, source, "dev")
 
@@ -155,7 +185,7 @@ func (m *Shipyard) CI(
 // goContainer returns a Go container with source mounted and dependencies downloaded
 func (m *Shipyard) goContainer(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
-		From("golang:1.25-alpine").
+		From(GoImage).
 		// Install git (needed for some go tools)
 		WithExec([]string{"apk", "add", "--no-cache", "git"}).
 		WithMountedDirectory("/src", source).
@@ -175,7 +205,7 @@ func (m *Shipyard) goContainerWithCGO(source *dagger.Directory, enableCGO bool) 
 
 	// Use full golang image (not alpine) for CGO support
 	return dag.Container().
-		From("golang:1.25").
+		From(GoImageCGO).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src").
 		// Enable CGO for race detection

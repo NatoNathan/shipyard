@@ -5,7 +5,6 @@ This document provides a comprehensive reference for the `.shipyard/shipyard.yam
 ## Configuration File Location
 
 - **Default**: `.shipyard/shipyard.yaml`
-- **Custom**: Use `--config <path>` flag to specify alternative location
 
 ## Configuration Structure
 

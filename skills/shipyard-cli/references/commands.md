@@ -52,7 +52,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -182,13 +181,13 @@ Must be run inside a git repository.
 
 ### Related Commands
 
-- [`status`](./status.md) - View pending consignments
-- [`version`](./version.md) - Process consignments into versions
+- `status` - View pending consignments
+- `version` - Process consignments into versions
 
 ### See Also
 
-- [Consignment Format](../consignment-format.md) - Structure of consignment files
-- [Configuration Reference](../configuration.md) - Metadata field definitions
+- [Consignment Format](../../../docs/consignment-format.md) - Structure of consignment files
+- [Configuration Reference](./configuration.md) - Metadata field definitions
 
 ---
 
@@ -214,7 +213,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -298,11 +296,11 @@ Completions include:
 
 ### Related Commands
 
-- [`upgrade`](./upgrade.md) - Upgrade shipyard
+- `upgrade` - Upgrade shipyard
 
 ### See Also
 
-- [Getting Started](../getting-started.md) - Initial setup
+- [Getting Started](../../../README.md#basic-usage) - Initial setup
 
 ---
 
@@ -338,7 +336,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -433,12 +430,12 @@ If no configuration file exists, returns an error.
 
 ### Related Commands
 
-- [`init`](./init.md) - Initialize shipyard configuration
-- [`validate`](./validate.md) - Validate configuration for errors
+- `init` - Initialize shipyard configuration
+- `validate` - Validate configuration for errors
 
 ### See Also
 
-- [Configuration Reference](../configuration.md) - Full configuration file format
+- [Configuration Reference](./configuration.md) - Full configuration file format
 
 ---
 
@@ -473,7 +470,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -597,13 +593,13 @@ packages:
 
 ### Related Commands
 
-- [`add`](./add.md) - Create consignments after initialization
-- [`status`](./status.md) - View pending consignments
+- `add` - Create consignments after initialization
+- `status` - View pending consignments
 
 ### See Also
 
-- [Configuration Reference](../configuration.md) - Full shipyard.yaml format
-- [Getting Started](../getting-started.md) - First-time setup guide
+- [Configuration Reference](./configuration.md) - Full shipyard.yaml format
+- [Getting Started](../../../README.md#basic-usage) - First-time setup guide
 
 ---
 
@@ -635,13 +631,12 @@ The `prerelease` command creates pre-release versions for testing changes before
 - **Changelog deferred**: Changelog updates are deferred until stable release
 - **Git tags**: Creates tags using stage-specific templates
 
-To advance to the next stage, use [`shipyard version promote`](./promote.md). To create timestamp-based snapshot builds, use [`shipyard version snapshot`](./snapshot.md).
+To advance to the next stage, use `shipyard version promote`. To create timestamp-based snapshot builds, use `shipyard version snapshot`.
 
 ### Global Options
 
 | Option | Description |
 |--------|-------------|
-| `--config`, `-c` | Path to configuration file (default: `.shipyard/shipyard.yaml`) |
 | `--json`, `-j` | Output in JSON format |
 | `--quiet`, `-q` | Suppress all output except errors |
 | `--verbose`, `-v` | Enable verbose logging |
@@ -994,7 +989,7 @@ Stages follow the order defined in configuration. Use `promote` to advance betwe
 
 #### Snapshot Behavior
 
-For timestamp-based builds independent of the stage system, use [`shipyard version snapshot`](./snapshot.md):
+For timestamp-based builds independent of the stage system, use `shipyard version snapshot`:
 
 - Snapshots use timestamp: `YYYYMMDD-HHMMSS`
 - Don't affect pre-release stage/counter tracking
@@ -1111,18 +1106,18 @@ jobs:
 
 ### Related Commands
 
-- [`version`](./version.md) - Create stable release, clears pre-release state
-- [`version promote`](./promote.md) - Promote to next stage or stable
-- [`version snapshot`](./snapshot.md) - Create timestamped snapshot build
-- [`release-notes`](./release-notes.md) - Generate notes (includes pre-release tags)
-- [`release`](./release.md) - Publish release (supports `--prerelease` flag)
+- `version` - Create stable release, clears pre-release state
+- `version promote` - Promote to next stage or stable
+- `version snapshot` - Create timestamped snapshot build
+- `release-notes` - Generate notes (includes pre-release tags)
+- `release` - Publish release (supports `--prerelease` flag)
 
 ### See Also
 
-- [Configuration Reference](../configuration.md)
-- [Tag Templates](../tag-templates.md)
-- [Consignment Format](../consignment-format.md)
-- [CI/CD Integration Guide](../ci-cd.md)
+- [Configuration Reference](./configuration.md)
+- [Tag Templates](../../../docs/tag-generation.md)
+- [Consignment Format](../../../docs/consignment-format.md)
+- [CI/CD Integration Guide](./workflows.md)
 
 ---
 
@@ -1157,7 +1152,6 @@ The `promote` command advances pre-releases through configured stages. Like navi
 
 | Option | Description |
 |--------|-------------|
-| `--config`, `-c` | Path to configuration file (default: `.shipyard/shipyard.yaml`) |
 | `--json`, `-j` | Output in JSON format |
 | `--quiet`, `-q` | Suppress all output except errors |
 | `--verbose`, `-v` | Enable verbose logging |
@@ -1610,18 +1604,18 @@ jobs:
 
 ### Related Commands
 
-- [`version prerelease`](./prerelease.md) - Create or increment pre-release at current stage
-- [`version snapshot`](./snapshot.md) - Create timestamped snapshot build
-- [`version`](./version.md) - Promote to stable release (from highest stage)
-- [`consign`](./consign.md) - Record changes that will be promoted
-- [`status`](./status.md) - View current pre-release stage
+- `version prerelease` - Create or increment pre-release at current stage
+- `version snapshot` - Create timestamped snapshot build
+- `version` - Promote to stable release (from highest stage)
+- `consign` - Record changes that will be promoted
+- `status` - View current pre-release stage
 
 ### See Also
 
-- [Configuration Reference](../configuration.md)
-- [Pre-Release Reference](./prerelease.md)
-- [Tag Templates](../tag-templates.md)
-- [CI/CD Integration Guide](../ci-cd.md)
+- [Configuration Reference](./configuration.md)
+- [Pre-Release Reference](#prerelease---create-or-increment-a-pre-release-version-at-the-current-stage)
+- [Tag Templates](../../../docs/tag-generation.md)
+- [CI/CD Integration Guide](./workflows.md)
 
 ---
 
@@ -1655,7 +1649,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -1785,12 +1778,12 @@ shipyard release --package my-api
 
 ### Related Commands
 
-- [`version`](./version.md) - Create version tags
-- [`release-notes`](./release-notes.md) - Generate release notes manually
+- `version` - Create version tags
+- `release-notes` - Generate release notes manually
 
 ### See Also
 
-- [Configuration Reference](../configuration.md) - GitHub settings
+- [Configuration Reference](./configuration.md) - GitHub settings
 
 ---
 
@@ -1823,7 +1816,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -1962,13 +1954,13 @@ Exit code: 0 (success)
 
 ### Related Commands
 
-- [`version`](./version.md) - Create new versions (populates history)
-- [`release`](./release.md) - Publish releases to GitHub
+- `version` - Create new versions (populates history)
+- `release` - Publish releases to GitHub
 
 ### See Also
 
-- [Tag Generation Guide](../tag-generation.md) - Template customization
-- [Configuration Reference](../configuration.md) - Metadata field definitions
+- [Tag Generation Guide](../../../docs/tag-generation.md) - Template customization
+- [Configuration Reference](./configuration.md) - Metadata field definitions
 
 ---
 
@@ -2002,7 +1994,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -2102,13 +2093,13 @@ With `--json`, outputs a JSON object with `removed` (array of IDs) and `count` (
 
 ### Related Commands
 
-- [`add`](./add.md) - Create new consignments
-- [`status`](./status.md) - View pending consignments
-- [`version`](./version.md) - Process consignments into versions
+- `add` - Create new consignments
+- `status` - View pending consignments
+- `version` - Process consignments into versions
 
 ### See Also
 
-- [Consignment Format](../consignment-format.md) - Structure of consignment files
+- [Consignment Format](../../../docs/consignment-format.md) - Structure of consignment files
 
 ---
 
@@ -2146,7 +2137,6 @@ Like taking a quick navigational reading, snapshots capture the current state wi
 
 | Option | Description |
 |--------|-------------|
-| `--config`, `-c` | Path to configuration file (default: `.shipyard/shipyard.yaml`) |
 | `--json`, `-j` | Output in JSON format |
 | `--quiet`, `-q` | Suppress all output except errors |
 | `--verbose`, `-v` | Enable verbose logging |
@@ -2477,18 +2467,18 @@ Use snapshot versions for Docker image tags:
 
 ### Related Commands
 
-- [`version prerelease`](./prerelease.md) - Create stage-based pre-release (alpha, beta, rc)
-- [`version promote`](./promote.md) - Promote to next stage or stable
-- [`version`](./version.md) - Create stable release
-- [`consign`](./consign.md) - Record changes that will be in snapshot
-- [`release`](./release.md) - Publish release (snapshots can use `--prerelease` flag)
+- `version prerelease` - Create stage-based pre-release (alpha, beta, rc)
+- `version promote` - Promote to next stage or stable
+- `version` - Create stable release
+- `consign` - Record changes that will be in snapshot
+- `release` - Publish release (snapshots can use `--prerelease` flag)
 
 ### See Also
 
-- [Configuration Reference](../configuration.md)
-- [Pre-Release Reference](./prerelease.md)
-- [Tag Templates](../tag-templates.md)
-- [CI/CD Integration Guide](../ci-cd.md)
+- [Configuration Reference](./configuration.md)
+- [Pre-Release Reference](#prerelease---create-or-increment-a-pre-release-version-at-the-current-stage)
+- [Tag Templates](../../../docs/tag-generation.md)
+- [CI/CD Integration Guide](./workflows.md)
 
 ---
 
@@ -2521,7 +2511,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -2621,12 +2610,12 @@ With `--package`, only shows consignments affecting those packages.
 
 ### Related Commands
 
-- [`add`](./add.md) - Create new consignments
-- [`version`](./version.md) - Process consignments into versions
+- `add` - Create new consignments
+- `version` - Process consignments into versions
 
 ### See Also
 
-- [Consignment Format](../consignment-format.md) - Structure of consignment files
+- [Consignment Format](../../../docs/consignment-format.md) - Structure of consignment files
 
 ---
 
@@ -2659,7 +2648,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -2776,7 +2764,7 @@ Requires internet access to fetch release information from GitHub.
 
 ### Related Commands
 
-- [`completion`](./completion.md) - Shell completions
+- `completion` - Shell completions
 
 ### See Also
 
@@ -2815,7 +2803,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -2927,13 +2914,13 @@ Currently, dependency cycles are the only condition that produces warnings.
 
 ### Related Commands
 
-- [`config show`](./config-show.md) - Display resolved configuration
-- [`status`](./status.md) - View pending consignments and version bumps
+- `config show` - Display resolved configuration
+- `status` - View pending consignments and version bumps
 
 ### See Also
 
-- [Configuration Reference](../configuration.md) - Configuration file format
-- [Consignment Format](../consignment-format.md) - Structure of consignment files
+- [Configuration Reference](./configuration.md) - Configuration file format
+- [Consignment Format](../../../docs/consignment-format.md) - Structure of consignment files
 
 ---
 
@@ -2967,7 +2954,6 @@ These options are available for all shipyard commands:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -3081,7 +3067,7 @@ Templates are configured globally under `templates:` with `source:` (file path o
 - `builtin:npm` - NPM style tags
 - `builtin:grouped` - Changelog grouped by change type
 
-See [Tag Generation Guide](../tag-generation.md) for template details.
+See [Tag Generation Guide](../../../docs/tag-generation.md) for template details.
 
 ### Examples
 
@@ -3159,12 +3145,12 @@ Tags follow git commit message format:
 
 ### Related Commands
 
-- [`consign`](./consign.md) - Record a new change
-- [`releasenotes`](./releasenotes.md) - Generate release notes from history
-- [`changelog`](./changelog.md) - Generate changelog from history
+- `consign` - Record a new change
+- `releasenotes` - Generate release notes from history
+- `changelog` - Generate changelog from history
 
 ### See Also
 
-- [Tag Generation Guide](../tag-generation.md)
-- [Configuration Reference](../configuration.md)
-- [Consignment Format](../consignment-format.md)
+- [Tag Generation Guide](../../../docs/tag-generation.md)
+- [Configuration Reference](./configuration.md)
+- [Consignment Format](../../../docs/consignment-format.md)

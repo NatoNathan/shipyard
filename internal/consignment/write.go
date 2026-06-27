@@ -2,7 +2,6 @@ package consignment
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/NatoNathan/shipyard/internal/fileutil"
@@ -11,7 +10,7 @@ import (
 // WriteConsignment writes a consignment to a markdown file with atomic write
 func WriteConsignment(cons *Consignment, dir string) error {
 	// Ensure directory exists
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := fileutil.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create consignments directory: %w", err)
 	}
 

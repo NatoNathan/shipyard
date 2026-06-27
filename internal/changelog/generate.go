@@ -2,9 +2,10 @@ package changelog
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
 
 	"github.com/NatoNathan/shipyard/internal/consignment"
 	"github.com/NatoNathan/shipyard/internal/template"
@@ -50,9 +51,9 @@ func ParseTagOutput(output string) (name, message string, err error) {
 
 // ChangelogGenerator handles changelog generation from consignments
 type ChangelogGenerator struct {
-	loader            *template.TemplateLoader
-	renderer          *template.TemplateRenderer
-	preserveExisting  bool
+	loader           *template.TemplateLoader
+	renderer         *template.TemplateRenderer
+	preserveExisting bool
 }
 
 // PackageTag represents a generated tag with name and optional message
@@ -171,7 +172,7 @@ func (g *ChangelogGenerator) WriteChangelogToFile(
 
 	// If preserving existing content, prepend new content
 	if g.preserveExisting {
-		existingContent, err := os.ReadFile(outputPath)
+		existingContent, err := fileutil.ReadFile(outputPath)
 		if err == nil {
 			// Prepend new content before existing
 			newContent = newContent + "\n" + string(existingContent)
@@ -180,7 +181,7 @@ func (g *ChangelogGenerator) WriteChangelogToFile(
 	}
 
 	// Write to file
-	if err := os.WriteFile(outputPath, []byte(newContent), 0644); err != nil {
+	if err := fileutil.WriteFile(outputPath, []byte(newContent), 0644); err != nil {
 		return fmt.Errorf("failed to write changelog: %w", err)
 	}
 

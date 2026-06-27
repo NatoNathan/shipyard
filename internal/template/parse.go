@@ -9,14 +9,17 @@ import (
 
 // TemplateParser handles parsing go templates with Sprig functions
 type TemplateParser struct {
-	funcMap  template.FuncMap
-	options  map[string]string
+	funcMap            template.FuncMap
+	options            map[string]string
+	allowEnvAccess     bool
+	unsafeSprigFuncMap template.FuncMap
 }
 
 // NewTemplateParser creates a new template parser with safe Sprig functions
 func NewTemplateParser() *TemplateParser {
 	parser := &TemplateParser{
-		options: make(map[string]string),
+		options:            make(map[string]string),
+		unsafeSprigFuncMap: sprig.TxtFuncMap(),
 	}
 
 	// Initialize with safe Sprig functions
@@ -47,9 +50,22 @@ func (p *TemplateParser) Parse(name, content string) (*template.Template, error)
 	return parsed, nil
 }
 
-// AddFunction adds a custom function to the function map
+// AddFunction adds a custom function to the function map.
 func (p *TemplateParser) AddFunction(name string, fn interface{}) {
+	if isBlockedTemplateFunction(name) && (!p.allowEnvAccess || !isEnvironmentTemplateFunction(name)) {
+		return
+	}
 	p.funcMap[name] = fn
+}
+
+// EnableEnvironmentAccess enables Sprig environment lookup functions for trusted templates.
+func (p *TemplateParser) EnableEnvironmentAccess() {
+	p.allowEnvAccess = true
+	for _, name := range environmentTemplateFunctions {
+		if fn, ok := p.unsafeSprigFuncMap[name]; ok {
+			p.funcMap[name] = fn
+		}
+	}
 }
 
 // SetOption sets a template option (e.g., "missingkey=error")
@@ -57,20 +73,23 @@ func (p *TemplateParser) SetOption(key, value string) {
 	p.options[key] = value
 }
 
+var environmentTemplateFunctions = []string{
+	"env",       // Environment variable access
+	"expandenv", // Environment variable expansion
+}
+
+var blockedTemplateFunctions = []string{
+	"env",           // Environment variable access
+	"expandenv",     // Environment variable expansion
+	"getHostByName", // Network/DNS access
+}
+
 // getSafeSprigFunctions returns Sprig functions with dangerous functions removed
 func getSafeSprigFunctions() template.FuncMap {
 	// Get all text-safe Sprig functions (excludes HTML-specific functions)
 	funcMap := sprig.TxtFuncMap()
 
-	// Remove dangerous functions that could cause security issues
-	dangerousFunctions := []string{
-		"env",           // Environment variable access
-		"expandenv",     // Environment variable expansion
-		"getHostByName", // Network/DNS access
-		// Note: Sprig doesn't include exec-type functions by default
-	}
-
-	for _, fnName := range dangerousFunctions {
+	for _, fnName := range blockedTemplateFunctions {
 		delete(funcMap, fnName)
 	}
 
@@ -78,6 +97,24 @@ func getSafeSprigFunctions() template.FuncMap {
 	addCustomFunctions(funcMap)
 
 	return funcMap
+}
+
+func isBlockedTemplateFunction(name string) bool {
+	for _, fnName := range blockedTemplateFunctions {
+		if name == fnName {
+			return true
+		}
+	}
+	return false
+}
+
+func isEnvironmentTemplateFunction(name string) bool {
+	for _, fnName := range environmentTemplateFunctions {
+		if name == fnName {
+			return true
+		}
+	}
+	return false
 }
 
 // addCustomFunctions adds shipyard-specific template functions

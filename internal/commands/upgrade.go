@@ -31,6 +31,40 @@ type VersionInfo struct {
 	Date    string
 }
 
+// ReleaseFetcher fetches release metadata for upgrade checks.
+type ReleaseFetcher interface {
+	GetLatestRelease(ctx context.Context, owner, repo string) (*upgrade.ReleaseInfo, error)
+}
+
+// UpgradeDependencies contains replaceable dependencies for upgrade orchestration.
+type UpgradeDependencies struct {
+	DetectInstallation func(version, commit, date string) (*upgrade.InstallInfo, error)
+	NewReleaseFetcher  func() ReleaseFetcher
+	NewUpgrader        func(info *upgrade.InstallInfo, log *logger.Logger) (upgrade.Upgrader, error)
+}
+
+func defaultUpgradeDependencies() UpgradeDependencies {
+	return UpgradeDependencies{
+		DetectInstallation: upgrade.DetectInstallation,
+		NewReleaseFetcher:  func() ReleaseFetcher { return upgrade.NewGitHubClient() },
+		NewUpgrader:        upgrade.NewUpgrader,
+	}
+}
+
+func (d UpgradeDependencies) withDefaults() UpgradeDependencies {
+	defaults := defaultUpgradeDependencies()
+	if d.DetectInstallation == nil {
+		d.DetectInstallation = defaults.DetectInstallation
+	}
+	if d.NewReleaseFetcher == nil {
+		d.NewReleaseFetcher = defaults.NewReleaseFetcher
+	}
+	if d.NewUpgrader == nil {
+		d.NewUpgrader = defaults.NewUpgrader
+	}
+	return d
+}
+
 // NewUpgradeCommand creates the upgrade command
 func NewUpgradeCommand(versionInfo VersionInfo) *cobra.Command {
 	opts := &UpgradeOptions{}
@@ -39,7 +73,7 @@ func NewUpgradeCommand(versionInfo VersionInfo) *cobra.Command {
 		Use:                   "upgrade [-y] [--version version] [--force] [--dry-run]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"update", "self-update"},
-		Short:   "Refit the shipyard with latest provisions",
+		Short:                 "Refit the shipyard with latest provisions",
 		Long: `Upgrade shipyard to the latest version.
 
 This command automatically detects how shipyard was installed (Homebrew, npm, Go install,
@@ -73,6 +107,11 @@ or script install) and uses the appropriate upgrade method.`,
 }
 
 func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionInfo) error {
+	return runUpgradeWithDependencies(ctx, opts, versionInfo, defaultUpgradeDependencies())
+}
+
+func runUpgradeWithDependencies(ctx context.Context, opts *UpgradeOptions, versionInfo VersionInfo, deps UpgradeDependencies) error {
+	deps = deps.withDefaults()
 	log := logger.Get()
 
 	// Step 1: Detect installation
@@ -81,7 +120,7 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 
 	spinner := ui.NewSpinner("Checking installation...")
 	spinner.Action(func() {
-		installInfo, detectErr = upgrade.DetectInstallation(versionInfo.Version, versionInfo.Commit, versionInfo.Date)
+		installInfo, detectErr = deps.DetectInstallation(versionInfo.Version, versionInfo.Commit, versionInfo.Date)
 	})
 
 	if err := spinner.Run(); err != nil {
@@ -110,7 +149,7 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 	var release *upgrade.ReleaseInfo
 	var fetchErr error
 
-	client := upgrade.NewGitHubClient()
+	client := deps.NewReleaseFetcher()
 	spinner = ui.NewSpinner("Checking for updates...")
 	spinner.Action(func() {
 		release, fetchErr = client.GetLatestRelease(ctx, "NatoNathan", "shipyard")
@@ -157,7 +196,7 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 
 	// Dry run exit
 	if opts.DryRun {
-		upgrader, err := upgrade.NewUpgrader(installInfo, log)
+		upgrader, err := deps.NewUpgrader(installInfo, log)
 		if err != nil {
 			return errors.NewUpgradeError("failed to create upgrader", err)
 		}
@@ -183,7 +222,7 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 	}
 
 	// Step 7: Execute upgrade
-	upgrader, err := upgrade.NewUpgrader(installInfo, log)
+	upgrader, err := deps.NewUpgrader(installInfo, log)
 	if err != nil {
 		return errors.NewUpgradeError("failed to create upgrader", err)
 	}
@@ -230,4 +269,3 @@ func runUpgrade(ctx context.Context, opts *UpgradeOptions, versionInfo VersionIn
 
 	return nil
 }
-

@@ -1,6 +1,9 @@
 package upgrade
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -81,8 +84,13 @@ type GoUpgrader struct {
 
 func (u *GoUpgrader) Upgrade(ctx context.Context, release *ReleaseInfo) error {
 	version := release.TagName
+	if !isSafeReleaseTag(version) {
+		return fmt.Errorf("invalid release tag: %s", version)
+	}
 	installPath := fmt.Sprintf("github.com/NatoNathan/shipyard/cmd/shipyard@%s", version)
 
+	// #nosec G204 -- command is fixed to `go install`; installPath is constructed
+	// from a validated release tag and a constant module path.
 	cmd := exec.CommandContext(ctx, "go", "install", installPath)
 	cmd.Stdout = u.log.Writer()
 	cmd.Stderr = u.log.Writer()
@@ -93,11 +101,31 @@ func (u *GoUpgrader) GetUpgradeCommand() string {
 	return "go install github.com/NatoNathan/shipyard/cmd/shipyard@latest"
 }
 
+func isSafeReleaseTag(tag string) bool {
+	if !strings.HasPrefix(tag, "v") || len(tag) < 2 {
+		return false
+	}
+	for _, r := range tag[1:] {
+		if (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '+' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 // ScriptUpgrader handles upgrades for script/manual installations
 type ScriptUpgrader struct {
-	binaryPath string
-	log        *logger.Logger
+	binaryPath       string
+	log              *logger.Logger
+	maxDownloadBytes int64
 }
+
+const (
+	defaultUpgradeDownloadTimeout  = 5 * time.Minute
+	defaultUpgradeMaxDownloadBytes = int64(200 << 20)
+	maxUpgradeRedirects            = 3
+)
 
 func (u *ScriptUpgrader) Upgrade(ctx context.Context, release *ReleaseInfo) error {
 	// Determine platform string
@@ -170,7 +198,15 @@ func (u *ScriptUpgrader) downloadFile(ctx context.Context, url string) ([]byte, 
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 5 * time.Minute}
+	client := &http.Client{
+		Timeout: defaultUpgradeDownloadTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= maxUpgradeRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxUpgradeRedirects)
+			}
+			return nil
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -181,7 +217,27 @@ func (u *ScriptUpgrader) downloadFile(ctx context.Context, url string) ([]byte, 
 		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
 
-	return io.ReadAll(resp.Body)
+	maxBytes := u.maxDownloadBytes
+	if maxBytes <= 0 {
+		maxBytes = defaultUpgradeMaxDownloadBytes
+	}
+	if resp.ContentLength > maxBytes {
+		return nil, fmt.Errorf("download exceeds maximum size of %d bytes", maxBytes)
+	}
+
+	return readLimited(resp.Body, maxBytes)
+}
+
+func readLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
+	limited := io.LimitReader(reader, maxBytes+1)
+	content, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxBytes {
+		return nil, fmt.Errorf("download exceeds maximum size of %d bytes", maxBytes)
+	}
+	return content, nil
 }
 
 // verifyChecksum verifies the SHA256 checksum of the downloaded file
@@ -209,34 +265,41 @@ func (u *ScriptUpgrader) verifyChecksum(data []byte, filename string, checksums 
 	return fmt.Errorf("checksum not found for %s", filename)
 }
 
-// extractBinary extracts the binary from a tar.gz archive
+// extractBinary extracts the binary from a tar.gz archive.
 func (u *ScriptUpgrader) extractBinary(tarballData []byte) ([]byte, error) {
-	// Create temp file for tarball
-	tmpDir, err := os.MkdirTemp("", "shipyard-upgrade-")
+	gzipReader, err := gzip.NewReader(bytes.NewReader(tarballData))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read gzip archive: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
+	defer func() { _ = gzipReader.Close() }()
 
-	tarballPath := filepath.Join(tmpDir, "shipyard.tar.gz")
-	if err := os.WriteFile(tarballPath, tarballData, 0644); err != nil {
-		return nil, err
+	tarReader := tar.NewReader(gzipReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read tar archive: %w", err)
+		}
+		if header.FileInfo().IsDir() {
+			continue
+		}
+		if filepath.Base(header.Name) != "shipyard" {
+			continue
+		}
+		cleanName := filepath.Clean(header.Name)
+		if filepath.IsAbs(cleanName) || strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) || cleanName == ".." {
+			return nil, fmt.Errorf("unsafe archive path: %s", header.Name)
+		}
+		maxBytes := u.maxDownloadBytes
+		if maxBytes <= 0 {
+			maxBytes = defaultUpgradeMaxDownloadBytes
+		}
+		return readLimited(tarReader, maxBytes)
 	}
 
-	// Extract tarball
-	cmd := exec.Command("tar", "-xzf", tarballPath, "-C", tmpDir)
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("tar extraction failed: %w", err)
-	}
-
-	// Find the binary
-	binaryPath := filepath.Join(tmpDir, "shipyard")
-	data, err := os.ReadFile(binaryPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read extracted binary: %w", err)
-	}
-
-	return data, nil
+	return nil, fmt.Errorf("shipyard binary not found in archive")
 }
 
 // atomicReplace replaces the current binary with the new one atomically
@@ -260,6 +323,7 @@ func (u *ScriptUpgrader) atomicReplace(newBinary []byte) error {
 	_ = tmpFile.Close()
 
 	// Make executable
+	// #nosec G302 -- installed CLI binaries must be executable by the user.
 	if err := os.Chmod(tmpPath, 0755); err != nil {
 		return fmt.Errorf("failed to chmod new binary: %w", err)
 	}

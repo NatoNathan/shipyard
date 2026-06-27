@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
 
@@ -41,7 +43,7 @@ func (d *DenoEcosystem) ReadVersion() (semver.Version, error) {
 		}
 	}
 
-	content, err := os.ReadFile(denoPath)
+	content, err := fileutil.ReadFile(denoPath)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read %s: %w", filepath.Base(denoPath), err)
 	}
@@ -74,7 +76,7 @@ func (d *DenoEcosystem) UpdateVersion(version semver.Version) error {
 	}
 
 	// Read existing content
-	content, err := os.ReadFile(denoPath)
+	content, err := fileutil.ReadFile(denoPath)
 	if err != nil {
 		return fmt.Errorf("failed to read %s: %w", filepath.Base(denoPath), err)
 	}
@@ -87,7 +89,7 @@ func (d *DenoEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("no version field found in %s", filepath.Base(denoPath))
 	}
 
-	return os.WriteFile(denoPath, newContent, 0644)
+	return fileutil.WriteFile(denoPath, newContent, 0644)
 }
 
 // GetVersionFiles returns paths to all version-containing files

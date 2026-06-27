@@ -96,37 +96,40 @@ docker run --rm ghcr.io/natonathan/shipyard:latest --version
 
 **Direct Binary Download (Manual)**:
 ```bash
+SHIPYARD_VERSION=v0.6.0 # Set this to the release you want from the releases page
+
 # macOS (Apple Silicon)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_darwin_arm64.tar.gz
-tar -xzf shipyard_v1.0.0_darwin_arm64.tar.gz
+curl -LO https://github.com/natonathan/shipyard/releases/download/${SHIPYARD_VERSION}/shipyard_${SHIPYARD_VERSION}_darwin_arm64.tar.gz
+tar -xzf shipyard_${SHIPYARD_VERSION}_darwin_arm64.tar.gz
 chmod +x shipyard
 sudo mv shipyard /usr/local/bin/shipyard
 
 # macOS (Intel)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_darwin_amd64.tar.gz
-tar -xzf shipyard_v1.0.0_darwin_amd64.tar.gz
+curl -LO https://github.com/natonathan/shipyard/releases/download/${SHIPYARD_VERSION}/shipyard_${SHIPYARD_VERSION}_darwin_amd64.tar.gz
+tar -xzf shipyard_${SHIPYARD_VERSION}_darwin_amd64.tar.gz
 chmod +x shipyard
 sudo mv shipyard /usr/local/bin/shipyard
 
 # Linux (x86_64)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_linux_amd64.tar.gz
-tar -xzf shipyard_v1.0.0_linux_amd64.tar.gz
+curl -LO https://github.com/natonathan/shipyard/releases/download/${SHIPYARD_VERSION}/shipyard_${SHIPYARD_VERSION}_linux_amd64.tar.gz
+tar -xzf shipyard_${SHIPYARD_VERSION}_linux_amd64.tar.gz
 chmod +x shipyard
 sudo mv shipyard /usr/local/bin/shipyard
 
 # Linux (ARM64)
-curl -LO https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_linux_arm64.tar.gz
-tar -xzf shipyard_v1.0.0_linux_arm64.tar.gz
+curl -LO https://github.com/natonathan/shipyard/releases/download/${SHIPYARD_VERSION}/shipyard_${SHIPYARD_VERSION}_linux_arm64.tar.gz
+tar -xzf shipyard_${SHIPYARD_VERSION}_linux_arm64.tar.gz
 chmod +x shipyard
 sudo mv shipyard /usr/local/bin/shipyard
 
 # Windows (PowerShell)
-Invoke-WebRequest -Uri "https://github.com/natonathan/shipyard/releases/latest/download/shipyard_v1.0.0_windows_amd64.zip" -OutFile "shipyard.zip"
+$env:SHIPYARD_VERSION = "v0.6.0" # Set this to the release you want
+Invoke-WebRequest -Uri "https://github.com/natonathan/shipyard/releases/download/$env:SHIPYARD_VERSION/shipyard_$env:SHIPYARD_VERSION_windows_amd64.zip" -OutFile "shipyard.zip"
 Expand-Archive -Path shipyard.zip -DestinationPath .
 Move-Item -Path shipyard.exe -Destination "C:\Program Files\shipyard\shipyard.exe"
 ```
 
-**Note**: Replace `v1.0.0` with the actual version number from the [releases page](https://github.com/natonathan/shipyard/releases/latest).
+Choose the version from the [releases page](https://github.com/natonathan/shipyard/releases/latest).
 
 ---
 
@@ -136,7 +139,7 @@ Check that Shipyard is installed correctly:
 
 ```bash
 shipyard --version
-# Output: shipyard version v1.0.0 (commit: abc1234, built: 2026-02-02T19:14:46Z)
+# Output: shipyard version v0.6.0 (commit: abc1234, built: 2026-02-02T19:14:46Z)
 
 shipyard --help
 # Shows available commands
@@ -214,13 +217,13 @@ That's it! Your version files, ship's logs (changelogs), and harbor markers (git
 ## Documentation
 
 **Getting Started**:
-- [Quickstart Guide](docs/quickstart.md) - Step-by-step tutorial
+- [Basic Usage](#basic-usage) - Step-by-step workflow
 - [Configuration Examples](examples/) - Real-world configuration examples
 
 **Reference**:
 - [Configuration Schema](https://shipyard.tamez.dev/docs/config) - Complete config reference
 - [CLI Interface](https://shipyard.tamez.dev/docs/cli) - All commands and flags
-- [Troubleshooting Guide](docs/troubleshooting.md) - Common errors and solutions
+- [Configuration Guide](docs/configuration.md) - Local configuration reference
 
 **Advanced**:
 - [Contributing Guide](CONTRIBUTING.md) - Development setup and guidelines
@@ -307,13 +310,25 @@ templates:
 
 ### Flags
 
-All commands support:
-- `--config` - Custom config file path
+Global flags:
 - `--json` - JSON output for automation
 - `--verbose` - Detailed logging
 - `--quiet` - Suppress output
 
 See [CLI Reference](https://shipyard.tamez.dev/docs/cli) for complete documentation.
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success, including read-only commands with no pending work |
+| `1` | Invalid configuration, filesystem failure, git failure, or other command error |
+| `2` | A pre-release or snapshot command has no pending consignments, or promotion cannot advance |
+| `3` | Promotion was requested without pre-release state |
+
+Read-only commands treat absent optional state (such as an empty consignments directory or missing history file) as no work, while malformed or inaccessible paths remain errors.
+
+
 
 ## Configuration
 

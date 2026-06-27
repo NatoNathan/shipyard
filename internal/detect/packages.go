@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/BurntSushi/toml"
 	"github.com/NatoNathan/shipyard/internal/config"
 )
@@ -16,14 +18,15 @@ import (
 func DetectPackages(rootPath string) ([]config.Package, error) {
 	var packages []config.Package
 	seen := make(map[string]bool) // Track seen paths to avoid duplicates
+	cleanRootPath := filepath.Clean(rootPath)
 
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip hidden directories except .git
-		if info.IsDir() && strings.HasPrefix(info.Name(), ".") && info.Name() != ".git" {
+		// Skip hidden directories.
+		if info.IsDir() && filepath.Clean(path) != cleanRootPath && strings.HasPrefix(info.Name(), ".") {
 			return filepath.SkipDir
 		}
 
@@ -31,7 +34,7 @@ func DetectPackages(rootPath string) ([]config.Package, error) {
 		if info.IsDir() {
 			dirName := info.Name()
 			if dirName == "node_modules" || dirName == "vendor" || dirName == "__pycache__" ||
-			   dirName == ".git" || dirName == "dist" || dirName == "build" || dirName == "target" {
+				dirName == "dist" || dirName == "build" || dirName == "target" {
 				return filepath.SkipDir
 			}
 		}
@@ -93,7 +96,7 @@ func DetectPackages(rootPath string) ([]config.Package, error) {
 
 // detectGoPackage detects a Go package from go.mod
 func detectGoPackage(rootPath, dir, goModPath string) (*config.Package, error) {
-	content, err := os.ReadFile(goModPath)
+	content, err := fileutil.ReadFile(goModPath)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +130,7 @@ func detectGoPackage(rootPath, dir, goModPath string) (*config.Package, error) {
 
 // detectNPMPackage detects an NPM package from package.json
 func detectNPMPackage(rootPath, dir, packageJSONPath string) (*config.Package, error) {
-	content, err := os.ReadFile(packageJSONPath)
+	content, err := fileutil.ReadFile(packageJSONPath)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +156,7 @@ func detectNPMPackage(rootPath, dir, packageJSONPath string) (*config.Package, e
 
 // detectPythonPackage detects a Python package from pyproject.toml
 func detectPythonPackage(rootPath, dir, pyprojectPath string) (*config.Package, error) {
-	content, err := os.ReadFile(pyprojectPath)
+	content, err := fileutil.ReadFile(pyprojectPath)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +184,7 @@ func detectPythonPackage(rootPath, dir, pyprojectPath string) (*config.Package, 
 
 // detectPythonSetupPackage detects a Python package from setup.py
 func detectPythonSetupPackage(rootPath, dir, setupPath string) (*config.Package, error) {
-	content, err := os.ReadFile(setupPath)
+	content, err := fileutil.ReadFile(setupPath)
 	if err != nil {
 		return nil, err
 	}
@@ -219,9 +222,10 @@ func NormalizePackagePath(rootPath, pkgPath string) string {
 
 	return "./" + relPath
 }
+
 // detectHelmPackage detects a Helm chart from Chart.yaml
 func detectHelmPackage(rootPath, dir, chartPath string) (*config.Package, error) {
-	content, err := os.ReadFile(chartPath)
+	content, err := fileutil.ReadFile(chartPath)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +257,7 @@ func detectHelmPackage(rootPath, dir, chartPath string) (*config.Package, error)
 
 // detectCargoPackage detects a Rust/Cargo package from Cargo.toml
 func detectCargoPackage(rootPath, dir, cargoPath string) (*config.Package, error) {
-	content, err := os.ReadFile(cargoPath)
+	content, err := fileutil.ReadFile(cargoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +285,7 @@ func detectCargoPackage(rootPath, dir, cargoPath string) (*config.Package, error
 
 // detectDenoPackage detects a Deno project from deno.json or deno.jsonc
 func detectDenoPackage(rootPath, dir, denoPath string) (*config.Package, error) {
-	content, err := os.ReadFile(denoPath)
+	content, err := fileutil.ReadFile(denoPath)
 	if err != nil {
 		return nil, err
 	}

@@ -74,10 +74,22 @@ func TestRenderTemplate_WithTimeout(t *testing.T) {
 		assert.Equal(t, "Version: 1.0.0", result)
 	})
 
-	t.Run("infinite loop would timeout", func(t *testing.T) {
-		t.Skip("Difficult to test timeout without actual infinite loop")
-		// In real implementation, this would test that rendering
-		// with an infinite loop template times out appropriately
+	t.Run("slow function times out", func(t *testing.T) {
+		renderer := NewTemplateRenderer()
+		renderer.SetTimeout(5 * time.Millisecond)
+
+		tmpl, err := ParseWithFunctions("slow", `{{ slow }}`, map[string]interface{}{
+			"slow": func() string {
+				time.Sleep(50 * time.Millisecond)
+				return "done"
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = renderer.RenderParsed(tmpl, nil)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timed out")
 	})
 }
 

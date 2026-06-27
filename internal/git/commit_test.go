@@ -257,3 +257,37 @@ func TestCreateCommits_Bulk(t *testing.T) {
 	assert.Equal(t, "Add file1", commitMessages[2])
 	assert.Len(t, commitMessages, 3)
 }
+
+func TestResetMixed_RewindsHeadWithoutChangingWorktree(t *testing.T) {
+	tempDir := t.TempDir()
+	repo, err := gogit.PlainInit(tempDir, false)
+	require.NoError(t, err)
+
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+
+	testFile := filepath.Join(tempDir, "test.txt")
+	require.NoError(t, os.WriteFile(testFile, []byte("initial"), 0644))
+	_, err = worktree.Add("test.txt")
+	require.NoError(t, err)
+	require.NoError(t, CreateCommit(tempDir, "initial commit"))
+
+	originalHead, err := HeadHash(tempDir)
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(testFile, []byte("committed"), 0644))
+	_, err = worktree.Add("test.txt")
+	require.NoError(t, err)
+	require.NoError(t, CreateCommit(tempDir, "second commit"))
+
+	require.NoError(t, os.WriteFile(testFile, []byte("uncommitted"), 0644))
+	require.NoError(t, ResetMixed(tempDir, originalHead))
+
+	currentHead, err := HeadHash(tempDir)
+	require.NoError(t, err)
+	assert.Equal(t, originalHead, currentHead)
+
+	content, err := os.ReadFile(testFile)
+	require.NoError(t, err)
+	assert.Equal(t, "uncommitted", string(content))
+}

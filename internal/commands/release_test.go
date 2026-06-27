@@ -1,12 +1,16 @@
 package commands
 
 import (
+	"context"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/history"
+	"github.com/NatoNathan/shipyard/pkg/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -208,27 +212,74 @@ func TestReleaseCommand_MultiPackageRequiresFlag(t *testing.T) {
 }
 
 func TestReleaseCommand_JSONOutput(t *testing.T) {
-	// This test verifies JSON output structure
-	// Note: Full integration test would require mocking GitHub API
-	t.Skip("TODO: Requires mocking GitHub API client")
+	tempDir := setupReleaseCommandProject(t, []history.Entry{{Version: "1.2.3", Package: "core", Tag: "v1.2.3"}})
+	cleanup := changeToDir(t, tempDir)
+	defer cleanup()
+	t.Setenv("GITHUB_TOKEN", "fake-token-for-test")
+
+	fake := &fakeReleasePublisher{}
+	withFakeReleasePublisher(t, fake)
+
+	output := captureStdout(t, func() {
+		err := runRelease(&ReleaseOptions{Package: "core", JSON: true})
+		require.NoError(t, err)
+	})
+
+	require.Len(t, fake.calls, 1)
+	assert.Contains(t, output, `"success": true`)
+	assert.Contains(t, output, `"package": "core"`)
+	assert.Contains(t, output, `"version": "1.2.3"`)
+	assert.Contains(t, output, `"tag": "v1.2.3"`)
 }
 
 func TestReleaseCommand_QuietMode(t *testing.T) {
-	// This test verifies quiet mode suppresses output
-	// Note: Full integration test would require mocking GitHub API
-	t.Skip("TODO: Requires mocking GitHub API client")
+	tempDir := setupReleaseCommandProject(t, []history.Entry{{Version: "1.2.3", Package: "core", Tag: "v1.2.3"}})
+	cleanup := changeToDir(t, tempDir)
+	defer cleanup()
+	t.Setenv("GITHUB_TOKEN", "fake-token-for-test")
+
+	fake := &fakeReleasePublisher{}
+	withFakeReleasePublisher(t, fake)
+
+	output := captureStdout(t, func() {
+		err := runRelease(&ReleaseOptions{Package: "core", Quiet: true})
+		require.NoError(t, err)
+	})
+
+	require.Len(t, fake.calls, 1)
+	assert.Empty(t, strings.TrimSpace(output))
 }
 
 func TestReleaseCommand_DraftFlag(t *testing.T) {
-	// This test verifies draft release creation
-	// Note: Full integration test would require mocking GitHub API
-	t.Skip("TODO: Requires mocking GitHub API client")
+	tempDir := setupReleaseCommandProject(t, []history.Entry{{Version: "1.2.3", Package: "core", Tag: "v1.2.3"}})
+	cleanup := changeToDir(t, tempDir)
+	defer cleanup()
+	t.Setenv("GITHUB_TOKEN", "fake-token-for-test")
+
+	fake := &fakeReleasePublisher{}
+	withFakeReleasePublisher(t, fake)
+
+	err := runRelease(&ReleaseOptions{Package: "core", Draft: true, Quiet: true})
+	require.NoError(t, err)
+	require.Len(t, fake.calls, 1)
+	assert.True(t, fake.calls[0].draft)
+	assert.False(t, fake.calls[0].prerelease)
 }
 
 func TestReleaseCommand_PrereleaseFlag(t *testing.T) {
-	// This test verifies prerelease marking
-	// Note: Full integration test would require mocking GitHub API
-	t.Skip("TODO: Requires mocking GitHub API client")
+	tempDir := setupReleaseCommandProject(t, []history.Entry{{Version: "1.2.3", Package: "core", Tag: "v1.2.3-beta.1"}})
+	cleanup := changeToDir(t, tempDir)
+	defer cleanup()
+	t.Setenv("GITHUB_TOKEN", "fake-token-for-test")
+
+	fake := &fakeReleasePublisher{}
+	withFakeReleasePublisher(t, fake)
+
+	err := runRelease(&ReleaseOptions{Package: "core", Prerelease: true, Quiet: true})
+	require.NoError(t, err)
+	require.Len(t, fake.calls, 1)
+	assert.False(t, fake.calls[0].draft)
+	assert.True(t, fake.calls[0].prerelease)
 }
 
 func TestReleaseCommand_SpecificTag(t *testing.T) {
@@ -337,4 +388,91 @@ func TestReleaseCommand_InvalidTag(t *testing.T) {
 	// Verify error
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "tag v9.9.9 not found in history")
+}
+
+type fakeReleaseCall struct {
+	packageName string
+	version     semver.Version
+	tagName     string
+	notes       string
+	draft       bool
+	prerelease  bool
+}
+
+type fakeReleasePublisher struct {
+	calls []fakeReleaseCall
+	err   error
+}
+
+func (p *fakeReleasePublisher) PublishRelease(ctx context.Context, packageName string, version semver.Version, tagName string, releaseNotes string, draft bool, prerelease bool) error {
+	p.calls = append(p.calls, fakeReleaseCall{
+		packageName: packageName,
+		version:     version,
+		tagName:     tagName,
+		notes:       releaseNotes,
+		draft:       draft,
+		prerelease:  prerelease,
+	})
+	return p.err
+}
+
+func withFakeReleasePublisher(t *testing.T, publisher *fakeReleasePublisher) {
+	t.Helper()
+	original := newReleasePublisher
+	newReleasePublisher = func(repoPath string, cfg *config.Config) ReleasePublisher {
+		return publisher
+	}
+	t.Cleanup(func() {
+		newReleasePublisher = original
+	})
+}
+
+func setupReleaseCommandProject(t *testing.T, entries []history.Entry) string {
+	t.Helper()
+
+	tempDir := t.TempDir()
+	initGitRepo(t, tempDir)
+
+	shipyardDir := filepath.Join(tempDir, ".shipyard")
+	require.NoError(t, os.MkdirAll(shipyardDir, 0755))
+
+	cfg := &config.Config{
+		Packages: []config.Package{
+			{Name: "core", Path: ".", Ecosystem: config.EcosystemGo},
+		},
+		GitHub: config.GitHubConfig{
+			Owner: "testowner",
+			Repo:  "testrepo",
+		},
+	}
+	require.NoError(t, config.WriteConfig(cfg, filepath.Join(shipyardDir, "shipyard.yaml")))
+
+	historyPath := filepath.Join(shipyardDir, "history.json")
+	require.NoError(t, os.WriteFile(historyPath, []byte("[]"), 0644))
+	require.NoError(t, history.AppendToHistory(historyPath, entries))
+
+	return tempDir
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	original := os.Stdout
+	reader, writer, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = original
+		_ = reader.Close()
+		_ = writer.Close()
+	}()
+
+	fn()
+
+	require.NoError(t, writer.Close())
+
+	output, err := io.ReadAll(reader)
+	require.NoError(t, err)
+
+	return string(output)
 }

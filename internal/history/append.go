@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/gofrs/flock"
 )
 
@@ -26,7 +28,7 @@ func AppendToHistory(historyPath string, entries []Entry) error {
 	defer func() { _ = fileLock.Unlock() }()
 
 	// Read existing history
-	data, err := os.ReadFile(historyPath)
+	data, err := fileutil.ReadFile(historyPath)
 	if err != nil {
 		return fmt.Errorf("failed to read history file: %w", err)
 	}
@@ -48,7 +50,7 @@ func AppendToHistory(historyPath string, entries []Entry) error {
 
 	// Write atomically: write to temp file, then rename
 	tempPath := historyPath + ".tmp"
-	if err := os.WriteFile(tempPath, updatedData, 0644); err != nil {
+	if err := fileutil.WriteFile(tempPath, updatedData, 0644); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}
 

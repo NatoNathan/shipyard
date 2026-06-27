@@ -2,15 +2,16 @@ package history
 
 import (
 	"encoding/json"
-	"os"
 	"time"
+
+	"github.com/NatoNathan/shipyard/internal/fileutil"
 )
 
 // Entry represents a version history entry
 type Entry struct {
 	Version      string        `json:"version"`
 	Package      string        `json:"package"`
-	Tag          string        `json:"tag"`          // Git tag name for this version
+	Tag          string        `json:"tag"` // Git tag name for this version
 	Timestamp    time.Time     `json:"timestamp"`
 	Consignments []Consignment `json:"consignments"`
 }
@@ -25,7 +26,7 @@ type Consignment struct {
 
 // ReadHistory reads history entries from a JSON file
 func ReadHistory(path string) ([]Entry, error) {
-	data, err := os.ReadFile(path)
+	data, err := fileutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

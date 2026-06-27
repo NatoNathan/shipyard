@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/internal/changelog"
 	"github.com/NatoNathan/shipyard/internal/config"
 	"github.com/NatoNathan/shipyard/internal/consignment"
@@ -20,6 +22,7 @@ import (
 	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/NatoNathan/shipyard/internal/version"
 	"github.com/NatoNathan/shipyard/pkg/semver"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +43,7 @@ func NewVersionCommand() *cobra.Command {
 		Use:                   "version [command] [-p package]... [--preview] [--no-commit] [--no-tag]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"bump", "sail"},
-		Short:   "Sail to the next port",
+		Short:                 "Sail to the next port",
 		Long: `Set sail with your cargo and reach the next version port. Navigates the fleet
 through calculated routes, updates ship's logs, plants harbor markers (tags),
 and archives the voyage in history.
@@ -95,7 +98,7 @@ func runVersion(opts *VersionCommandOptions) error {
 }
 
 // runVersionWithDir executes the version command logic in a specific directory
-func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
+func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err error) {
 	// Phase 1: Validation and initialization
 	if opts.Preview {
 		fmt.Println()
@@ -110,7 +113,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 2. Read pending consignments
-	consignmentsDir := filepath.Join(projectPath, ".shipyard", "consignments")
+	consignmentsDir := filepath.Join(projectPath, cfg.Consignments.Path)
 	var consignments []*consignment.Consignment
 	if len(opts.Packages) > 0 {
 		consignments, err = consignment.ReadAllConsignmentsFiltered(consignmentsDir, opts.Packages)
@@ -160,6 +163,29 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 6. Apply version bumps to files
+	tx := newFileTransaction()
+	var originalHeadSet bool
+	originalHead := plumbing.ZeroHash
+	commitCreated := false
+	var createdTags []string
+	defer func() {
+		if err != nil {
+			if len(createdTags) > 0 {
+				if rollbackErr := git.DeleteTags(projectPath, createdTags); rollbackErr != nil {
+					err = fmt.Errorf("%w; additionally failed to delete created tags: %v", err, rollbackErr)
+				}
+			}
+			if commitCreated && originalHeadSet {
+				if rollbackErr := git.ResetMixed(projectPath, originalHead); rollbackErr != nil {
+					err = fmt.Errorf("%w; additionally failed to roll back git commit: %v", err, rollbackErr)
+				}
+			}
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = fmt.Errorf("%w; additionally failed to roll back filesystem changes: %v", err, rollbackErr)
+			}
+		}
+	}()
+
 	// Build version map with new versions for context
 	allNewVersions := make(map[string]semver.Version)
 	for pkgName, pkgBump := range versionBumps {
@@ -183,6 +209,12 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		handler, err := GetEcosystemHandlerWithContext(pkg, pkgPath, handlerCtx)
 		if err != nil {
 			return err
+		}
+
+		for _, versionFile := range handler.GetVersionFiles() {
+			if err := tx.Backup(filepath.Join(pkgPath, versionFile)); err != nil {
+				return err
+			}
 		}
 
 		if err := handler.UpdateVersion(bump.NewVersion); err != nil {
@@ -214,7 +246,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	// 8. Archive consignments to history with version context
-	historyPath := filepath.Join(projectPath, ".shipyard", "history.json")
+	historyPath := filepath.Join(projectPath, cfg.History.Path)
 
 	var historyEntries []history.Entry
 	for _, pkg := range cfg.Packages {
@@ -253,6 +285,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		historyEntries = append(historyEntries, entry)
 	}
 
+	if err := tx.Backup(historyPath); err != nil {
+		return err
+	}
 	if err := history.AppendToHistory(historyPath, historyEntries); err != nil {
 		return fmt.Errorf("failed to archive consignments: %w", err)
 	}
@@ -289,7 +324,10 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 
 		changelogPath := filepath.Join(projectPath, pkg.Path, "CHANGELOG.md")
-		if err := os.WriteFile(changelogPath, []byte(changelogContent), 0644); err != nil {
+		if err := tx.Backup(changelogPath); err != nil {
+			return err
+		}
+		if err := fileutil.WriteFile(changelogPath, []byte(changelogContent), 0644); err != nil {
 			return fmt.Errorf("failed to write changelog for %s: %w", pkg.Name, err)
 		}
 
@@ -301,6 +339,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	// 10. Delete processed consignment files
 	for _, c := range consignments {
 		consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
+		if err := tx.Backup(consignmentPath); err != nil {
+			return err
+		}
 		if err := os.Remove(consignmentPath); err != nil {
 			return fmt.Errorf("failed to delete consignment %s: %w", c.ID, err)
 		}
@@ -325,12 +366,15 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 	}
 
 	for _, c := range consignments {
-		consignmentPath := filepath.Join(projectPath, ".shipyard", "consignments", c.ID+".md")
+		consignmentPath := filepath.Join(consignmentsDir, c.ID+".md")
 		filesToStage = append(filesToStage, consignmentPath)
 	}
 
 	prereleaseStatePath := filepath.Join(projectPath, ".shipyard", "prerelease.yml")
 	if prerelease.Exists(prereleaseStatePath) {
+		if err := tx.Backup(prereleaseStatePath); err != nil {
+			return err
+		}
 		if err := prerelease.DeleteState(prereleaseStatePath); err != nil {
 			return fmt.Errorf("failed to delete prerelease state: %w", err)
 		}
@@ -340,7 +384,51 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		}
 	}
 
-	if !opts.NoCommit && len(filesToStage) > 0 {
+	shouldCommit := !opts.NoCommit && len(filesToStage) > 0
+	shouldTag := !opts.NoTag && shouldCommit && len(packageTags) > 0
+
+	if shouldCommit || shouldTag {
+		originalHead, err = git.HeadHash(projectPath)
+		if err != nil {
+			return fmt.Errorf("failed to capture git HEAD before version changes: %w", err)
+		}
+		originalHeadSet = true
+	}
+
+	var annotatedTags []struct {
+		name    string
+		message string
+	}
+	var lightweightTags []string
+	var allTagNames []string
+
+	if shouldTag {
+		for pkgName, tag := range packageTags {
+			allTagNames = append(allTagNames, tag.Name)
+			if tag.Message != "" {
+				annotatedTags = append(annotatedTags, struct {
+					name    string
+					message string
+				}{name: tag.Name, message: tag.Message})
+			} else {
+				lightweightTags = append(lightweightTags, tag.Name)
+			}
+
+			if opts.Verbose {
+				if tag.Message != "" {
+					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating annotated tag for %s: %s", pkgName, tag.Name)))
+				} else {
+					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating lightweight tag for %s: %s", pkgName, tag.Name)))
+				}
+			}
+		}
+
+		if err := git.EnsureTagsAbsent(projectPath, allTagNames); err != nil {
+			return fmt.Errorf("failed to validate tags: %w", err)
+		}
+	}
+
+	if shouldCommit {
 		if err := git.StageFiles(projectPath, filesToStage); err != nil {
 			return fmt.Errorf("failed to stage files: %w", err)
 		}
@@ -368,41 +456,26 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) error {
 		if err := git.CreateCommit(projectPath, commitMessage); err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
+		commitCreated = true
 
 		if opts.Verbose {
 			fmt.Println(ui.Dimmed(fmt.Sprintf("Created commit with %d file(s)", len(filesToStage))))
 		}
 	}
 
-	if !opts.NoTag && len(packageTags) > 0 {
-		annotatedTags := make(map[string]string)
-		lightweightTags := []string{}
-		for pkgName, tag := range packageTags {
-			if tag.Message != "" {
-				annotatedTags[tag.Name] = tag.Message
-			} else {
-				lightweightTags = append(lightweightTags, tag.Name)
+	if shouldTag {
+		for _, tag := range annotatedTags {
+			if err := git.CreateAnnotatedTag(projectPath, tag.name, tag.message); err != nil {
+				return fmt.Errorf("failed to create annotated tag %s: %w", tag.name, err)
 			}
-
-			if opts.Verbose {
-				if tag.Message != "" {
-					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating annotated tag for %s: %s", pkgName, tag.Name)))
-				} else {
-					fmt.Println(ui.Dimmed(fmt.Sprintf("Creating lightweight tag for %s: %s", pkgName, tag.Name)))
-				}
-			}
+			createdTags = append(createdTags, tag.name)
 		}
 
-		if len(annotatedTags) > 0 {
-			if err := git.CreateAnnotatedTags(projectPath, annotatedTags); err != nil {
-				return fmt.Errorf("failed to create annotated tags: %w", err)
+		for _, tagName := range lightweightTags {
+			if err := git.CreateLightweightTag(projectPath, tagName); err != nil {
+				return fmt.Errorf("failed to create lightweight tag %s: %w", tagName, err)
 			}
-		}
-
-		if len(lightweightTags) > 0 {
-			if err := git.CreateLightweightTags(projectPath, lightweightTags); err != nil {
-				return fmt.Errorf("failed to create lightweight tags: %w", err)
-			}
+			createdTags = append(createdTags, tagName)
 		}
 
 		if opts.Verbose {
@@ -438,7 +511,6 @@ func filterConsignmentsForPackage(consignments []*consignment.Consignment, packa
 	}
 	return filtered
 }
-
 
 // displayPreview shows what changes would be made without applying them
 func displayPreview(versionBumps map[string]version.VersionBump, consignments []*consignment.Consignment, cfg *config.Config) {

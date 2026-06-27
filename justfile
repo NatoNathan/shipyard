@@ -1,6 +1,10 @@
 # Shipyard CLI Development Commands
 # https://github.com/casey/just
 
+GOLANGCI_LINT_VERSION := "v2.12.2"
+GOSEC_VERSION := "v2.27.1"
+GOVULNCHECK_VERSION := "v1.3.0"
+
 # Default recipe to display help
 default:
     @just --list
@@ -31,28 +35,33 @@ test-unit:
 
 # Run integration tests only
 test-integration:
-    go test -v -race -cover -run Integration ./tests/integration/...
+    go test -v -race -cover -run Integration ./test/integration/...
 
 # Run contract tests only
 test-contract:
-    go test -v -race -cover -tags contract ./tests/contract/...
+    go test -v -race -cover -tags contract ./test/contract/...
 
 # Run linters
 lint:
-    golangci-lint run
+    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{GOLANGCI_LINT_VERSION}} run
 
 # Run linters via Dagger
 lint-dagger:
     dagger call lint --source=.
+
+# Run security scanners via Dagger
+security-dagger:
+    dagger call security --source=.
 
 # Format code
 fmt:
     go fmt ./...
     gofmt -s -w .
 
-# Run security scanner
+# Run pinned security scanners
 security:
-    gosec ./...
+    go run github.com/securego/gosec/v2/cmd/gosec@{{GOSEC_VERSION}} ./...
+    go run golang.org/x/vuln/cmd/govulncheck@{{GOVULNCHECK_VERSION}} ./...
 
 # Clean build artifacts
 clean:
@@ -84,8 +93,8 @@ verify:
     go mod tidy
     git diff --exit-code go.mod go.sum
 
-# Run all CI checks (lint, test, verify)
-ci: lint test verify
+# Run all CI checks (lint, test, verify, security)
+ci: lint test verify security
     @echo "All CI checks passed!"
 
 # Run all CI checks via Dagger
@@ -130,15 +139,24 @@ watch:
 # Initialize development environment
 dev-setup:
     go mod download
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-    go install github.com/securego/gosec/v2/cmd/gosec@latest
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{GOLANGCI_LINT_VERSION}}
+    go install github.com/securego/gosec/v2/cmd/gosec@{{GOSEC_VERSION}}
+    go install golang.org/x/vuln/cmd/govulncheck@{{GOVULNCHECK_VERSION}}
     @echo "Development environment ready!"
 
-# Release build with version information
+# Create release archives locally with the canonical Dagger package stage
+release-package VERSION="v0.0.0-dev":
+    dagger call package-only --source=. --version={{ VERSION }} export --path=./dist
+
+# Publish a release with the canonical Dagger release pipeline (requires tokens)
 release VERSION:
-    @echo "Building release {{ VERSION }}..."
-    go build -ldflags "-X main.version={{ VERSION }} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/shipyard ./cmd/shipyard
-    @echo "Release {{ VERSION }} built successfully!"
+    dagger call release \
+      --source=. \
+      --version={{ VERSION }} \
+      --github-token=env:GITHUB_TOKEN \
+      --npm-token=env:NPM_TOKEN \
+      --docker-registry=ghcr.io/natonathan/shipyard \
+      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }}
 
 # Test Dagger build stage
 dagger-build:
@@ -156,4 +174,4 @@ dagger-test-release:
       --github-token=env:GITHUB_TOKEN \
       --npm-token=env:NPM_TOKEN \
       --docker-registry=ghcr.io/natonathan/shipyard \
-      --docker-token=env:GITHUB_TOKEN
+      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }}

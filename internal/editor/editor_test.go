@@ -2,6 +2,9 @@ package editor
 
 import (
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -157,4 +160,56 @@ code here
 // openEditorWithFunc is a helper that allows testing with mocked editor command
 func openEditorWithFunc(dir, initialContent string, editorFunc func(string) error) (string, error) {
 	return OpenEditorWithFunc(dir, initialContent, editorFunc)
+}
+
+func TestAllowedEditor(t *testing.T) {
+	command, args, ok := allowedEditor("code", []string{"--wait", "--unsupported", "--reuse-window"})
+
+	require.True(t, ok)
+	assert.Equal(t, "code", command)
+	assert.Equal(t, []string{"--wait", "--reuse-window"}, args)
+}
+
+func TestAllowedEditorRejectsUnsupportedExecutable(t *testing.T) {
+	_, _, ok := allowedEditor("sh", []string{"-c", "echo nope"})
+
+	assert.False(t, ok)
+}
+
+func TestResolveEditorCommandRejectsUnsupportedExecutable(t *testing.T) {
+	_, _, err := resolveEditorCommand("sh -c echo")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported editor")
+}
+
+func TestResolveEditorCommandAcceptsKnownEditor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test relies on POSIX editor availability")
+	}
+	if _, err := exec.LookPath("vi"); err != nil {
+		t.Skip("vi is not available")
+	}
+
+	command, args, err := resolveEditorCommand("vi --ignored")
+
+	require.NoError(t, err)
+	assert.Equal(t, "vi", command)
+	assert.Empty(t, args)
+}
+
+func TestResolveEditorCommandAcceptsQuotedPathEditor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test relies on POSIX executable permissions")
+	}
+
+	dir := t.TempDir()
+	editorPath := filepath.Join(dir, "nvim")
+	require.NoError(t, os.WriteFile(editorPath, []byte("#!/bin/sh\n"), 0755))
+
+	command, args, err := resolveEditorCommand(`"` + editorPath + `" --ignored`)
+
+	require.NoError(t, err)
+	assert.Equal(t, editorPath, command)
+	assert.Empty(t, args)
 }

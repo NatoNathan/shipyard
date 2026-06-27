@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,6 +63,50 @@ func TestStatusCommand_EmptyConsignments(t *testing.T) {
 
 	// Verify: Output indicates no pending changes
 	assert.Contains(t, output, "No pending consignments")
+}
+
+func TestStatusCommand_MissingConsignmentsDirectoryJSON(t *testing.T) {
+	tempDir := t.TempDir()
+	setupInitializedRepo(t, tempDir)
+	require.NoError(t, os.RemoveAll(filepath.Join(tempDir, ".shipyard", "consignments")))
+	defer changeToDir(t, tempDir)()
+
+	cmd := NewStatusCommand()
+	cmd.SetArgs([]string{"--output", "json"})
+
+	output := captureOutput(func() {
+		err := cmd.Execute()
+		require.NoError(t, err)
+	})
+
+	assert.JSONEq(t, `{}`, output)
+	assert.True(t, json.Valid([]byte(output)))
+}
+
+func TestStatusCommand_UsesConfiguredConsignmentsPath(t *testing.T) {
+	tempDir := t.TempDir()
+	setupInitializedRepo(t, tempDir)
+	defer changeToDir(t, tempDir)()
+
+	defaultDir := filepath.Join(tempDir, ".shipyard", "consignments")
+	require.NoError(t, os.RemoveAll(defaultDir))
+	customDir := filepath.Join(tempDir, "changes", "pending")
+	require.NoError(t, os.MkdirAll(customDir, 0755))
+	createStatusTestConsignment(t, customDir, "custom-1", []string{"core"}, types.ChangeTypePatch, "Custom path fix")
+
+	configPath := filepath.Join(tempDir, ".shipyard", "shipyard.yaml")
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	configContent = append(configContent, []byte("consignments:\n  path: changes/pending\n")...)
+	require.NoError(t, os.WriteFile(configPath, configContent, 0644))
+
+	cmd := NewStatusCommand()
+	cmd.SetArgs([]string{"--verbose"})
+	output := captureOutput(func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	assert.Contains(t, output, "Custom path fix")
 }
 
 // TestStatusCommand_NotInitialized tests status in non-initialized directory

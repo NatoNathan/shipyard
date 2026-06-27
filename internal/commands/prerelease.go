@@ -53,7 +53,7 @@ func NewPrereleaseCommand() *cobra.Command {
 		Use:                   "prerelease [-p package]... [--preview] [--no-commit] [--no-tag]",
 		DisableFlagsInUseLine: true,
 		Aliases:               []string{"pre", "rc"},
-		Short:   "Chart test waters before the main voyage",
+		Short:                 "Chart test waters before the main voyage",
 		Long: `Create or increment a pre-release version at the current stage.
 Creates pre-release versions for testing changes before creating a stable release.
 
@@ -120,7 +120,7 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 	}
 
 	// 2. Read consignments
-	consignmentsDir := filepath.Join(projectPath, ".shipyard", "consignments")
+	consignmentsDir := filepath.Join(projectPath, cfg.Consignments.Path)
 	var consignments []*consignment.Consignment
 	if len(opts.Packages) > 0 {
 		consignments, err = consignment.ReadAllConsignmentsFiltered(consignmentsDir, opts.Packages)
@@ -171,13 +171,13 @@ func runPrereleaseWithDir(projectPath string, opts *PrereleaseCommandOptions) er
 	// 5. For each package with bumps, determine stage and counter
 	renderer := template.NewTemplateRenderer()
 	type prereleaseResult struct {
-		pkg            string
-		oldVersion     semver.Version
-		newVersion     semver.Version
-		stage          config.StageConfig
-		counter        int
-		tagName        string
-		targetVersion  string
+		pkg           string
+		oldVersion    semver.Version
+		newVersion    semver.Version
+		stage         config.StageConfig
+		counter       int
+		tagName       string
+		targetVersion string
 	}
 	var results []prereleaseResult
 

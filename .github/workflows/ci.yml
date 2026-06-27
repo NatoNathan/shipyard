@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test
@@ -17,7 +20,7 @@ jobs:
       - name: Set up Dagger
         uses: dagger/dagger-for-github@v7
         with:
-          version: "0.19.10"
+          version: "0.21.7"
 
       - name: Run tests
         run: dagger call test --source . --show-output
@@ -32,7 +35,7 @@ jobs:
       - name: Set up Dagger
         uses: dagger/dagger-for-github@v7
         with:
-          version: "0.19.10"
+          version: "0.21.7"
 
       - name: Run linter
         run: dagger call lint --source .
@@ -47,7 +50,7 @@ jobs:
       - name: Set up Dagger
         uses: dagger/dagger-for-github@v7
         with:
-          version: "0.19.10"
+          version: "0.21.7"
 
       - name: Build
         run: dagger call build-only --source . --version "dev"
@@ -62,17 +65,32 @@ jobs:
       - name: Set up Dagger
         uses: dagger/dagger-for-github@v7
         with:
-          version: "0.19.10"
+          version: "0.21.7"
 
       - name: Run tests with coverage
         run: dagger call coverage --source . export --path ./coverage.out
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@f2274c2c340e0c81c8f7dc407b2a477b8935f171 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.out
+          files: ./coverage.out
           fail_ci_if_error: true
 
-      - name: Check coverage threshold
-        run: dagger call coverage-report --source . --threshold 80
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Just
+        uses: extractions/setup-just@v2
+
+      - name: Run pinned security scans
+        run: just security

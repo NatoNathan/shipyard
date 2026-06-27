@@ -2,9 +2,12 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/NatoNathan/shipyard/internal/logger"
+	"github.com/NatoNathan/shipyard/internal/upgrade"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +23,8 @@ func TestUpgradeCommand_Contract(t *testing.T) {
 	t.Run("command exists", func(t *testing.T) {
 		cmd := NewUpgradeCommand(versionInfo)
 		require.NotNil(t, cmd)
-		assert.Equal(t, "upgrade", cmd.Use)
+		assert.Equal(t, "upgrade", cmd.Name())
+		assert.True(t, strings.HasPrefix(cmd.Use, "upgrade"))
 	})
 
 	t.Run("has correct short description", func(t *testing.T) {
@@ -39,11 +43,11 @@ func TestUpgradeCommand_Contract(t *testing.T) {
 
 	t.Run("has examples", func(t *testing.T) {
 		cmd := NewUpgradeCommand(versionInfo)
-		assert.Contains(t, cmd.Long, "Examples:")
-		assert.Contains(t, cmd.Long, "shipyard upgrade")
-		assert.Contains(t, cmd.Long, "--yes")
-		assert.Contains(t, cmd.Long, "--dry-run")
-		assert.Contains(t, cmd.Long, "--force")
+		assert.NotEmpty(t, cmd.Example)
+		assert.Contains(t, cmd.Example, "shipyard upgrade")
+		assert.Contains(t, cmd.Example, "--yes")
+		assert.Contains(t, cmd.Example, "--dry-run")
+		assert.Contains(t, cmd.Example, "--force")
 	})
 }
 
@@ -279,7 +283,6 @@ func TestVersionInfo_Structure(t *testing.T) {
 	})
 }
 
-
 func TestUpgradeCommand_UsageMessage(t *testing.T) {
 	versionInfo := VersionInfo{
 		Version: "1.0.0",
@@ -319,4 +322,90 @@ func TestUpgradeCommand_UsageMessage(t *testing.T) {
 				"Usage should describe: %s", desc)
 		}
 	})
+}
+
+type fakeReleaseFetcher struct {
+	owner   string
+	repo    string
+	release *upgrade.ReleaseInfo
+	err     error
+}
+
+func (f *fakeReleaseFetcher) GetLatestRelease(ctx context.Context, owner, repo string) (*upgrade.ReleaseInfo, error) {
+	f.owner = owner
+	f.repo = repo
+	return f.release, f.err
+}
+
+type fakeUpgradeStrategy struct {
+	command string
+	release *upgrade.ReleaseInfo
+	err     error
+}
+
+func (u *fakeUpgradeStrategy) Upgrade(ctx context.Context, release *upgrade.ReleaseInfo) error {
+	u.release = release
+	return u.err
+}
+
+func (u *fakeUpgradeStrategy) GetUpgradeCommand() string {
+	return u.command
+}
+
+func TestRunUpgradeWithDependencies_DryRunUsesInjectedDependencies(t *testing.T) {
+	fetcher := &fakeReleaseFetcher{release: &upgrade.ReleaseInfo{TagName: "v1.1.0", Body: "Release notes"}}
+	strategy := &fakeUpgradeStrategy{command: "fake upgrade command"}
+	var upgraderInfo *upgrade.InstallInfo
+
+	deps := UpgradeDependencies{
+		DetectInstallation: func(version, commit, date string) (*upgrade.InstallInfo, error) {
+			return &upgrade.InstallInfo{
+				Method:     upgrade.InstallMethodScript,
+				BinaryPath: "/tmp/shipyard",
+				CanUpgrade: true,
+			}, nil
+		},
+		NewReleaseFetcher: func() ReleaseFetcher { return fetcher },
+		NewUpgrader: func(info *upgrade.InstallInfo, log *logger.Logger) (upgrade.Upgrader, error) {
+			upgraderInfo = info
+			return strategy, nil
+		},
+	}
+
+	output := captureStdout(t, func() {
+		err := runUpgradeWithDependencies(context.Background(), &UpgradeOptions{DryRun: true}, VersionInfo{Version: "1.0.0"}, deps)
+		require.NoError(t, err)
+	})
+
+	assert.Equal(t, "NatoNathan", fetcher.owner)
+	assert.Equal(t, "shipyard", fetcher.repo)
+	require.NotNil(t, upgraderInfo)
+	assert.Equal(t, upgrade.InstallMethodScript, upgraderInfo.Method)
+	assert.Contains(t, output, "fake upgrade command")
+	assert.Nil(t, strategy.release, "dry-run should not execute the upgrader")
+}
+
+func TestRunUpgradeWithDependencies_ExecutesInjectedUpgrader(t *testing.T) {
+	fetcher := &fakeReleaseFetcher{release: &upgrade.ReleaseInfo{TagName: "v1.1.0"}}
+	strategy := &fakeUpgradeStrategy{command: "fake upgrade command"}
+
+	deps := UpgradeDependencies{
+		DetectInstallation: func(version, commit, date string) (*upgrade.InstallInfo, error) {
+			return &upgrade.InstallInfo{
+				Method:     upgrade.InstallMethodScript,
+				BinaryPath: "/tmp/shipyard",
+				CanUpgrade: true,
+			}, nil
+		},
+		NewReleaseFetcher: func() ReleaseFetcher { return fetcher },
+		NewUpgrader: func(info *upgrade.InstallInfo, log *logger.Logger) (upgrade.Upgrader, error) {
+			return strategy, nil
+		},
+	}
+
+	err := runUpgradeWithDependencies(context.Background(), &UpgradeOptions{Yes: true, Quiet: true}, VersionInfo{Version: "1.0.0"}, deps)
+
+	require.NoError(t, err)
+	require.NotNil(t, strategy.release)
+	assert.Equal(t, "v1.1.0", strategy.release.TagName)
 }

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/pkg/semver"
 	"gopkg.in/yaml.v3"
 )
@@ -43,7 +45,7 @@ type HelmChart struct {
 func (h *HelmEcosystem) ReadVersion() (semver.Version, error) {
 	chartPath := filepath.Join(h.path, "Chart.yaml")
 
-	content, err := os.ReadFile(chartPath)
+	content, err := fileutil.ReadFile(chartPath)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read Chart.yaml: %w", err)
 	}
@@ -66,7 +68,7 @@ func (h *HelmEcosystem) UpdateVersion(version semver.Version) error {
 	chartPath := filepath.Join(h.path, "Chart.yaml")
 
 	// Read existing content
-	content, err := os.ReadFile(chartPath)
+	content, err := fileutil.ReadFile(chartPath)
 	if err != nil {
 		return fmt.Errorf("failed to read Chart.yaml: %w", err)
 	}
@@ -101,7 +103,7 @@ func (h *HelmEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("no version field found in Chart.yaml")
 	}
 
-	return os.WriteFile(chartPath, newContent, 0644)
+	return fileutil.WriteFile(chartPath, newContent, 0644)
 }
 
 // GetVersionFiles returns paths to all version-containing files

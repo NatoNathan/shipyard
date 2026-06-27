@@ -95,10 +95,11 @@ git push --tags
 | `release-notes` | - | Generate release notes |
 | `validate` | `check`, `lint` | Validate configuration |
 | `remove` | `rm` | Remove pending consignment |
-| `snapshot` | - | Create pre-release version |
-| `promote` | - | Promote pre-release to stable |
-| `prerelease` | `pre` | Create pre-release |
-| `config-show` | - | Display configuration |
+| `version snapshot` | - | Create timestamped snapshot version |
+| `version promote` | - | Advance a pre-release stage |
+| `version prerelease` | `pre` | Create or increment a pre-release |
+| `config` | `cfg` | Review configuration commands |
+| `config show` | - | Display configuration |
 | `completion` | - | Generate shell completion |
 | `upgrade` | - | Upgrade Shipyard CLI |
 
@@ -352,11 +353,10 @@ jq '.[] | select(.consignments[].changeType == "major")' .shipyard/history.json
 
 ## Global Flags
 
-All commands support these global flags:
+The CLI provides these global flags:
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
@@ -411,17 +411,17 @@ Shipyard supports pre-release versions:
 
 ```bash
 # Create snapshot (e.g., 1.2.3-20240315120000)
-shipyard snapshot --package my-api
+shipyard version snapshot --package my-api
 
-# Create named pre-release (e.g., 1.2.3-beta.1)
-shipyard prerelease --package my-api --identifier beta
+# Create or increment the configured pre-release stage
+shipyard version prerelease --package my-api
 ```
 
-### Promote to Stable
+### Promote Pre-release Stage
 
 ```bash
-# Promote pre-release to stable version
-shipyard promote --package my-api
+# Advance to the next configured pre-release stage
+shipyard version promote --package my-api
 ```
 
 ## Best Practices

@@ -59,6 +59,55 @@ func TestVersionContract_NoConsignmentsNoop(t *testing.T) {
 		"Output should contain 'No pending consignments', got: %s", string(output))
 }
 
+func TestVersionContract_PreviewMissingAndConfiguredConsignments(t *testing.T) {
+	shipyardBin := buildShipyard(t)
+
+	t.Run("missing directory is a no-op", func(t *testing.T) {
+		tempDir := t.TempDir()
+		initializeTestRepo(t, shipyardBin, tempDir)
+		consignmentsDir := filepath.Join(tempDir, ".shipyard", "consignments")
+		require.NoError(t, os.RemoveAll(consignmentsDir))
+
+		cmd := exec.Command(shipyardBin, "version", "--preview")
+		cmd.Dir = tempDir
+		output, err := cmd.CombinedOutput()
+
+		require.NoError(t, err, "version --preview should accept a missing consignments directory: %s", output)
+		assert.NoDirExists(t, consignmentsDir)
+	})
+
+	t.Run("uses configured path", func(t *testing.T) {
+		tempDir := t.TempDir()
+		initializeTestRepo(t, shipyardBin, tempDir)
+		createTestConsignment(t, tempDir, "custom-1", "core", "patch", "Custom path fix")
+
+		customDir := filepath.Join(tempDir, "changes", "pending")
+		require.NoError(t, os.MkdirAll(customDir, 0755))
+		require.NoError(t, os.Rename(
+			filepath.Join(tempDir, ".shipyard", "consignments", "custom-1.md"),
+			filepath.Join(customDir, "custom-1.md"),
+		))
+		require.NoError(t, os.RemoveAll(filepath.Join(tempDir, ".shipyard", "consignments")))
+		writeConfig(t, tempDir, `packages:
+  - name: core
+    path: ./core
+    ecosystem: go
+consignments:
+  path: changes/pending
+history:
+  path: .shipyard/history.json
+`)
+
+		cmd := exec.Command(shipyardBin, "version", "--preview")
+		cmd.Dir = tempDir
+		output, err := cmd.CombinedOutput()
+
+		require.NoError(t, err, "version --preview should honor configured consignments path: %s", output)
+		assert.Contains(t, string(output), "1.0.1")
+		assert.FileExists(t, filepath.Join(customDir, "custom-1.md"))
+	})
+}
+
 // TestVersionContract_ApplyWithNoCommitNoTag tests that version applies changes without git operations
 func TestVersionContract_ApplyWithNoCommitNoTag(t *testing.T) {
 	shipyardBin := buildShipyard(t)

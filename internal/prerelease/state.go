@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/gofrs/flock"
 	"gopkg.in/yaml.v3"
 )
@@ -35,7 +37,7 @@ func ReadState(path string) (*State, error) {
 	}
 	defer func() { _ = fileLock.Unlock() }()
 
-	data, err := os.ReadFile(path)
+	data, err := fileutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &State{Packages: make(map[string]PackageState)}, nil
@@ -71,7 +73,7 @@ func WriteState(path string, state *State) error {
 
 	// Write to temp file first
 	tempPath := path + ".tmp"
-	if err := os.WriteFile(tempPath, data, 0644); err != nil {
+	if err := fileutil.WriteFile(tempPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}
 

@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/BurntSushi/toml"
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
@@ -142,7 +144,7 @@ func (p *PythonEcosystem) readVersionFromPyproject(path string) (semver.Version,
 
 // readVersionFromVersionPy extracts version from __version__.py
 func (p *PythonEcosystem) readVersionFromVersionPy(path string) (semver.Version, error) {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read __version__.py: %w", err)
 	}
@@ -160,7 +162,7 @@ func (p *PythonEcosystem) readVersionFromVersionPy(path string) (semver.Version,
 
 // readVersionFromSetupPy extracts version from setup.py
 func (p *PythonEcosystem) readVersionFromSetupPy(path string) (semver.Version, error) {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read setup.py: %w", err)
 	}
@@ -179,7 +181,7 @@ func (p *PythonEcosystem) readVersionFromSetupPy(path string) (semver.Version, e
 // updatePyproject updates version in pyproject.toml, only matching version
 // fields under [project] or [tool.poetry] sections (not dependency versions).
 func (p *PythonEcosystem) updatePyproject(path string, version semver.Version) error {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read pyproject.toml: %w", err)
 	}
@@ -223,12 +225,12 @@ func (p *PythonEcosystem) updatePyproject(path string, version semver.Version) e
 		return fmt.Errorf("no version field found in pyproject.toml")
 	}
 
-	return os.WriteFile(path, []byte(contentStr), 0644)
+	return fileutil.WriteFile(path, []byte(contentStr), 0644)
 }
 
 // updateVersionPy updates version in __version__.py
 func (p *PythonEcosystem) updateVersionPy(path string, version semver.Version) error {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read __version__.py: %w", err)
 	}
@@ -240,12 +242,12 @@ func (p *PythonEcosystem) updateVersionPy(path string, version semver.Version) e
 		return fmt.Errorf("no __version__ found in %s", path)
 	}
 
-	return os.WriteFile(path, newContent, 0644)
+	return fileutil.WriteFile(path, newContent, 0644)
 }
 
 // updateSetupPy updates version in setup.py
 func (p *PythonEcosystem) updateSetupPy(path string, version semver.Version) error {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read setup.py: %w", err)
 	}
@@ -257,7 +259,7 @@ func (p *PythonEcosystem) updateSetupPy(path string, version semver.Version) err
 		return fmt.Errorf("no version field found in setup.py")
 	}
 
-	return os.WriteFile(path, newContent, 0644)
+	return fileutil.WriteFile(path, newContent, 0644)
 }
 
 // DetectPythonEcosystem checks if a directory contains a Python project

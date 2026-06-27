@@ -11,13 +11,13 @@ import (
 
 func TestReadConsignment(t *testing.T) {
 	tests := []struct {
-		name        string
-		content     string
-		wantID      string
+		name         string
+		content      string
+		wantID       string
 		wantPackages []string
-		wantType    string
-		wantSummary string
-		wantErr     bool
+		wantType     string
+		wantSummary  string
+		wantErr      bool
 	}{
 		{
 			name: "valid consignment with all fields",
@@ -67,7 +67,7 @@ Fixed bug in validation
 			wantErr:      false,
 		},
 		{
-			name: "missing frontmatter",
+			name:    "missing frontmatter",
 			content: `This is just plain text without frontmatter`,
 			wantErr: true,
 		},
@@ -234,6 +234,25 @@ Test content for ` + name
 
 	// Verify consignments are sorted by timestamp (or ID)
 	assert.Equal(t, consignments[0][:len(consignments[0])-3], result[0].ID)
+}
+
+func TestReadAllConsignments_MissingDirectoryIsEmpty(t *testing.T) {
+	consignmentDir := filepath.Join(t.TempDir(), ".shipyard", "consignments")
+
+	result, err := ReadAllConsignments(consignmentDir)
+
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestReadAllConsignments_NonDirectoryPathReturnsError(t *testing.T) {
+	consignmentDir := filepath.Join(t.TempDir(), "consignments")
+	require.NoError(t, os.WriteFile(consignmentDir, []byte("not a directory"), 0644))
+
+	result, err := ReadAllConsignments(consignmentDir)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
 }
 
 func TestReadAllConsignmentsWithFilter(t *testing.T) {

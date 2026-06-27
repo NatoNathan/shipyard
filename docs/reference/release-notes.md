@@ -14,7 +14,7 @@ shipyard changelog [OPTIONS]
 
 The `release-notes` command generates release notes from version history. It:
 
-1. Reads entries from `.shipyard/history.json`
+1. Reads entries from the configured history file
 2. Filters by package, version, or metadata
 3. Renders output using a template
 4. Writes to stdout or a file
@@ -23,11 +23,10 @@ The `release-notes` command generates release notes from version history. It:
 
 ## Global Options
 
-These options are available for all shipyard commands:
+These global options are provided by the root command:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |

@@ -115,6 +115,40 @@ func CreateLightweightTags(repoPath string, tagNames []string) error {
 	return nil
 }
 
+// EnsureTagsAbsent verifies that none of the provided tags already exist.
+func EnsureTagsAbsent(repoPath string, tagNames []string) error {
+	repo, err := gogit.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	for _, tagName := range tagNames {
+		if _, err := repo.Tag(tagName); err == nil {
+			return fmt.Errorf("tag already exists: %s", tagName)
+		} else if err != gogit.ErrTagNotFound {
+			return fmt.Errorf("failed to check tag %s: %w", tagName, err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteTags removes local tags, ignoring tags that are already absent.
+func DeleteTags(repoPath string, tagNames []string) error {
+	repo, err := gogit.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	for _, tagName := range tagNames {
+		if err := repo.DeleteTag(tagName); err != nil && err != gogit.ErrTagNotFound {
+			return fmt.Errorf("failed to delete tag %s: %w", tagName, err)
+		}
+	}
+
+	return nil
+}
+
 // VerifyTagExists checks if a tag exists in the local repository
 func VerifyTagExists(repoPath, tagName string) (bool, error) {
 	repo, err := gogit.PlainOpen(repoPath)

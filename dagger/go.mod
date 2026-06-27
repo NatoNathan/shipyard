@@ -1,6 +1,6 @@
 module dagger/shipyard
 
-go 1.25.5
+go 1.25.11
 
 require (
 	github.com/99designs/gqlgen v0.17.81

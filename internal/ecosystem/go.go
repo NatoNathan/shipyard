@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/NatoNathan/shipyard/internal/fileutil"
+
 	"github.com/NatoNathan/shipyard/pkg/semver"
 )
 
@@ -119,7 +121,7 @@ func (g *GoEcosystem) GetVersionFiles() []string {
 // readVersionFromVersionGo extracts version from version.go file
 // Looks for patterns like: const Version = "1.2.3" or var Version = "1.2.3"
 func (g *GoEcosystem) readVersionFromVersionGo(path string) (semver.Version, error) {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read version.go: %w", err)
 	}
@@ -138,7 +140,7 @@ func (g *GoEcosystem) readVersionFromVersionGo(path string) (semver.Version, err
 // readVersionFromGoMod extracts version from go.mod comment
 // Looks for: // version: 1.2.3
 func (g *GoEcosystem) readVersionFromGoMod(path string) (semver.Version, error) {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to read go.mod: %w", err)
 	}
@@ -156,7 +158,7 @@ func (g *GoEcosystem) readVersionFromGoMod(path string) (semver.Version, error) 
 
 // updateVersionGo updates the version in version.go
 func (g *GoEcosystem) updateVersionGo(path string, version semver.Version) error {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read version.go: %w", err)
 	}
@@ -169,12 +171,12 @@ func (g *GoEcosystem) updateVersionGo(path string, version semver.Version) error
 		return fmt.Errorf("no version declaration found in %s", path)
 	}
 
-	return os.WriteFile(path, newContent, 0644)
+	return fileutil.WriteFile(path, newContent, 0644)
 }
 
 // updateGoMod updates the version comment in go.mod
 func (g *GoEcosystem) updateGoMod(path string, version semver.Version) error {
-	content, err := os.ReadFile(path)
+	content, err := fileutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read go.mod: %w", err)
 	}
@@ -189,7 +191,7 @@ func (g *GoEcosystem) updateGoMod(path string, version semver.Version) error {
 
 	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s`, version.String())))
 
-	return os.WriteFile(path, newContent, 0644)
+	return fileutil.WriteFile(path, newContent, 0644)
 }
 
 // DetectGoEcosystem checks if a directory contains a Go project

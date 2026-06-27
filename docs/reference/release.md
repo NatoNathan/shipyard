@@ -13,7 +13,7 @@ shipyard publish [OPTIONS]
 
 The `release` command publishes a version release to GitHub. It:
 
-1. Reads version history from `.shipyard/history.json`
+1. Reads version history from the configured history file
 2. Finds the entry for the specified package/tag
 3. Generates release notes from the history entry
 4. Creates a GitHub release using the existing git tag
@@ -24,11 +24,10 @@ The `release` command publishes a version release to GitHub. It:
 
 ## Global Options
 
-These options are available for all shipyard commands:
+These global options are provided by the root command:
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--config <path>` | `-c` | Config file (default: `.shipyard/shipyard.yaml`) |
 | `--json` | `-j` | Output in JSON format |
 | `--quiet` | `-q` | Suppress non-error output |
 | `--verbose` | `-v` | Verbose output |
