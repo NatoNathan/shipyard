@@ -2,9 +2,14 @@
 
 > Chart your project's version journey - manage cargo (changes), navigate to new ports (versions), and maintain your ship's log
 
+[![CI](https://github.com/NatoNathan/shipyard/actions/workflows/ci.yml/badge.svg)](https://github.com/NatoNathan/shipyard/actions/workflows/ci.yml)
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/NatoNathan/shipyard?utm_source=oss&utm_medium=github&utm_campaign=NatoNathan%2Fshipyard&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+[![Release](https://img.shields.io/github/v/release/natonathan/shipyard)](https://github.com/natonathan/shipyard/releases)
+[![codecov](https://codecov.io/gh/NatoNathan/shipyard/graph/badge.svg)](https://codecov.io/gh/NatoNathan/shipyard)
+[![npm](https://img.shields.io/npm/v/shipyard-cli?label=npm&logo=npm)](https://www.npmjs.com/package/shipyard-cli)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/NatoNathan/shipyard/pkgs/container/shipyard)
 [![Go Report](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/natonathan/shipyard)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/natonathan/shipyard)](https://github.com/natonathan/shipyard/releases)
 
 ## What is Shipyard?
 

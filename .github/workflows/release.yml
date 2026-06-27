@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
 
 jobs:
   release:
@@ -20,7 +21,7 @@ jobs:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
+          repositories: "${{ github.event.repository.name }},homebrew-tap"
           permission-contents: write
           permission-packages: write
 
@@ -39,13 +40,13 @@ jobs:
       - name: Run Dagger Release Pipeline
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION_TAG: ${{ github.ref_name }}
         run: |
           dagger call release \
             --source=. \
             --version="$VERSION_TAG" \
             --github-token=env:GITHUB_TOKEN \
-            --npm-token=env:NPM_TOKEN \
+            --npm-oidc-token-url="$ACTIONS_ID_TOKEN_REQUEST_URL" \
+            --npm-oidc-token=env:ACTIONS_ID_TOKEN_REQUEST_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
             --docker-username=${{ github.repository_owner }}

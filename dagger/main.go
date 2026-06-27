@@ -23,8 +23,10 @@ func (m *Shipyard) Release(
 	version string,
 	// GitHub token for releases and Docker registry
 	githubToken *dagger.Secret,
-	// npm registry token
-	npmToken *dagger.Secret,
+	// GitHub Actions OIDC token request URL for npm trusted publishing (ACTIONS_ID_TOKEN_REQUEST_URL)
+	npmOidcTokenUrl string,
+	// GitHub Actions OIDC bearer token for npm trusted publishing (ACTIONS_ID_TOKEN_REQUEST_TOKEN)
+	npmOidcToken *dagger.Secret,
 	// Docker registry (e.g., "ghcr.io/natonathan/shipyard")
 	// +default="ghcr.io/natonathan/shipyard"
 	dockerRegistry string,
@@ -37,6 +39,12 @@ func (m *Shipyard) Release(
 	// Use GitHub token for Docker if not provided
 	if dockerToken == nil {
 		dockerToken = githubToken
+	}
+	if npmOidcTokenUrl == "" {
+		return fmt.Errorf("npm OIDC token request URL is required")
+	}
+	if npmOidcToken == nil {
+		return fmt.Errorf("npm OIDC token request token is required")
 	}
 
 	// Get commit SHA from git
@@ -89,7 +97,7 @@ func (m *Shipyard) Release(
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := m.PublishNPM(ctx, packageArtifacts, version, npmToken); err != nil {
+		if err := m.PublishNPM(ctx, packageArtifacts, version, npmOidcTokenUrl, npmOidcToken); err != nil {
 			errors <- fmt.Errorf("npm: %w", err)
 		}
 	}()
