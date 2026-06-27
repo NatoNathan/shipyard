@@ -181,5 +181,18 @@
         "changeType": "minor"
       }
     ]
+  },
+  {
+    "version": "0.7.1",
+    "package": "shipyard",
+    "tag": "v0.7.1",
+    "timestamp": "2026-06-27T17:43:12.877018835Z",
+    "consignments": [
+      {
+        "id": "20260627-170642-nqshc6",
+        "summary": "Fix release pipeline: npm OIDC trusted publishing, Homebrew token scope, Snyk CLI CI job",
+        "changeType": "patch"
+      }
+    ]
   }
 ]

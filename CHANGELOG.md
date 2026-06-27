@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2026-06-27
+**Package**: shipyard
+
+### Bug Fixes
+- Fix release pipeline: npm OIDC trusted publishing, Homebrew token scope, Snyk CLI CI job
+
 ## [0.7.0] - 2026-06-27
 **Package**: shipyard
 
