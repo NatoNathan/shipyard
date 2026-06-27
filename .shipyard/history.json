@@ -168,5 +168,18 @@
         "changeType": "patch"
       }
     ]
+  },
+  {
+    "version": "0.7.0",
+    "package": "shipyard",
+    "tag": "v0.7.0",
+    "timestamp": "2026-06-27T16:45:17.870426382Z",
+    "consignments": [
+      {
+        "id": "20260627-155505-eemc5g",
+        "summary": "Enrich changelog template context with package and version fields",
+        "changeType": "minor"
+      }
+    ]
   }
 ]

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-06-27
+**Package**: shipyard
+
+### Features
+- Enrich changelog template context with package and version fields
+
 ## [0.6.1] - 2026-06-27
 **Package**: shipyard
 
