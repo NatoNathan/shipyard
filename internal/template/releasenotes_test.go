@@ -107,8 +107,7 @@ func TestRenderReleaseNotesWithTemplate(t *testing.T) {
 		assert.Contains(t, output, "Bug fix")
 	})
 
-	t.Run("auto-selects changelog template for multiple entries", func(t *testing.T) {
-		// Setup: Create multiple history entries
+	t.Run("RenderChangelogWithTemplate renders all versions with ChangelogContext", func(t *testing.T) {
 		entries := []history.Entry{
 			{
 				Version:   "1.1.0",
@@ -128,10 +127,8 @@ func TestRenderReleaseNotesWithTemplate(t *testing.T) {
 			},
 		}
 
-		// Test: Render with multiple entries (should use changelog template)
-		output, err := RenderReleaseNotesWithTemplate(entries, "builtin:default")
+		output, err := RenderChangelogWithTemplate(entries, "builtin:default")
 
-		// Verify: Both versions present in changelog format
 		require.NoError(t, err)
 		assert.Contains(t, output, "# Changelog")
 		assert.Contains(t, output, "[1.1.0]")
@@ -232,5 +229,71 @@ func TestMarkdownFormatting(t *testing.T) {
 		// Verify: Special characters preserved (markdown supports them in text)
 		require.NoError(t, err)
 		assert.Contains(t, output, "Fix issue with `code` and *emphasis*")
+	})
+}
+
+func TestNewChangelogContext(t *testing.T) {
+	ts := time.Date(2026, 1, 30, 10, 0, 0, 0, time.UTC)
+
+	t.Run("empty entries", func(t *testing.T) {
+		ctx := newChangelogContext(nil)
+		assert.Equal(t, "", ctx.Package)
+		assert.Equal(t, "", ctx.LatestVersion)
+		assert.Equal(t, "", ctx.LatestStable)
+		assert.Equal(t, "", ctx.LatestPreRelease)
+		assert.Empty(t, ctx.Entries)
+	})
+
+	t.Run("Package and LatestVersion from newest entry", func(t *testing.T) {
+		sorted := []history.Entry{
+			{Package: "core", Version: "1.2.0", Timestamp: ts},
+			{Package: "core", Version: "1.1.0", Timestamp: ts.Add(-24 * time.Hour)},
+		}
+		ctx := newChangelogContext(sorted)
+		assert.Equal(t, "core", ctx.Package)
+		assert.Equal(t, "1.2.0", ctx.LatestVersion)
+	})
+
+	t.Run("LatestStable set, LatestPreRelease empty when all stable", func(t *testing.T) {
+		sorted := []history.Entry{
+			{Package: "core", Version: "1.2.0", Timestamp: ts},
+			{Package: "core", Version: "1.1.0", Timestamp: ts.Add(-24 * time.Hour)},
+		}
+		ctx := newChangelogContext(sorted)
+		assert.Equal(t, "1.2.0", ctx.LatestStable)
+		assert.Equal(t, "", ctx.LatestPreRelease)
+	})
+
+	t.Run("LatestPreRelease set when newest is prerelease", func(t *testing.T) {
+		sorted := []history.Entry{
+			{Package: "core", Version: "1.3.0-beta.1", Timestamp: ts},
+			{Package: "core", Version: "1.2.0", Timestamp: ts.Add(-24 * time.Hour)},
+		}
+		ctx := newChangelogContext(sorted)
+		assert.Equal(t, "1.3.0-beta.1", ctx.LatestVersion)
+		assert.Equal(t, "1.3.0-beta.1", ctx.LatestPreRelease)
+		assert.Equal(t, "1.2.0", ctx.LatestStable)
+	})
+
+	t.Run("LatestStable skips prereleases", func(t *testing.T) {
+		sorted := []history.Entry{
+			{Package: "core", Version: "2.0.0-alpha.1", Timestamp: ts},
+			{Package: "core", Version: "1.0.0-rc.1", Timestamp: ts.Add(-1 * time.Hour)},
+			{Package: "core", Version: "1.0.0", Timestamp: ts.Add(-2 * time.Hour)},
+		}
+		ctx := newChangelogContext(sorted)
+		assert.Equal(t, "2.0.0-alpha.1", ctx.LatestPreRelease)
+		assert.Equal(t, "1.0.0", ctx.LatestStable)
+	})
+
+	t.Run("Entries preserved in order", func(t *testing.T) {
+		sorted := []history.Entry{
+			{Version: "1.2.0", Timestamp: ts},
+			{Version: "1.1.0", Timestamp: ts.Add(-24 * time.Hour)},
+		}
+		ctx := newChangelogContext(sorted)
+		require.Len(t, ctx.Entries, 2)
+		assert.Equal(t, "1.2.0", ctx.Entries[0].Version)
+		assert.Equal(t, "1.1.0", ctx.Entries[1].Version)
 	})
 }

@@ -12,7 +12,8 @@ func RenderReleaseNotes(entries []history.Entry) (string, error) {
 	return RenderReleaseNotesWithTemplate(entries, "builtin:default")
 }
 
-// RenderReleaseNotesWithTemplate renders release notes using a specific template
+// RenderReleaseNotesWithTemplate renders a single-version release note.
+// Custom templates always receive a single history.Entry as context.
 // templateSource can be:
 // - "builtin:default" or "builtin:grouped" - builtin templates
 // - "file:/path/to/template.tmpl" - file path
@@ -21,62 +22,60 @@ func RenderReleaseNotes(entries []history.Entry) (string, error) {
 // - "changelog" - auto-maps to changelog template for multi-version
 // - "release-notes" - auto-maps to release-notes template for single-version
 func RenderReleaseNotesWithTemplate(entries []history.Entry, templateSource string) (string, error) {
+	return renderWithMode(entries, templateSource, TemplateTypeReleaseNotes)
+}
+
+// RenderChangelogWithTemplate renders a multi-version changelog.
+// Custom templates always receive a ChangelogContext as context.
+func RenderChangelogWithTemplate(entries []history.Entry, templateSource string) (string, error) {
+	return renderWithMode(entries, templateSource, TemplateTypeChangelog)
+}
+
+// renderWithMode is the shared implementation. mode controls the context type used
+// for custom (non-alias) template sources.
+func renderWithMode(entries []history.Entry, templateSource string, mode TemplateType) (string, error) {
 	if len(entries) == 0 {
 		return "No releases found\n", nil
 	}
 
-	// Handle special auto-selection cases
 	var templateType TemplateType
 	var source string
 
 	switch templateSource {
 	case "changelog":
-		// Multi-version changelog (always full history)
+		// Named alias always uses all-versions (array) context
 		templateType = TemplateTypeChangelog
-		source = "builtin:default" // default.tmpl expects array of entries
+		source = "builtin:default"
 	case "release-notes":
-		// Single-version release notes
+		// Named alias always uses single-version context
 		templateType = TemplateTypeReleaseNotes
 		source = "builtin:default"
 	default:
-		// User-specified template - determine type by entry count
-		if len(entries) > 1 {
-			templateType = TemplateTypeChangelog
-		} else {
-			templateType = TemplateTypeReleaseNotes
-		}
+		// Custom template: honour the caller's stated mode
+		templateType = mode
 		source = templateSource
 	}
 
-	// Create loader and renderer
 	loader := NewTemplateLoader()
 	renderer := NewTemplateRenderer()
 
-	// Load template
 	templateContent, err := loader.Load(source, templateType)
 	if err != nil {
 		return "", fmt.Errorf("failed to load template: %w", err)
 	}
 
-	// Prepare context based on template type
 	var context interface{}
-
 	if templateType == TemplateTypeChangelog {
-		// Multi-entry context for changelog (array of entries)
-		// Sort by timestamp descending (newest first) for changelog display
 		sorted := make([]history.Entry, len(entries))
 		copy(sorted, entries)
 		slices.SortFunc(sorted, func(a, b history.Entry) int {
-			// Reverse order: newer entries first
 			return b.Timestamp.Compare(a.Timestamp)
 		})
-		context = sorted
+		context = newChangelogContext(sorted)
 	} else {
-		// Single-entry context for release notes
 		context = entries[0]
 	}
 
-	// Render template
 	output, err := renderer.Render(templateContent, context)
 	if err != nil {
 		return "", fmt.Errorf("failed to render template: %w", err)

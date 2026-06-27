@@ -143,10 +143,10 @@ func TestGenerateChangelog_PackageFiltering(t *testing.T) {
 func TestGenerateChangelog_CustomTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create custom template (must iterate over array of entries)
+	// Create custom template (must iterate over .Entries)
 	customTemplate := `# My Custom Changelog
 
-{{- range . }}
+{{- range .Entries }}
 {{- range .Consignments }}
 * {{ .Summary }} ({{ .ChangeType }})
 {{- end }}
