@@ -28,5 +28,4 @@ const (
 	GolangCILintVersion = "v2.12.2"
 	GosecVersion        = "v2.27.1"
 	GovulncheckVersion  = "v1.3.0"
-	GotestsumVersion    = "v1.12.1"
 )

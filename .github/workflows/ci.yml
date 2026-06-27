@@ -62,27 +62,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Set up Dagger
         uses: dagger/dagger-for-github@v7
         with:
           version: "0.21.7"
 
-      - name: Run tests with coverage and JUnit results
-        run: dagger call coverage-and-results --source . export --path ./results
+      - name: Run tests with coverage
+        run: dagger call coverage --source . export --path ./coverage.out
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@f2274c2c340e0c81c8f7dc407b2a477b8935f171 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./results/coverage.out
+          files: ./coverage.out
           fail_ci_if_error: true
+
+      - name: Generate JUnit XML test results
+        if: ${{ !cancelled() }}
+        run: go run gotest.tools/gotestsum@latest --junitfile junit.xml ./...
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./results/junit.xml
+          files: ./junit.xml
 
   security:
     name: Security
