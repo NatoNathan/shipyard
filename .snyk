@@ -1,9 +1,0 @@
-# Snyk policy file — https://snyk.io/docs/snyk-cli/
-version: v1.25.0
-ignore: {}
-patch: {}
-exclude:
-  global:
-    # Dagger module uses code-generated packages (internal/dagger, dagger.gen.go)
-    # that are not committed to the repo, so go list fails on this module.
-    - dagger/**
