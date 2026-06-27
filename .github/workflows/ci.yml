@@ -71,7 +71,7 @@ jobs:
         run: dagger call coverage --source . export --path ./coverage.out
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@f2274c2c340e0c81c8f7dc407b2a477b8935f171 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.out

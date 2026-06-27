@@ -2,6 +2,8 @@ package editor
 
 import (
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -185,7 +187,7 @@ func TestResolveEditorCommandAcceptsKnownEditor(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("test relies on POSIX editor availability")
 	}
-	if _, err := os.Stat("/usr/bin/vi"); err != nil {
+	if _, err := exec.LookPath("vi"); err != nil {
 		t.Skip("vi is not available")
 	}
 
@@ -193,5 +195,21 @@ func TestResolveEditorCommandAcceptsKnownEditor(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "vi", command)
+	assert.Empty(t, args)
+}
+
+func TestResolveEditorCommandAcceptsQuotedPathEditor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test relies on POSIX executable permissions")
+	}
+
+	dir := t.TempDir()
+	editorPath := filepath.Join(dir, "nvim")
+	require.NoError(t, os.WriteFile(editorPath, []byte("#!/bin/sh\n"), 0755))
+
+	command, args, err := resolveEditorCommand(`"` + editorPath + `" --ignored`)
+
+	require.NoError(t, err)
+	assert.Equal(t, editorPath, command)
 	assert.Empty(t, args)
 }

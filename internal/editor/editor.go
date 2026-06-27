@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/NatoNathan/shipyard/internal/fileutil"
 )
@@ -76,20 +77,105 @@ func OpenEditorWithFunc(dir, initialContent string, editorFunc func(string) erro
 }
 
 func resolveEditorCommand(editor string) (string, []string, error) {
-	editorParts := strings.Fields(editor)
+	editorParts, err := splitEditorCommand(editor)
+	if err != nil {
+		return "", nil, err
+	}
 	if len(editorParts) == 0 {
 		return "", nil, fmt.Errorf("EDITOR is empty")
 	}
 
-	command, args, ok := allowedEditor(filepath.Base(editorParts[0]), editorParts[1:])
+	editorPath := editorParts[0]
+	command, args, ok := allowedEditor(editorBaseName(editorPath), editorParts[1:])
 	if !ok {
-		return "", nil, fmt.Errorf("unsupported editor %q; set EDITOR to one of: code, code-insiders, emacs, nano, nvim, vi, vim", editorParts[0])
+		return "", nil, fmt.Errorf("unsupported editor %q; set EDITOR to one of: code, code-insiders, emacs, nano, nvim, vi, vim", editorPath)
 	}
-	if _, err := exec.LookPath(command); err != nil {
+	if hasPathSeparator(editorPath) {
+		command = editorPath
+	}
+	if err := verifyEditorExecutable(command); err != nil {
 		return "", nil, fmt.Errorf("editor executable not found: %w", err)
 	}
 
 	return command, args, nil
+}
+
+func splitEditorCommand(editor string) ([]string, error) {
+	var parts []string
+	var current strings.Builder
+	var quote rune
+	escaped := false
+	inToken := false
+
+	for _, r := range editor {
+		if escaped {
+			current.WriteRune(r)
+			escaped = false
+			inToken = true
+			continue
+		}
+		if quote != 0 {
+			if r == '\\' && quote == '"' {
+				escaped = true
+				continue
+			}
+			if r == quote {
+				quote = 0
+				inToken = true
+				continue
+			}
+			current.WriteRune(r)
+			inToken = true
+			continue
+		}
+		if r == '\'' || r == '"' {
+			quote = r
+			inToken = true
+			continue
+		}
+		if unicode.IsSpace(r) {
+			if inToken {
+				parts = append(parts, current.String())
+				current.Reset()
+				inToken = false
+			}
+			continue
+		}
+		current.WriteRune(r)
+		inToken = true
+	}
+	if escaped || quote != 0 {
+		return nil, fmt.Errorf("invalid EDITOR value: unterminated quote or escape")
+	}
+	if inToken {
+		parts = append(parts, current.String())
+	}
+	return parts, nil
+}
+
+func editorBaseName(command string) string {
+	name := filepath.Base(strings.ReplaceAll(command, "\\", string(filepath.Separator)))
+	name = strings.ToLower(name)
+	return strings.TrimSuffix(name, ".exe")
+}
+
+func hasPathSeparator(command string) bool {
+	return filepath.IsAbs(command) || strings.ContainsAny(command, `/\`)
+}
+
+func verifyEditorExecutable(command string) error {
+	if hasPathSeparator(command) {
+		info, err := os.Stat(command)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return fmt.Errorf("%s is a directory", command)
+		}
+		return nil
+	}
+	_, err := exec.LookPath(command)
+	return err
 }
 
 func allowedEditor(name string, requestedArgs []string) (string, []string, bool) {
@@ -129,21 +215,21 @@ func allowedCodeArgs(requestedArgs []string) []string {
 }
 
 func newEditorCommand(command string, args []string) (*exec.Cmd, error) {
-	switch command {
+	switch editorBaseName(command) {
 	case "code":
-		return exec.Command("code", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	case "code-insiders":
-		return exec.Command("code-insiders", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	case "emacs":
-		return exec.Command("emacs", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	case "nano":
-		return exec.Command("nano", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	case "nvim":
-		return exec.Command("nvim", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	case "vi":
-		return exec.Command("vi", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	case "vim":
-		return exec.Command("vim", args...), nil // #nosec G204,G702 -- executable is a literal allowlisted editor; args are sanitized flags plus a generated temp file path.
+		return exec.Command(command, args...), nil // #nosec G204,G702 -- executable basename is allowlisted and args are sanitized flags plus a generated temp file path.
 	default:
 		return nil, fmt.Errorf("unsupported editor %q", command)
 	}
