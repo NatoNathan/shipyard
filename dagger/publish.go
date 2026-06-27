@@ -232,15 +232,17 @@ end
 	)
 }
 
-// PublishNPM publishes the npm wrapper package
+// PublishNPM publishes the npm wrapper package using GitHub Actions OIDC trusted publishing
 func (m *Shipyard) PublishNPM(
 	ctx context.Context,
 	// Package artifacts directory
 	artifacts *dagger.Directory,
 	// Version string (e.g., "v1.2.3")
 	version string,
-	// npm auth token
-	npmToken *dagger.Secret,
+	// GitHub Actions OIDC token request URL (ACTIONS_ID_TOKEN_REQUEST_URL)
+	oidcTokenUrl string,
+	// GitHub Actions OIDC bearer token (ACTIONS_ID_TOKEN_REQUEST_TOKEN)
+	oidcToken *dagger.Secret,
 ) error {
 	versionNum := strings.TrimPrefix(version, "v")
 
@@ -248,17 +250,14 @@ func (m *Shipyard) PublishNPM(
 	fmt.Printf("Creating npm package...\n")
 	npmPackage := m.createNPMPackage(ctx, version)
 
-	// Publish to npm
+	// Publish to npm via OIDC trusted publishing
 	fmt.Printf("Publishing to npm...\n")
 	publisher := dag.Container().
-		From("node:20-alpine").
-		WithSecretVariable("NPM_TOKEN", npmToken).
+		From("node:lts-alpine").
+		WithEnvVariable("ACTIONS_ID_TOKEN_REQUEST_URL", oidcTokenUrl).
+		WithSecretVariable("ACTIONS_ID_TOKEN_REQUEST_TOKEN", oidcToken).
 		WithMountedDirectory("/package", npmPackage).
 		WithWorkdir("/package").
-		WithExec([]string{
-			"sh", "-c",
-			"echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc",
-		}).
 		WithExec([]string{"npm", "publish", "--access", "public"})
 
 	_, err := publisher.Sync(ctx)
