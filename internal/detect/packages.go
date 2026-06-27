@@ -18,6 +18,7 @@ import (
 func DetectPackages(rootPath string) ([]config.Package, error) {
 	var packages []config.Package
 	seen := make(map[string]bool) // Track seen paths to avoid duplicates
+	cleanRootPath := filepath.Clean(rootPath)
 
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -25,7 +26,7 @@ func DetectPackages(rootPath string) ([]config.Package, error) {
 		}
 
 		// Skip hidden directories.
-		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
+		if info.IsDir() && filepath.Clean(path) != cleanRootPath && strings.HasPrefix(info.Name(), ".") {
 			return filepath.SkipDir
 		}
 

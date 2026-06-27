@@ -176,7 +176,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 				}
 			}
 			if commitCreated && originalHeadSet {
-				if rollbackErr := git.ResetHard(projectPath, originalHead); rollbackErr != nil {
+				if rollbackErr := git.ResetMixed(projectPath, originalHead); rollbackErr != nil {
 					err = fmt.Errorf("%w; additionally failed to roll back git commit: %v", err, rollbackErr)
 				}
 			}
@@ -385,7 +385,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 	}
 
 	shouldCommit := !opts.NoCommit && len(filesToStage) > 0
-	shouldTag := !opts.NoTag && len(packageTags) > 0
+	shouldTag := !opts.NoTag && shouldCommit && len(packageTags) > 0
 
 	if shouldCommit || shouldTag {
 		originalHead, err = git.HeadHash(projectPath)

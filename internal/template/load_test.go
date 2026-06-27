@@ -293,7 +293,10 @@ func TestLoadTemplate_Git(t *testing.T) {
 	})
 
 	t.Run("rejects symlink escape from git template path", func(t *testing.T) {
-		repoDir := t.TempDir()
+		repoDir, err := os.MkdirTemp(os.TempDir(), "shipyard-template-repo-*")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = os.RemoveAll(repoDir) })
+
 		outsideFile := filepath.Join(os.TempDir(), fmt.Sprintf("shipyard-template-secret-%d.tmpl", time.Now().UnixNano()))
 		require.NoError(t, os.WriteFile(outsideFile, []byte("secret"), 0644))
 		t.Cleanup(func() { _ = os.Remove(outsideFile) })

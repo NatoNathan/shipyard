@@ -61,6 +61,10 @@ func (tx *fileTransaction) Rollback() error {
 			}
 			if err := fileutil.WriteFile(snapshot.path, snapshot.data, snapshot.mode); err != nil {
 				rollbackErr = joinRollbackError(rollbackErr, fmt.Errorf("failed to restore %s: %w", snapshot.path, err))
+				continue
+			}
+			if err := os.Chmod(snapshot.path, snapshot.mode); err != nil {
+				rollbackErr = joinRollbackError(rollbackErr, fmt.Errorf("failed to restore mode for %s: %w", snapshot.path, err))
 			}
 			continue
 		}

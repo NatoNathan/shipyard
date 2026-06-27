@@ -118,3 +118,25 @@ func ResetHard(repoPath string, hash plumbing.Hash) error {
 
 	return nil
 }
+
+// ResetMixed resets HEAD and the index to the given commit hash without changing the worktree.
+func ResetMixed(repoPath string, hash plumbing.Hash) error {
+	repo, err := gogit.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	if err := worktree.Reset(&gogit.ResetOptions{
+		Commit: hash,
+		Mode:   gogit.MixedReset,
+	}); err != nil {
+		return fmt.Errorf("failed to reset repository: %w", err)
+	}
+
+	return nil
+}

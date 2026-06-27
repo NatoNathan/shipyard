@@ -16,6 +16,7 @@ func TestFileTransactionRollbackPreservesFileMode(t *testing.T) {
 	tx := newFileTransaction()
 	require.NoError(t, tx.Backup(path))
 	require.NoError(t, os.WriteFile(path, []byte("changed"), 0644))
+	require.NoError(t, os.Chmod(path, 0644))
 
 	require.NoError(t, tx.Rollback())
 
