@@ -155,5 +155,18 @@
         "changeType": "patch"
       }
     ]
+  },
+  {
+    "version": "0.6.1",
+    "package": "shipyard",
+    "tag": "v0.6.1",
+    "timestamp": "2026-06-27T13:53:02.796693055Z",
+    "consignments": [
+      {
+        "id": "20260624-163526-gpdz0u",
+        "summary": "Consolidate release automation around the Dagger pipeline",
+        "changeType": "patch"
+      }
+    ]
   }
 ]

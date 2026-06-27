@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2026-06-27
+**Package**: shipyard
+
+### Bug Fixes
+- Consolidate release automation around the Dagger pipeline
+
 ## [0.6.0] - 2026-02-12
 **Package**: shipyard
 
