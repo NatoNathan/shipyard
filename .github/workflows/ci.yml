@@ -106,7 +106,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install Just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v4
 
       - name: Run pinned security scans
         run: just security
