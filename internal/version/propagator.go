@@ -41,7 +41,10 @@ func NewPropagator(g *graph.DependencyGraph) (*Propagator, error) {
 //  2. Run SCC detection to identify cycles
 //  3. Resolve cycle bumps (unify bump types within each SCC)
 //  4. Propagate bumps through dependencies (respecting strategies)
-//  5. Resolve conflicts (multiple sources requesting different bumps)
+//
+// Conflicts (multiple sources requesting different bumps for the same package)
+// are resolved inline by PropagateLinked and ResolveCycleBumps; see conflict.go
+// for the resolution strategy.
 func (p *Propagator) Propagate(
 	currentVersions map[string]semver.Version,
 	consignments []*consignment.Consignment,
@@ -92,9 +95,5 @@ func (p *Propagator) Propagate(
 		}
 	}
 
-	// Resolve any remaining conflicts
-	result = ResolveConflicts(result)
-
 	return result, nil
 }
-

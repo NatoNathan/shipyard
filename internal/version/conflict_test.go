@@ -10,147 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveConflicts(t *testing.T) {
-	t.Run("no conflicts - single bump per package", func(t *testing.T) {
-		bumps := map[string]VersionBump{
-			"a": {
-				Package:    "a",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
-				ChangeType: "minor",
-				Source:     "direct",
-			},
-			"b": {
-				Package:    "b",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 1, Minor: 0, Patch: 1},
-				ChangeType: "patch",
-				Source:     "propagated",
-			},
-		}
-
-		result := ResolveConflicts(bumps)
-
-		// No conflicts, should return unchanged
-		assert.Equal(t, bumps, result)
-	})
-
-	t.Run("diamond dependency - multiple paths same bump", func(t *testing.T) {
-		// This is handled by PropagateLinked (only processes once)
-		// ResolveConflicts is mainly for theoretical cases
-		bumps := map[string]VersionBump{
-			"a": {
-				Package:    "a",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
-				ChangeType: "minor",
-				Source:     "direct",
-			},
-		}
-
-		result := ResolveConflicts(bumps)
-		assert.Equal(t, bumps, result)
-	})
-
-	t.Run("conflicting direct and propagated - direct wins", func(t *testing.T) {
-		// In practice, PropagateLinked already handles this
-		// but ResolveConflicts provides a safety net
-		currentVer := semver.Version{Major: 1, Minor: 0, Patch: 0}
-
-		bumps := map[string]VersionBump{
-			"pkg": {
-				Package:    "pkg",
-				OldVersion: currentVer,
-				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
-				ChangeType: "minor",
-				Source:     "direct",
-			},
-		}
-
-		result := ResolveConflicts(bumps)
-
-		// Direct bump preserved
-		assert.Equal(t, "minor", result["pkg"].ChangeType)
-		assert.Equal(t, "direct", result["pkg"].Source)
-	})
-
-	t.Run("empty bumps", func(t *testing.T) {
-		result := ResolveConflicts(map[string]VersionBump{})
-		assert.Empty(t, result)
-	})
-
-	t.Run("preserves all bump sources", func(t *testing.T) {
-		bumps := map[string]VersionBump{
-			"a": {
-				Package:    "a",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 2, Minor: 0, Patch: 0},
-				ChangeType: "major",
-				Source:     "direct",
-			},
-			"b": {
-				Package:    "b",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
-				ChangeType: "minor",
-				Source:     "propagated",
-			},
-			"c": {
-				Package:    "c",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
-				ChangeType: "minor",
-				Source:     "cycle",
-			},
-		}
-
-		result := ResolveConflicts(bumps)
-
-		// All sources preserved
-		assert.Equal(t, "direct", result["a"].Source)
-		assert.Equal(t, "propagated", result["b"].Source)
-		assert.Equal(t, "cycle", result["c"].Source)
-	})
-}
-
-func TestResolveConflictsWithInfo(t *testing.T) {
-	t.Run("returns conflicts info", func(t *testing.T) {
-		bumps := map[string]VersionBump{
-			"a": {
-				Package:    "a",
-				OldVersion: semver.Version{Major: 1, Minor: 0, Patch: 0},
-				NewVersion: semver.Version{Major: 1, Minor: 1, Patch: 0},
-				ChangeType: "minor",
-				Source:     "direct",
-			},
-		}
-
-		result, conflicts := ResolveConflictsWithInfo(bumps)
-		assert.Equal(t, bumps, result)
-		assert.Empty(t, conflicts)
-	})
-}
-
-func TestLogConflictWarnings(t *testing.T) {
-	t.Run("no-op on empty slice", func(t *testing.T) {
-		// Verify it doesn't panic
-		assert.NotPanics(t, func() {
-			LogConflictWarnings(nil)
-			LogConflictWarnings([]ConflictInfo{})
-		})
-	})
-
-	t.Run("logs without panic for non-empty conflicts", func(t *testing.T) {
-		conflicts := []ConflictInfo{
-			{Package: "core", ResolvedType: "minor", Sources: []string{"direct", "propagated"}},
-			{Package: "api", ResolvedType: "major", Sources: []string{"propagated"}},
-		}
-		assert.NotPanics(t, func() {
-			LogConflictWarnings(conflicts)
-		})
-	})
-}
-
 func TestIntegrationWithPropagation(t *testing.T) {
 	t.Run("full propagation pipeline with conflicts - higher priority wins", func(t *testing.T) {
 		// Complex scenario:
@@ -195,8 +54,7 @@ func TestIntegrationWithPropagation(t *testing.T) {
 		result, err := PropagateLinked(g, currentVersions, directBumps)
 		require.NoError(t, err)
 
-		// Resolve any conflicts
-		resolved := ResolveConflicts(result)
+		resolved := result
 
 		// a: patch (direct)
 		assert.Equal(t, "patch", resolved["a"].ChangeType)
@@ -271,8 +129,7 @@ func TestIntegrationWithPropagation(t *testing.T) {
 		propagated, err := PropagateLinked(g, currentVersions, resolvedBumps)
 		require.NoError(t, err)
 
-		// Finally resolve any remaining conflicts
-		final := ResolveConflicts(propagated)
+		final := propagated
 
 		// c should get minor (propagated from the cycle)
 		assert.Contains(t, final, "c")

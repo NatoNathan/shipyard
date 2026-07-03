@@ -151,9 +151,57 @@ func validateList(field config.MetadataField, value interface{}) error {
 		return fmt.Errorf("too many items (max: %d)", *field.MaxItems)
 	}
 
+	for i, item := range list {
+		if err := validateListItem(field, item); err != nil {
+			return fmt.Errorf("item %d: %w", i, err)
+		}
+	}
+
 	return nil
 }
 
+// validateListItem validates a single list item against the field's itemType,
+// allowedValues (string items), and min/max (int items).
+func validateListItem(field config.MetadataField, item interface{}) error {
+	switch field.ItemType {
+	case "", "string":
+		str, ok := item.(string)
+		if !ok {
+			return fmt.Errorf("expected string, got %T", item)
+		}
+		if len(field.AllowedValues) > 0 {
+			for _, allowed := range field.AllowedValues {
+				if str == allowed {
+					return nil
+				}
+			}
+			return fmt.Errorf("%q not in allowed values: %v", str, field.AllowedValues)
+		}
+		return nil
+	case "int", "integer":
+		var intVal int
+		switch v := item.(type) {
+		case int:
+			intVal = v
+		case float64:
+			intVal = int(v)
+		default:
+			return fmt.Errorf("expected int, got %T", item)
+		}
+		if field.Min != nil && intVal < *field.Min {
+			return fmt.Errorf("%d below minimum %d", intVal, *field.Min)
+		}
+		if field.Max != nil && intVal > *field.Max {
+			return fmt.Errorf("%d above maximum %d", intVal, *field.Max)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported itemType: %s", field.ItemType)
+	}
+}
+
+// validateMap checks the value is a map. MetadataField defines no map-specific
+// constraints beyond required/non-empty, so the type check is the full validation.
 func validateMap(field config.MetadataField, value interface{}) error {
 	_, ok := value.(map[string]interface{})
 	if !ok {

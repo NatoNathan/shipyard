@@ -95,7 +95,7 @@ func runSnapshot(opts *SnapshotCommandOptions) error {
 	return runSnapshotWithDir(cwd, opts, time.Now().UTC())
 }
 
-func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now time.Time) error {
+func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now time.Time) (err error) {
 	if opts.Preview && !opts.Quiet && !opts.JSON {
 		fmt.Println()
 		fmt.Println(ui.InfoMessage("Preview Mode (no changes will be applied)"))
@@ -239,6 +239,9 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 	}
 
 	// 6. Update ecosystem version files
+	tx := newApplyTransaction(projectPath)
+	defer func() { err = tx.RollbackOnError(err) }()
+
 	for _, r := range results {
 		pkg, ok := cfg.GetPackage(r.pkg)
 		if !ok {
@@ -248,6 +251,11 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 		handler, err := GetEcosystemHandler(pkg, pkgPath)
 		if err != nil {
 			return err
+		}
+		for _, versionFile := range handler.GetVersionFiles() {
+			if err := tx.Backup(filepath.Join(pkgPath, versionFile)); err != nil {
+				return err
+			}
 		}
 		if err := handler.UpdateVersion(r.newVersion); err != nil {
 			return fmt.Errorf("failed to update version for %s: %w", r.pkg, err)
@@ -270,6 +278,9 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 
 	// 7. Git operations — NO state file changes for snapshots
 	if !opts.NoCommit {
+		if err := tx.CaptureHead(); err != nil {
+			return err
+		}
 		changedPackages := make(map[string]bool)
 		for _, r := range results {
 			changedPackages[r.pkg] = true
@@ -291,6 +302,7 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 		if err := git.CreateCommit(projectPath, commitMsg); err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
+		tx.MarkCommitCreated()
 		if !opts.Quiet && !opts.JSON {
 			fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created commit: \"%s\"", commitMsg)))
 		}
@@ -307,6 +319,7 @@ func runSnapshotWithDir(projectPath string, opts *SnapshotCommandOptions, now ti
 			if err := git.CreateLightweightTag(projectPath, r.tagName); err != nil {
 				return fmt.Errorf("failed to create tag %s: %w", r.tagName, err)
 			}
+			tx.MarkTagCreated(r.tagName)
 			if !opts.Quiet && !opts.JSON {
 				fmt.Println(ui.SuccessMessage(fmt.Sprintf("Created tag: %s", r.tagName)))
 			}

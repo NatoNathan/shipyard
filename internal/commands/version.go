@@ -22,7 +22,6 @@ import (
 	"github.com/NatoNathan/shipyard/internal/ui"
 	"github.com/NatoNathan/shipyard/internal/version"
 	"github.com/NatoNathan/shipyard/pkg/semver"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
 )
 
@@ -163,28 +162,8 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 	}
 
 	// 6. Apply version bumps to files
-	tx := newFileTransaction()
-	var originalHeadSet bool
-	originalHead := plumbing.ZeroHash
-	commitCreated := false
-	var createdTags []string
-	defer func() {
-		if err != nil {
-			if len(createdTags) > 0 {
-				if rollbackErr := git.DeleteTags(projectPath, createdTags); rollbackErr != nil {
-					err = fmt.Errorf("%w; additionally failed to delete created tags: %v", err, rollbackErr)
-				}
-			}
-			if commitCreated && originalHeadSet {
-				if rollbackErr := git.ResetMixed(projectPath, originalHead); rollbackErr != nil {
-					err = fmt.Errorf("%w; additionally failed to roll back git commit: %v", err, rollbackErr)
-				}
-			}
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = fmt.Errorf("%w; additionally failed to roll back filesystem changes: %v", err, rollbackErr)
-			}
-		}
-	}()
+	tx := newApplyTransaction(projectPath)
+	defer func() { err = tx.RollbackOnError(err) }()
 
 	// Build version map with new versions for context
 	allNewVersions := make(map[string]semver.Version)
@@ -417,11 +396,9 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 	shouldTag := !opts.NoTag && shouldCommit && len(packageTags) > 0
 
 	if shouldCommit || shouldTag {
-		originalHead, err = git.HeadHash(projectPath)
-		if err != nil {
-			return fmt.Errorf("failed to capture git HEAD before version changes: %w", err)
+		if err := tx.CaptureHead(); err != nil {
+			return err
 		}
-		originalHeadSet = true
 	}
 
 	var annotatedTags []struct {
@@ -485,7 +462,7 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 		if err := git.CreateCommit(projectPath, commitMessage); err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
-		commitCreated = true
+		tx.MarkCommitCreated()
 
 		if opts.Verbose {
 			fmt.Println(ui.Dimmed(fmt.Sprintf("Created commit with %d file(s)", len(filesToStage))))
@@ -497,14 +474,14 @@ func runVersionWithDir(projectPath string, opts *VersionCommandOptions) (err err
 			if err := git.CreateAnnotatedTag(projectPath, tag.name, tag.message); err != nil {
 				return fmt.Errorf("failed to create annotated tag %s: %w", tag.name, err)
 			}
-			createdTags = append(createdTags, tag.name)
+			tx.MarkTagCreated(tag.name)
 		}
 
 		for _, tagName := range lightweightTags {
 			if err := git.CreateLightweightTag(projectPath, tagName); err != nil {
 				return fmt.Errorf("failed to create lightweight tag %s: %w", tagName, err)
 			}
-			createdTags = append(createdTags, tagName)
+			tx.MarkTagCreated(tagName)
 		}
 
 		if opts.Verbose {
