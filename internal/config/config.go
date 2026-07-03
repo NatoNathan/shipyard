@@ -313,31 +313,67 @@ func (c *Config) GetPackage(name string) (Package, bool) {
 	return Package{}, false
 }
 
-// Merge merges this config with another, with the overlay taking precedence
+// Merge merges this config with another, with the overlay taking precedence.
+// Lists (packages, metadata fields) are appended, with overlay entries
+// replacing base entries of the same name. Templates are merged per key.
+// Scalar sections are overwritten when set in the overlay.
 func (c *Config) Merge(overlay *Config) *Config {
 	merged := &Config{
 		Packages:     append([]Package{}, c.Packages...),
 		Extends:      append([]RemoteConfig{}, c.Extends...),
 		Templates:    c.Templates,
-		Metadata:     c.Metadata,
+		Metadata:     MetadataConfig{Fields: append([]MetadataField{}, c.Metadata.Fields...)},
 		Consignments: c.Consignments,
 		History:      c.History,
 		GitHub:       c.GitHub,
 		PreRelease:   c.PreRelease,
 	}
 
-	// Append overlay packages
-	merged.Packages = append(merged.Packages, overlay.Packages...)
+	// Packages: append, with overlay replacing same-name base entries
+	pkgIndex := make(map[string]int, len(merged.Packages))
+	for i, pkg := range merged.Packages {
+		pkgIndex[pkg.Name] = i
+	}
+	for _, pkg := range overlay.Packages {
+		if i, ok := pkgIndex[pkg.Name]; ok {
+			merged.Packages[i] = pkg
+		} else {
+			pkgIndex[pkg.Name] = len(merged.Packages)
+			merged.Packages = append(merged.Packages, pkg)
+		}
+	}
 
-	// Overlay takes precedence for other fields
+	// Metadata fields: append, with overlay replacing same-name base entries
+	fieldIndex := make(map[string]int, len(merged.Metadata.Fields))
+	for i, field := range merged.Metadata.Fields {
+		fieldIndex[field.Name] = i
+	}
+	for _, field := range overlay.Metadata.Fields {
+		if i, ok := fieldIndex[field.Name]; ok {
+			merged.Metadata.Fields[i] = field
+		} else {
+			fieldIndex[field.Name] = len(merged.Metadata.Fields)
+			merged.Metadata.Fields = append(merged.Metadata.Fields, field)
+		}
+	}
+
+	// Templates: merge per key so unset overlay templates inherit from base
+	if overlay.Templates.Changelog != nil {
+		merged.Templates.Changelog = overlay.Templates.Changelog
+	}
+	if overlay.Templates.TagName != nil {
+		merged.Templates.TagName = overlay.Templates.TagName
+	}
+	if overlay.Templates.ReleaseNotes != nil {
+		merged.Templates.ReleaseNotes = overlay.Templates.ReleaseNotes
+	}
+	if overlay.Templates.CommitMessage != nil {
+		merged.Templates.CommitMessage = overlay.Templates.CommitMessage
+	}
+
+	// Overlay takes precedence for remaining sections
 	if len(overlay.Extends) > 0 {
 		merged.Extends = overlay.Extends
-	}
-	if overlay.Templates.Changelog != nil || overlay.Templates.TagName != nil || overlay.Templates.ReleaseNotes != nil || overlay.Templates.CommitMessage != nil {
-		merged.Templates = overlay.Templates
-	}
-	if len(overlay.Metadata.Fields) > 0 {
-		merged.Metadata = overlay.Metadata
 	}
 	if overlay.Consignments.Path != "" {
 		merged.Consignments = overlay.Consignments

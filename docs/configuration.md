@@ -82,8 +82,13 @@ extends:
 |-------|-------------|
 | `url` | HTTP(S) URL to fetch config from |
 | `git` | Git repository to clone |
-| `path` | Path within git repo (default: `.shipyard/shipyard.yaml`) |
-| `ref` | Git ref to checkout (branch, tag, commit) |
+| `path` | Path within git repo (default: `shipyard.yaml`) |
+| `ref` | Git ref to checkout (branch, tag, commit; default: `main`) |
+| `auth` | Credential for private sources, e.g. `env:GITHUB_TOKEN` (sent as a bearer token for `url` sources, or used as the password for HTTPS `git` sources) |
+
+Entries may also be plain strings, e.g. `"https://example.com/config.yaml"` or `"git@github.com:org/configs.git#shipyard/base.yaml@v1.0.0"`.
+
+Sources are merged in order (first has lowest precedence), with the local config applied last. Packages and metadata fields are appended (same-name entries are replaced by later configs), templates are merged per key, and scalar sections are overwritten.
 
 ### `packages`
 
