@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0a1420;
+  --color-hull: #0e1b2b;
+  --color-hull2: #122238;
+  --color-line: #21395a;
+  --color-linesoft: #182c46;
+  --color-fog: #9fb3c8;
+  --color-chalk: #e8eef5;
+  --color-signal: #ff6a2b;
+  --color-signaldim: #c94f1c;
+  --color-buoy: #ffd166;
+  --color-sea: #3ddc97;
+  --color-dim: #5a7290;
+
+  --font-display: "Big Shoulders Display", "IBM Plex Mono", monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+
+  --animate-rise: rise 0.6s ease both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+::selection {
+  background: var(--color-signal);
+  color: var(--color-ink);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* blueprint grid + harbor glow backdrop */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(rgba(63, 110, 170, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(63, 110, 170, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(255, 106, 43, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgba(61, 220, 151, 0.05), transparent 60%);
+}
+
+/* markdown docs typography, tuned to the manifest aesthetic */
+.doc-prose {
+  color: var(--color-fog);
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+.doc-prose h1,
+.doc-prose h2,
+.doc-prose h3,
+.doc-prose h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+  line-height: 1.05;
+  margin: 2.2em 0 0.6em;
+  scroll-margin-top: 90px;
+}
+.doc-prose h1 {
+  font-size: 44px;
+  margin-top: 0;
+}
+.doc-prose h2 {
+  font-size: 30px;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--color-linesoft);
+}
+.doc-prose h2::before {
+  content: "// ";
+  color: var(--color-signal);
+  font-family: var(--font-mono);
+  font-size: 0.55em;
+  vertical-align: 0.5em;
+  letter-spacing: 0.2em;
+}
+.doc-prose h3 {
+  font-size: 22px;
+}
+.doc-prose h4 {
+  font-size: 17px;
+  letter-spacing: 0.05em;
+}
+.doc-prose p,
+.doc-prose ul,
+.doc-prose ol,
+.doc-prose blockquote {
+  margin: 0 0 1.1em;
+}
+.doc-prose ul,
+.doc-prose ol {
+  padding-left: 1.4em;
+}
+.doc-prose ul {
+  list-style: none;
+}
+.doc-prose ul > li::before {
+  content: "»";
+  color: var(--color-signal);
+  display: inline-block;
+  width: 1.2em;
+  margin-left: -1.2em;
+}
+.doc-prose ol {
+  list-style: decimal;
+}
+.doc-prose ol::marker,
+.doc-prose ol > li::marker {
+  color: var(--color-buoy);
+}
+.doc-prose a {
+  color: var(--color-signal);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-signal) 40%, transparent);
+  text-underline-offset: 3px;
+}
+.doc-prose a:hover {
+  text-decoration-color: var(--color-signal);
+}
+.doc-prose strong {
+  color: var(--color-chalk);
+  font-weight: 600;
+}
+.doc-prose code {
+  color: var(--color-buoy);
+  font-size: 0.92em;
+  background: var(--color-hull);
+  border: 1px solid var(--color-linesoft);
+  padding: 0.1em 0.35em;
+}
+.doc-prose pre {
+  background: var(--color-hull) !important;
+  border: 1px solid var(--color-line);
+  padding: 18px 20px;
+  margin: 0 0 1.4em;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.doc-prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.doc-prose blockquote {
+  border-left: 2px solid var(--color-buoy);
+  padding: 0.4em 0 0.4em 1.2em;
+  color: var(--color-fog);
+  font-style: italic;
+}
+.doc-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--color-line);
+  margin: 0 0 1.4em;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+.doc-prose thead {
+  background: var(--color-hull);
+}
+.doc-prose th {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  color: var(--color-fog);
+  text-align: left;
+}
+.doc-prose th,
+.doc-prose td {
+  border: 1px solid var(--color-linesoft);
+  padding: 9px 14px;
+}
+.doc-prose td code {
+  white-space: nowrap;
+}
+.doc-prose hr {
+  border: none;
+  border-top: 1px dashed var(--color-line);
+  margin: 2.5em 0;
+}
+.doc-prose img {
+  max-width: 100%;
+}

@@ -1,0 +1,88 @@
+---
+const tabs = [
+  {
+    id: "curl",
+    label: "curl",
+    code: `curl -sSL https://raw.githubusercontent.com/natonathan/shipyard/main/install.sh | sh`,
+  },
+  {
+    id: "brew",
+    label: "Homebrew",
+    code: `brew install natonathan/tap/shipyard`,
+  },
+  {
+    id: "npm",
+    label: "npm",
+    code: `npm install -g shipyard-cli\n# or run without installing\nnpx shipyard-cli status`,
+  },
+  {
+    id: "go",
+    label: "Go",
+    code: `go install github.com/natonathan/shipyard/cmd/shipyard@latest`,
+  },
+  {
+    id: "docker",
+    label: "Docker",
+    code: `docker pull ghcr.io/natonathan/shipyard:latest\ndocker run --rm -v $(pwd):/workspace -w /workspace \\\n  ghcr.io/natonathan/shipyard:latest status`,
+  },
+];
+---
+
+<div data-install-tabs>
+  <div class="flex flex-wrap border border-b-0 border-line" role="tablist">
+    {
+      tabs.map((tab, i) => (
+        <button
+          class="cursor-pointer border-r border-linesoft px-5.5 py-3 text-[13px] font-semibold tracking-[0.05em] text-fog uppercase hover:text-chalk aria-selected:bg-signal aria-selected:text-ink"
+          role="tab"
+          aria-selected={i === 0 ? "true" : "false"}
+          data-panel={`panel-${tab.id}`}
+        >
+          {tab.label}
+        </button>
+      ))
+    }
+  </div>
+  {
+    tabs.map((tab, i) => (
+      <div
+        class:list={["relative border border-line bg-hull p-6", i === 0 ? "block" : "hidden"]}
+        id={`panel-${tab.id}`}
+        data-install-panel
+      >
+        <button
+          class="absolute top-3.5 right-3.5 cursor-pointer border border-line px-3 py-1.5 text-[11px] tracking-[0.08em] text-fog uppercase hover:border-signal hover:text-signal"
+          data-copy
+        >
+          Copy
+        </button>
+        <pre class="overflow-x-auto text-[13.5px] leading-[1.8] text-chalk">{tab.code}</pre>
+      </div>
+    ))
+  }
+</div>
+
+<script>
+  const root = document.querySelector("[data-install-tabs]")!;
+  const tabs = root.querySelectorAll<HTMLButtonElement>("[role=tab]");
+  const panels = root.querySelectorAll<HTMLElement>("[data-install-panel]");
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach((t) => t.setAttribute("aria-selected", "false"));
+      panels.forEach((p) => p.classList.replace("block", "hidden"));
+      tab.setAttribute("aria-selected", "true");
+      const panel = document.getElementById(tab.dataset.panel!)!;
+      panel.classList.replace("hidden", "block");
+    });
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const text = btn.parentElement!.querySelector("pre")!.innerText;
+      await navigator.clipboard.writeText(text);
+      btn.textContent = "Copied ✓";
+      setTimeout(() => (btn.textContent = "Copy"), 1600);
+    });
+  });
+</script>

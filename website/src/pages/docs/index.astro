@@ -1,0 +1,44 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import { sidebarGroups } from "../../lib/docs";
+import { base } from "../../lib/base";
+
+const groups = await sidebarGroups();
+---
+
+<DocsLayout title="Docs — Shipyard">
+  <h1>Ship's Papers</h1>
+  <p>
+    Everything you need to run Shipyard: configuration, the consignment format, tag generation,
+    and a full reference for every command. New aboard? Start with the
+    <a href={`${base}docs/configuration/`}>configuration guide</a>, then log your first consignment
+    with <a href={`${base}docs/reference/add/`}><code>shipyard add</code></a>.
+  </p>
+
+  <h2>Quick start</h2>
+  <pre><code># prepare the ship
+shipyard init
+
+# log cargo as you make changes
+shipyard add --summary "Fix authentication bug" --type patch
+
+# chart your course, then sail
+shipyard status
+shipyard version
+git push --follow-tags</code></pre>
+
+  {
+    groups.map((group) => (
+      <>
+        <h2>{group.label}</h2>
+        <ul>
+          {group.items.map((item) => (
+            <li>
+              <a href={`${base}docs/${item.id}/`}>{item.title}</a>
+            </li>
+          ))}
+        </ul>
+      </>
+    ))
+  }
+</DocsLayout>

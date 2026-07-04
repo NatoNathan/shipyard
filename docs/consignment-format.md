@@ -160,7 +160,7 @@ Add pagination support to list endpoints
 
 ### Major Change with Details
 
-```markdown
+````markdown
 ---
 id: 20240130-120000-ghi789
 timestamp: "2024-01-30T12:00:00Z"
@@ -190,7 +190,7 @@ With:
 ```js
 client.authenticate({ oauth: token })
 ```
-```
+````
 
 ## Lifecycle
 

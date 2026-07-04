@@ -1,0 +1,27 @@
+---
+import { base } from "../lib/base";
+---
+
+<footer class="border-t border-line px-6 pt-12 pb-16">
+  <div class="mx-auto max-w-270">
+    <div class="flex flex-wrap items-baseline gap-6">
+      <a
+        href={base}
+        class="font-display flex items-center gap-2.5 text-xl font-extrabold uppercase tracking-wider text-chalk"
+      >
+        <i class="h-3 w-3 bg-signal [clip-path:polygon(0_0,100%_50%,0_100%)]"></i>
+        Shipyard
+      </a>
+      <p class="text-xs text-fog">MIT licensed · built with Go</p>
+      <div class="ml-auto flex gap-5 text-[13px]">
+        <a href="https://github.com/NatoNathan/shipyard" class="text-signal hover:underline">GitHub</a>
+        <a href={`${base}docs/`} class="text-signal hover:underline">Docs</a>
+        <a href="https://github.com/NatoNathan/shipyard/releases" class="text-signal hover:underline">Releases</a>
+        <a href="https://www.npmjs.com/package/shipyard-cli" class="text-signal hover:underline">npm</a>
+      </div>
+    </div>
+    <div class="mt-8 overflow-hidden text-xs whitespace-nowrap text-line tracking-[4px]" aria-hidden="true">
+      ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    </div>
+  </div>
+</footer>

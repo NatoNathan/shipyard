@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import { docTitle } from "../../lib/docs";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("docs");
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const title = docTitle(entry);
+---
+
+<DocsLayout title={`${title} — Shipyard Docs`} activeId={entry.id}>
+  <Content />
+  <p class="mt-14 border-t border-dashed border-line pt-5 text-xs">
+    <a
+      href={`https://github.com/NatoNathan/shipyard/edit/main/docs/${entry.id}.md`}
+      class="text-fog! no-underline! hover:text-signal!"
+    >
+      ✎ Edit this page on GitHub
+    </a>
+  </p>
+</DocsLayout>
