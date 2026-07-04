@@ -253,12 +253,15 @@ func (m *Shipyard) PublishNPM(
 	// Publish to npm via OIDC trusted publishing
 	fmt.Printf("Publishing to npm...\n")
 	publisher := dag.Container().
-		From("node:lts-alpine").
+		From("node:24-alpine").
 		WithEnvVariable("ACTIONS_ID_TOKEN_REQUEST_URL", oidcTokenUrl).
+		WithEnvVariable("GITHUB_ACTIONS", "true").
+		WithEnvVariable("NPM_CONFIG_PROVENANCE", "true").
 		WithSecretVariable("ACTIONS_ID_TOKEN_REQUEST_TOKEN", oidcToken).
 		WithMountedDirectory("/package", npmPackage).
 		WithWorkdir("/package").
-		WithExec([]string{"npm", "publish", "--access", "public"})
+		WithExec([]string{"npm", "install", "--global", "npm@11.5.1"}).
+		WithExec([]string{"npm", "publish", "--access", "public", "--provenance"})
 
 	_, err := publisher.Sync(ctx)
 	if err != nil {
