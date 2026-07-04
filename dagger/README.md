@@ -132,9 +132,11 @@ dagger call release \
   --source=. \
   --version=v0.0.0-test \
   --github-token=env:GITHUB_TOKEN \
-  --npm-token=env:NPM_TOKEN \
+  --npm-oidc-token-url="$ACTIONS_ID_TOKEN_REQUEST_URL" \
+  --npm-oidc-token=env:ACTIONS_ID_TOKEN_REQUEST_TOKEN \
   --docker-registry=ghcr.io/natonathan/shipyard \
-  --docker-username=${GITHUB_ACTOR:-NatoNathan}
+  --docker-username=${GITHUB_ACTOR:-NatoNathan} \
+  --docker-token=env:DOCKER_TOKEN
 ```
 
 ### Production Release
@@ -146,12 +148,14 @@ dagger call release \
   --source=. \
   --version=$VERSION \
   --github-token=env:GITHUB_TOKEN \
-  --npm-token=env:NPM_TOKEN \
+  --npm-oidc-token-url="$ACTIONS_ID_TOKEN_REQUEST_URL" \
+  --npm-oidc-token=env:ACTIONS_ID_TOKEN_REQUEST_TOKEN \
   --docker-registry=ghcr.io/natonathan/shipyard \
-  --docker-username=${GITHUB_ACTOR:-NatoNathan}
+  --docker-username=${GITHUB_ACTOR:-NatoNathan} \
+  --docker-token=env:DOCKER_TOKEN
 ```
 
-If no separate Docker token is provided, the release function reuses the GitHub token for GHCR authentication.
+The GitHub token is used for releases and the Homebrew tap. Provide the workflow `GITHUB_TOKEN` as `DOCKER_TOKEN` for GHCR publishing so the package is associated with this repository.
 
 ## Architecture
 
@@ -247,17 +251,11 @@ sha256sum dist/shipyard_*.tar.gz
 
 ### npm Failures
 
-Verify token has publish permissions:
-```bash
-npm whoami --registry=https://registry.npmjs.org
-```
+Verify `id-token: write` is set on the release workflow and the npm package trusted publisher allows `release.yml` to run `npm publish`.
 
 ### Docker Failures
 
-Check authentication:
-```bash
-docker login ghcr.io
-```
+Check that the workflow `GITHUB_TOKEN` is used for GHCR publishing and the package is connected to this repository with Actions write access.
 
 ## Development
 

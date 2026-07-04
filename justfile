@@ -154,9 +154,11 @@ release VERSION:
       --source=. \
       --version={{ VERSION }} \
       --github-token=env:GITHUB_TOKEN \
-      --npm-token=env:NPM_TOKEN \
+      --npm-oidc-token-url="${ACTIONS_ID_TOKEN_REQUEST_URL}" \
+      --npm-oidc-token=env:ACTIONS_ID_TOKEN_REQUEST_TOKEN \
       --docker-registry=ghcr.io/natonathan/shipyard \
-      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }}
+      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }} \
+      --docker-token=env:DOCKER_TOKEN
 
 # Test Dagger build stage
 dagger-build:
@@ -172,6 +174,8 @@ dagger-test-release:
       --source=. \
       --version=v0.0.0-test \
       --github-token=env:GITHUB_TOKEN \
-      --npm-token=env:NPM_TOKEN \
+      --npm-oidc-token-url="${ACTIONS_ID_TOKEN_REQUEST_URL}" \
+      --npm-oidc-token=env:ACTIONS_ID_TOKEN_REQUEST_TOKEN \
       --docker-registry=ghcr.io/natonathan/shipyard \
-      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }}
+      --docker-username={{ env_var_or_default("GITHUB_ACTOR", "NatoNathan") }} \
+      --docker-token=env:DOCKER_TOKEN

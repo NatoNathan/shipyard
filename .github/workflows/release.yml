@@ -40,6 +40,7 @@ jobs:
       - name: Run Dagger Release Pipeline
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DOCKER_TOKEN: ${{ github.token }}
           VERSION_TAG: ${{ github.ref_name }}
         run: |
           dagger call release \
@@ -49,4 +50,5 @@ jobs:
             --npm-oidc-token-url="$ACTIONS_ID_TOKEN_REQUEST_URL" \
             --npm-oidc-token=env:ACTIONS_ID_TOKEN_REQUEST_TOKEN \
             --docker-registry=ghcr.io/natonathan/shipyard \
-            --docker-username=${{ github.repository_owner }}
+            --docker-username=${{ github.repository_owner }} \
+            --docker-token=env:DOCKER_TOKEN
