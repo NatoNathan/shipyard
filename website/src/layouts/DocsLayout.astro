@@ -1,0 +1,61 @@
+---
+import Base from "./Base.astro";
+import { sidebarGroups } from "../lib/docs";
+import { base } from "../lib/base";
+
+interface Props {
+  title: string;
+  activeId?: string;
+}
+
+const { title, activeId } = Astro.props;
+const groups = await sidebarGroups();
+---
+
+<Base title={title}>
+  <div class="mx-auto flex max-w-270 gap-12 px-6 py-12 max-md:flex-col max-md:gap-8">
+    <aside class="w-56 shrink-0 max-md:w-full">
+      <nav class="sticky top-21">
+        <a
+          href={`${base}docs/`}
+          class:list={[
+            "font-display mb-6 block text-2xl font-bold uppercase tracking-wide hover:text-signal",
+            activeId === undefined ? "text-signal" : "text-chalk",
+          ]}
+        >
+          Ship's Papers
+        </a>
+        {
+          groups.map((group) => (
+            <div class="mb-7">
+              <div class="mb-3 text-[10px] tracking-[0.24em] text-signal uppercase">
+                <span class="text-line">// </span>
+                {group.label}
+              </div>
+              <ul class="flex flex-col gap-0.5 border-l border-linesoft">
+                {group.items.map((item) => (
+                  <li>
+                    <a
+                      href={`${base}docs/${item.id}/`}
+                      class:list={[
+                        "-ml-px block border-l py-1 pl-4 text-[13px] transition-colors",
+                        item.id === activeId
+                          ? "border-signal text-buoy"
+                          : "border-transparent text-fog hover:border-fog hover:text-chalk",
+                      ]}
+                    >
+                      {item.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+    </aside>
+    <article class="doc-prose min-w-0 flex-1 pb-16">
+      <slot />
+    </article>
+  </div>
+</Base>

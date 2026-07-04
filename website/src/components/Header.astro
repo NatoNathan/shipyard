@@ -1,0 +1,28 @@
+---
+import { base } from "../lib/base";
+const onDocs = Astro.url.pathname.includes("/docs");
+---
+
+<header class="sticky top-0 z-10 border-b border-linesoft bg-ink/85 backdrop-blur-md">
+  <div class="mx-auto flex h-15 max-w-270 items-center gap-7 px-6">
+    <a
+      href={base}
+      class="font-display flex items-center gap-2.5 text-[26px] font-extrabold uppercase tracking-wider text-chalk"
+    >
+      <i class="h-3.5 w-3.5 bg-signal [clip-path:polygon(0_0,100%_50%,0_100%)]"></i>
+      Shipyard
+    </a>
+    <nav class="ml-auto flex gap-5 text-[13px] uppercase tracking-[0.08em] max-sm:gap-3.5 max-sm:text-[11px]">
+      <a href={`${base}#workflow`} class="text-fog hover:text-chalk max-sm:hidden">Workflow</a>
+      <a href={`${base}#features`} class="text-fog hover:text-chalk max-sm:hidden">Features</a>
+      <a href={`${base}#install`} class="text-fog hover:text-chalk">Install</a>
+      <a
+        href={`${base}docs/`}
+        class:list={["hover:text-chalk", onDocs ? "text-buoy" : "text-fog"]}
+      >
+        Docs
+      </a>
+      <a href="https://github.com/NatoNathan/shipyard" class="text-signal hover:text-buoy">GitHub ↗</a>
+    </nav>
+  </div>
+</header>

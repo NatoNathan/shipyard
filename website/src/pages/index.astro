@@ -1,0 +1,184 @@
+---
+import Base from "../layouts/Base.astro";
+import Terminal from "../components/Terminal.astro";
+import InstallTabs from "../components/InstallTabs.astro";
+
+import { base } from "../lib/base";
+
+const ports = [
+  {
+    cmd: "shipyard add",
+    text: "Log cargo in the ship's manifest. Each change is a reviewable markdown consignment committed with your PR.",
+  },
+  {
+    cmd: "shipyard status",
+    text: "Check cargo and chart your course. See pending consignments and the exact version bumps they'll produce.",
+  },
+  {
+    cmd: "shipyard version",
+    text: "Sail to the next port. Version files, changelogs, and git tags updated across the whole fleet in one command.",
+  },
+  {
+    cmd: "shipyard release-notes",
+    text: "Tell the tale of your voyage. Generate release notes from templates, or publish straight to GitHub Releases.",
+  },
+];
+
+const cargo = [
+  ["SY-001", "Semantic versioning", "Automatic version calculation from change types — major, minor, patch. No more arguing about version numbers in review."],
+  ["SY-002", "Monorepo support", "Manage many packages with inter-package dependencies. Tarjan's algorithm untangles cycles; topological sort applies bumps in order."],
+  ["SY-003", "Version propagation", "Linked dependencies automatically bump downstream packages when their upstreams change. Fixed pins stay put until you say so."],
+  ["SY-004", "Markdown consignments", "Changes are tracked as plain markdown manifests in .shipyard/consignments/ — diffable, reviewable, mergeable."],
+  ["SY-005", "Custom templates", "Go templates with Sprig functions for changelogs, release notes, tag names, and commit messages. Yours to shape."],
+  ["SY-006", "Remote config", "Share configuration across teams via Git or HTTP. One source of truth for the whole fleet."],
+  ["SY-007", "GitHub integration", "Optional automated GitHub release creation, plus a CI check that every PR carries its consignment."],
+];
+
+const ecosystems = [
+  ["Go", "version.go · go.mod"],
+  ["NPM", "package.json"],
+  ["Python", "pyproject.toml"],
+  ["Helm", "Chart.yaml"],
+  ["Cargo", "Cargo.toml"],
+  ["Deno", "deno.json"],
+];
+---
+
+<Base title="Shipyard — Release management for monorepos">
+  <main>
+    <!-- hero -->
+    <div class="relative mx-auto max-w-270 px-6 pt-22 pb-16">
+      <div class="pointer-events-none absolute inset-x-6 top-10 bottom-5" aria-hidden="true">
+        <i class="absolute top-0 left-0 h-5.5 w-5.5 border-2 border-r-0 border-b-0 border-line"></i>
+        <i class="absolute top-0 right-0 h-5.5 w-5.5 border-2 border-l-0 border-b-0 border-line"></i>
+        <i class="absolute bottom-0 left-0 h-5.5 w-5.5 border-2 border-r-0 border-t-0 border-line"></i>
+        <i class="absolute right-0 bottom-0 h-5.5 w-5.5 border-2 border-l-0 border-t-0 border-line"></i>
+      </div>
+
+      <span class="animate-rise mb-7 inline-block -rotate-1 border border-dashed border-buoy px-3 py-1.5 text-[11px] tracking-[0.22em] text-buoy uppercase">
+        Cargo manifest · approved for release
+      </span>
+      <h1 class="font-display animate-rise text-[clamp(52px,9vw,108px)] leading-[0.92] font-extrabold uppercase [animation-delay:80ms]">
+        Chart your<br />version journey
+        <span class="block text-signal">ship it.</span>
+      </h1>
+      <p class="animate-rise mt-7 mb-9 max-w-140 text-[17px] text-fog [animation-delay:160ms]">
+        Shipyard automates semantic versioning, changelog generation, and release management for
+        monorepos and single-package repos. Log changes as consignments — Shipyard calculates the
+        bumps, writes the logs, and plants the tags.
+      </p>
+      <div class="animate-rise flex flex-wrap gap-4 [animation-delay:240ms]">
+        <a
+          href="#install"
+          class="border border-signal bg-signal px-6.5 py-3.5 text-sm font-semibold tracking-[0.06em] text-ink uppercase transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-buoy hover:bg-buoy hover:shadow-[4px_4px_0_var(--color-signaldim)]"
+        >
+          Get on board
+        </a>
+        <a
+          href={`${base}docs/`}
+          class="border border-line px-6.5 py-3.5 text-sm font-semibold tracking-[0.06em] text-chalk uppercase transition-colors hover:border-chalk"
+        >
+          Read the docs
+        </a>
+      </div>
+
+      <div class="animate-rise [animation-delay:320ms]">
+        <Terminal />
+      </div>
+    </div>
+
+    <!-- workflow -->
+    <section id="workflow" class="border-t border-linesoft px-6 py-21">
+      <div class="mx-auto max-w-270">
+        <div class="mb-3.5 text-[11px] tracking-[0.24em] text-signal uppercase">
+          <span class="text-line">// </span>Shipping route
+        </div>
+        <h2 class="font-display mb-10 text-[clamp(34px,5vw,56px)] leading-none font-bold uppercase">
+          Four ports of call
+        </h2>
+        <div class="grid grid-cols-4 max-md:grid-cols-2 max-sm:grid-cols-1">
+          {
+            ports.map((port, i) => (
+              <div class="group relative border border-l-0 border-linesoft bg-hull/50 px-5.5 py-7 first:border-l max-md:border-l max-md:first:border-l">
+                <span class="font-display block text-[44px] leading-none font-extrabold text-transparent [-webkit-text-stroke:1px_var(--color-line)] group-hover:text-signal group-hover:[-webkit-text-stroke:1px_var(--color-signal)]">
+                  0{i + 1}
+                </span>
+                <code class="mt-3.5 mb-2.5 inline-block text-[13px] text-buoy">{port.cmd}</code>
+                <p class="text-[13px] text-fog">{port.text}</p>
+                {i < ports.length - 1 && (
+                  <i class="absolute top-8.5 -right-2 z-1 h-4 w-4 bg-signal [clip-path:polygon(0_0,100%_50%,0_100%)] max-md:hidden" />
+                )}
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- features -->
+    <section id="features" class="border-t border-linesoft px-6 py-21">
+      <div class="mx-auto max-w-270">
+        <div class="mb-3.5 text-[11px] tracking-[0.24em] text-signal uppercase">
+          <span class="text-line">// </span>Bill of lading
+        </div>
+        <h2 class="font-display mb-10 text-[clamp(34px,5vw,56px)] leading-none font-bold uppercase">
+          What's in the hold
+        </h2>
+        <div class="border border-line">
+          <div class="grid grid-cols-[90px_1fr_2fr] gap-5 border-b border-line bg-hull px-5 py-3 text-[11px] tracking-[0.18em] text-fog uppercase max-sm:hidden">
+            <span>Item</span><span>Cargo</span><span>Description</span>
+          </div>
+          {
+            cargo.map(([no, name, desc]) => (
+              <div class="grid grid-cols-[90px_1fr_2fr] gap-5 border-b border-linesoft p-5 transition-colors last:border-b-0 hover:bg-signal/5 max-sm:grid-cols-1 max-sm:gap-1.5">
+                <span class="text-[13px] font-semibold text-signal">{no}</span>
+                <span class="text-sm font-semibold tracking-[0.04em] uppercase">{name}</span>
+                <span class="text-[13.5px] text-fog">{desc}</span>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ecosystems -->
+    <section id="ecosystems" class="border-t border-linesoft px-6 py-21">
+      <div class="mx-auto max-w-270">
+        <div class="mb-3.5 text-[11px] tracking-[0.24em] text-signal uppercase">
+          <span class="text-line">// </span>Registered fleets
+        </div>
+        <h2 class="font-display mb-10 text-[clamp(34px,5vw,56px)] leading-none font-bold uppercase">
+          Six ecosystems, one harbor
+        </h2>
+        <div class="flex flex-wrap gap-3.5">
+          {
+            ecosystems.map(([name, file]) => (
+              <span class="border border-dashed border-line px-5.5 py-3 text-sm tracking-[0.04em] transition-all hover:-translate-y-0.75 hover:border-solid hover:border-signal hover:text-signal">
+                <b class="mr-2 font-normal text-signal">»</b>
+                {name} <small class="text-fog">{file}</small>
+              </span>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- install -->
+    <section id="install" class="border-t border-linesoft px-6 py-21">
+      <div class="mx-auto max-w-270">
+        <div class="mb-3.5 text-[11px] tracking-[0.24em] text-signal uppercase">
+          <span class="text-line">// </span>Boarding pass
+        </div>
+        <h2 class="font-display mb-10 text-[clamp(34px,5vw,56px)] leading-none font-bold uppercase">
+          Installation
+        </h2>
+        <InstallTabs />
+        <p class="mt-5 text-[13px] text-fog">
+          Then set sail: <code class="text-buoy">shipyard init</code> · Already aboard?
+          <code class="text-buoy">shipyard upgrade</code> keeps you current. Runs on macOS, Linux, and
+          Windows. Full setup in the <a href={`${base}docs/`} class="text-signal hover:underline">docs</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+</Base>
