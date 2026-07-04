@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] - 2026-07-04
+**Package**: shipyard
+
+### Bug Fixes
+- Fix release publishing authentication
+
 ## [0.7.1] - 2026-06-27
 **Package**: shipyard
 
