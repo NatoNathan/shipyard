@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/NatoNathan/shipyard/internal/fileutil"
 
@@ -63,8 +62,9 @@ func (d *DenoEcosystem) ReadVersion() (semver.Version, error) {
 	return semver.Parse(config.Version)
 }
 
-// UpdateVersion updates the version in deno.json or deno.jsonc using regex
-// replacement to preserve original formatting and comments.
+// UpdateVersion updates the version in deno.json or deno.jsonc in place,
+// preserving original formatting and comments. Only the top-level version
+// field is updated; nested "version" fields are left untouched.
 func (d *DenoEcosystem) UpdateVersion(version semver.Version) error {
 	// Determine which config file exists
 	denoPath := filepath.Join(d.path, "deno.json")
@@ -81,12 +81,9 @@ func (d *DenoEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("failed to read %s: %w", filepath.Base(denoPath), err)
 	}
 
-	// Use regex to replace only the version value, preserving all formatting and comments
-	re := regexp.MustCompile(`("version"\s*:\s*")([^"]+)(")`)
-	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s${3}`, version.String())))
-
-	if string(newContent) == string(content) {
-		return fmt.Errorf("no version field found in %s", filepath.Base(denoPath))
+	newContent, err := replaceTopLevelJSONVersion(content, version.String())
+	if err != nil {
+		return fmt.Errorf("%w in %s", err, filepath.Base(denoPath))
 	}
 
 	return fileutil.WriteFile(denoPath, newContent, 0644)

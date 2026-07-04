@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/NatoNathan/shipyard/internal/fileutil"
 
@@ -46,8 +45,9 @@ func (n *NPMEcosystem) ReadVersion() (semver.Version, error) {
 	return semver.Parse(versionStr)
 }
 
-// UpdateVersion updates the version in package.json using regex replacement
-// to preserve original file formatting, indentation, and key order.
+// UpdateVersion updates the version in package.json in place, preserving
+// original file formatting, indentation, and key order. Only the top-level
+// version field is updated; nested "version" fields are left untouched.
 func (n *NPMEcosystem) UpdateVersion(version semver.Version) error {
 	packageJSONPath := filepath.Join(n.path, "package.json")
 
@@ -57,12 +57,9 @@ func (n *NPMEcosystem) UpdateVersion(version semver.Version) error {
 		return fmt.Errorf("failed to read package.json: %w", err)
 	}
 
-	// Use regex to replace only the version value, preserving all formatting
-	re := regexp.MustCompile(`("version"\s*:\s*")([^"]+)(")`)
-	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`${1}%s${3}`, version.String())))
-
-	if string(newContent) == string(content) {
-		return fmt.Errorf("no version field found in package.json")
+	newContent, err := replaceTopLevelJSONVersion(content, version.String())
+	if err != nil {
+		return fmt.Errorf("%w in package.json", err)
 	}
 
 	return fileutil.WriteFile(packageJSONPath, newContent, 0644)

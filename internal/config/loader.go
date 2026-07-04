@@ -3,8 +3,10 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 
 	"github.com/NatoNathan/shipyard/internal/fileutil"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
@@ -21,21 +23,7 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	// Unmarshal into Config struct
-	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	// Apply defaults
-	result := cfg.WithDefaults()
-
-	// Validate
-	if err := result.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
-	return result, nil
+	return finishLoad(v)
 }
 
 // LoadFromDir loads the configuration from a directory
@@ -55,18 +43,52 @@ func LoadFromDir(dir string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read config from %s: %w", dir, err)
 	}
 
+	return finishLoad(v)
+}
+
+// finishLoad unmarshals the raw config, resolves any remote extends, applies
+// defaults, and validates.
+func finishLoad(v *viper.Viper) (*Config, error) {
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg, viper.DecodeHook(configDecodeHook())); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	if len(cfg.Extends) > 0 {
+		resolved, err := ResolveExtends(&cfg)
+		if err != nil {
+			return nil, err
+		}
+		cfg = *resolved
+	}
+
+	// Apply defaults
 	result := cfg.WithDefaults()
 
+	// Validate
 	if err := result.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return result, nil
+}
+
+// configDecodeHook composes viper's default decode hooks with support for
+// string-form extends entries (e.g. `extends: ["https://.../base.yaml"]`),
+// which decode via the same implied-type parsing as the YAML unmarshaler.
+func configDecodeHook() mapstructure.DecodeHookFunc {
+	return mapstructure.ComposeDecodeHookFunc(
+		stringToRemoteConfigHook,
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+	)
+}
+
+func stringToRemoteConfigHook(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
+	if from.Kind() != reflect.String || to != reflect.TypeOf(RemoteConfig{}) {
+		return data, nil
+	}
+	return NewRemoteConfig(data.(string)), nil
 }
 
 // FindConfig searches for a shipyard config file in the current directory

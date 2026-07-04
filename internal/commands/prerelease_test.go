@@ -198,7 +198,38 @@ func TestPrerelease_TargetVersionChanged(t *testing.T) {
 	require.NoError(t, err)
 
 	pkgState := state.Packages["my-api"]
-	assert.Equal(t, "beta", pkgState.Stage)           // Stage unchanged
-	assert.Equal(t, 1, pkgState.Counter)               // Counter reset due to target change
-	assert.Equal(t, "1.2.0", pkgState.TargetVersion)   // New target
+	assert.Equal(t, "beta", pkgState.Stage)          // Stage unchanged
+	assert.Equal(t, 1, pkgState.Counter)             // Counter reset due to target change
+	assert.Equal(t, "1.2.0", pkgState.TargetVersion) // New target
+}
+
+func TestPrerelease_RollsBackOnTagFailure(t *testing.T) {
+	dir := setupPrereleaseTestProject(t)
+
+	// Pre-create the tag the prerelease will try to create so tagging fails
+	// after version files, state, and the commit have been written.
+	repo, err := gogit.PlainOpen(dir)
+	require.NoError(t, err)
+	head, err := repo.Head()
+	require.NoError(t, err)
+	_, err = repo.CreateTag("v1.2.0-alpha.1", head.Hash(), nil)
+	require.NoError(t, err)
+
+	originalVersion, err := os.ReadFile(filepath.Join(dir, "version.go"))
+	require.NoError(t, err)
+
+	err = runPrereleaseWithDir(dir, &PrereleaseCommandOptions{Quiet: true})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create tag")
+
+	rolledBack, err := os.ReadFile(filepath.Join(dir, "version.go"))
+	require.NoError(t, err)
+	assert.Equal(t, string(originalVersion), string(rolledBack), "version file should be restored")
+
+	assert.False(t, prerelease.Exists(filepath.Join(dir, ".shipyard", "prerelease.yml")),
+		"state file created during the failed run should be removed")
+
+	headAfter, err := repo.Head()
+	require.NoError(t, err)
+	assert.Equal(t, head.Hash(), headAfter.Hash(), "commit should be rolled back")
 }
