@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 const remoteBaseConfig = `
@@ -261,6 +262,48 @@ packages:
 	require.NoError(t, err)
 	assert.Len(t, cfg.Packages, 3)
 	assert.Len(t, cfg.Metadata.Fields, 1, "shared field should not duplicate")
+}
+
+func TestResolveExtends_RemoteExtendsMustStayOnSameHost(t *testing.T) {
+	// A fetched remote config may only extend sources on its own host; the
+	// check runs before any fetch, so the foreign URL is never contacted.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "extends:\n  - \"https://evil.example.invalid/pivot.yaml\"\n")
+	}))
+	defer server.Close()
+
+	dir := writeLocalConfig(t, fmt.Sprintf(`
+extends:
+  - %q
+packages:
+  - name: app
+    path: ./
+    ecosystem: go
+`, server.URL+"/parent.yaml"))
+
+	_, err := LoadFromDir(dir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must stay on its own host")
+}
+
+func TestRemoteConfig_ObjectFormGitDefaults(t *testing.T) {
+	// Object-form git entries get the same documented path/ref defaults as
+	// string-form entries parsed via parseGitURL.
+	var rc RemoteConfig
+	require.NoError(t, yaml.Unmarshal([]byte(`git: "https://example.invalid/org/repo.git"`), &rc))
+	assert.Equal(t, "shipyard.yaml", rc.Path)
+	assert.Equal(t, "main", rc.Ref)
+
+	// Explicit values are kept, and URL-form entries stay untouched.
+	rc = RemoteConfig{}
+	require.NoError(t, yaml.Unmarshal([]byte("git: \"https://example.invalid/org/repo.git\"\npath: custom.yaml\nref: v2"), &rc))
+	assert.Equal(t, "custom.yaml", rc.Path)
+	assert.Equal(t, "v2", rc.Ref)
+
+	rc = RemoteConfig{}
+	require.NoError(t, yaml.Unmarshal([]byte(`url: "https://example.invalid/base.yaml"`), &rc))
+	assert.Empty(t, rc.Path)
+	assert.Empty(t, rc.Ref)
 }
 
 func TestResolveExtends_GitSource(t *testing.T) {

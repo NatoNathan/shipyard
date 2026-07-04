@@ -88,6 +88,9 @@ func replaceTopLevelJSONVersion(content []byte, newVersion string) ([]byte, erro
 				return nil, fmt.Errorf("top-level version field is not a string")
 			}
 			valEnd := scanString(valStart)
+			if valEnd > n || content[valEnd-1] != '"' {
+				return nil, fmt.Errorf("unterminated version string")
+			}
 			result := make([]byte, 0, n+len(newVersion))
 			result = append(result, content[:valStart+1]...)
 			result = append(result, newVersion...)

@@ -133,6 +133,18 @@ func TestReplaceTopLevelJSONVersion(t *testing.T) {
 			newVersion: "2.0.0",
 			wantErr:    true,
 		},
+		{
+			name:       "unterminated version string",
+			input:      "{\n  \"version\": \"1.0.0",
+			newVersion: "2.0.0",
+			wantErr:    true,
+		},
+		{
+			name:       "unterminated version string ending in backslash",
+			input:      "{\n  \"version\": \"1.0.0\\",
+			newVersion: "2.0.0",
+			wantErr:    true,
+		},
 	}
 
 	for _, tt := range tests {

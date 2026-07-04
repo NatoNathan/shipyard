@@ -481,7 +481,21 @@ func (rc *RemoteConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	*rc = RemoteConfig(raw)
+	rc.applyGitDefaults()
 	return nil
+}
+
+// applyGitDefaults fills the documented path/ref defaults for git sources.
+func (rc *RemoteConfig) applyGitDefaults() {
+	if rc.Git == "" {
+		return
+	}
+	if rc.Path == "" {
+		rc.Path = "shipyard.yaml"
+	}
+	if rc.Ref == "" {
+		rc.Ref = "main"
+	}
 }
 
 // parseImplied detects type from string format
@@ -523,10 +537,5 @@ func (rc *RemoteConfig) parseGitURL(value string) {
 		}
 	}
 
-	if rc.Path == "" {
-		rc.Path = "shipyard.yaml"
-	}
-	if rc.Ref == "" {
-		rc.Ref = "main"
-	}
+	rc.applyGitDefaults()
 }

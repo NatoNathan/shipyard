@@ -1,9 +1,11 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -34,13 +36,14 @@ const (
 // config's extends list and merges them beneath the local config. Sources are
 // merged in order (first has lowest precedence), with the local config
 // applied last. Remote configs may themselves extend other configs; cycles
-// and over-deep chains are rejected.
+// and over-deep chains are rejected, and remote-supplied extends must stay on
+// the same host as the source that supplied them.
 func ResolveExtends(cfg *Config) (*Config, error) {
 	r := &extendsResolver{
 		httpClient: &http.Client{Timeout: remoteFetchTimeout},
 		stack:      make(map[string]bool),
 	}
-	return r.resolve(cfg, 0)
+	return r.resolve(cfg, 0, "")
 }
 
 type extendsResolver struct {
@@ -48,7 +51,11 @@ type extendsResolver struct {
 	stack      map[string]bool // sources currently being resolved, for cycle detection
 }
 
-func (r *extendsResolver) resolve(cfg *Config, depth int) (*Config, error) {
+// resolve merges cfg's extends sources beneath cfg. pinnedHost is empty for
+// the local config (its extends may point anywhere); for fetched configs it is
+// the host they were fetched from, and their extends must stay on that host so
+// an untrusted upstream cannot pivot fetches to other targets.
+func (r *extendsResolver) resolve(cfg *Config, depth int, pinnedHost string) (*Config, error) {
 	if len(cfg.Extends) == 0 {
 		return cfg, nil
 	}
@@ -58,7 +65,7 @@ func (r *extendsResolver) resolve(cfg *Config, depth int) (*Config, error) {
 
 	var base *Config
 	for _, rc := range cfg.Extends {
-		resolved, err := r.resolveSource(rc, depth)
+		resolved, err := r.resolveSource(rc, depth, pinnedHost)
 		if err != nil {
 			return nil, err
 		}
@@ -72,13 +79,23 @@ func (r *extendsResolver) resolve(cfg *Config, depth int) (*Config, error) {
 	return base.Merge(cfg), nil
 }
 
-func (r *extendsResolver) resolveSource(rc RemoteConfig, depth int) (*Config, error) {
+func (r *extendsResolver) resolveSource(rc RemoteConfig, depth int, pinnedHost string) (*Config, error) {
 	key := rc.sourceKey()
 	if r.stack[key] {
 		return nil, fmt.Errorf("circular dependency in remote configs: %s", key)
 	}
 	r.stack[key] = true
 	defer delete(r.stack, key)
+
+	host, hostErr := sourceHost(rc)
+	if depth > 0 {
+		if hostErr != nil {
+			return nil, fmt.Errorf("refusing extends supplied by a remote config: %w", hostErr)
+		}
+		if pinnedHost == "" || host != pinnedHost {
+			return nil, fmt.Errorf("remote config extends %s on host %q; extends supplied by a remote config must stay on its own host %q", key, host, pinnedHost)
+		}
+	}
 
 	data, err := r.fetch(rc)
 	if err != nil {
@@ -90,7 +107,28 @@ func (r *extendsResolver) resolveSource(rc RemoteConfig, depth int) (*Config, er
 		return nil, fmt.Errorf("failed to parse remote config %s: %w", key, err)
 	}
 
-	return r.resolve(&remote, depth+1)
+	return r.resolve(&remote, depth+1, host)
+}
+
+// sourceHost extracts the host a remote config source points at, handling
+// HTTP(S)/ssh URLs and scp-like git addresses (git@host:org/repo.git).
+func sourceHost(rc RemoteConfig) (string, error) {
+	raw := rc.URL
+	if raw == "" {
+		raw = rc.Git
+	}
+	if rest, ok := strings.CutPrefix(raw, "git@"); ok {
+		host, _, found := strings.Cut(rest, ":")
+		if found && host != "" {
+			return host, nil
+		}
+		return "", fmt.Errorf("cannot determine host of remote config source %s", rc.sourceKey())
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Hostname() == "" {
+		return "", fmt.Errorf("cannot determine host of remote config source %s", rc.sourceKey())
+	}
+	return u.Hostname(), nil
 }
 
 // sourceKey identifies a remote source for cycle detection and error messages.
@@ -164,8 +202,10 @@ func fetchGitFile(rc RemoteConfig, token string) ([]byte, error) {
 	}
 
 	shallowClone := func(ref plumbing.ReferenceName) (billy.Filesystem, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), remoteFetchTimeout)
+		defer cancel()
 		fs := memfs.New()
-		_, err := gogit.Clone(memory.NewStorage(), fs, &gogit.CloneOptions{
+		_, err := gogit.CloneContext(ctx, memory.NewStorage(), fs, &gogit.CloneOptions{
 			URL:           rc.Git,
 			Auth:          auth,
 			ReferenceName: ref,
@@ -204,8 +244,10 @@ func fetchGitFile(rc RemoteConfig, token string) ([]byte, error) {
 }
 
 func cloneAtCommit(url string, auth transport.AuthMethod, hash plumbing.Hash) (billy.Filesystem, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), remoteFetchTimeout)
+	defer cancel()
 	fs := memfs.New()
-	repo, err := gogit.Clone(memory.NewStorage(), fs, &gogit.CloneOptions{
+	repo, err := gogit.CloneContext(ctx, memory.NewStorage(), fs, &gogit.CloneOptions{
 		URL:  url,
 		Auth: auth,
 	})

@@ -143,7 +143,10 @@ func (tx *applyTransaction) RollbackOnError(err error) error {
 			err = fmt.Errorf("%w; additionally failed to delete created tags: %v", err, rollbackErr)
 		}
 	}
-	if tx.commitCreated && tx.originalHeadSet {
+	// Reset whenever HEAD was captured: even if the commit was never created,
+	// files may have been staged, and a mixed reset unstages them without
+	// touching the worktree.
+	if tx.originalHeadSet {
 		if rollbackErr := git.ResetMixed(tx.projectPath, tx.originalHead); rollbackErr != nil {
 			err = fmt.Errorf("%w; additionally failed to roll back git commit: %v", err, rollbackErr)
 		}
