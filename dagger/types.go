@@ -23,8 +23,8 @@ type BuildInfo struct {
 }
 
 const (
-	GoImage             = "golang:1.25.11-alpine"
-	GoImageCGO          = "golang:1.25.11"
+	GoImage             = "golang:1.26.8-alpine"
+	GoImageCGO          = "golang:1.26.8"
 	GolangCILintVersion = "v2.12.2"
 	GosecVersion        = "v2.27.1"
 	GovulncheckVersion  = "v1.3.0"
