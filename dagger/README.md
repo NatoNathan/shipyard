@@ -174,7 +174,7 @@ The module provides both CI and release capabilities:
 
 1. **Build Stage** (`build.go`)
    - Cross-compiles for: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64
-   - Uses the pinned Go image from `types.go` (currently Go 1.25.11) with CGO_ENABLED=0 for static binaries
+   - Uses the pinned Go image from `types.go` (currently Go 1.26.4) with CGO_ENABLED=0 for static binaries
    - Embeds version, commit, and date via ldflags
 
 2. **Package Stage** (`package.go`)
