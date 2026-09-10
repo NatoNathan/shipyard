@@ -2,7 +2,7 @@ module github.com/NatoNathan/shipyard
 
 // version: 0.7.2
 
-go 1.26.8
+go 1.26.4
 
 require (
 	github.com/BurntSushi/toml v1.6.0
